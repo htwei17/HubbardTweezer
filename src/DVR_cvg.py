@@ -1,0 +1,53 @@
+from mimetypes import init
+from statistics import mode
+from tkinter import N
+import numpy as np
+import scipy.linalg as la
+# import scipy.sparse.linalg as sla
+# import scipy.sparse as sp
+# from scipy.sparse.linalg import LinearOperator
+# import sparse
+from opt_einsum import contract
+from time import time
+# from einops import rearrange, reduce, repeat
+from DVR_full import *
+
+
+def N_convergence(N, R, avg=1, dim=3, level=1):
+    # Convergence of energy vs N, to reproduce Fig. 5a in PRA paper
+    E = np.array([]).reshape(0, k)
+    dim_factor = np.zeros(3, dtype=int)
+    dim_factor[:dim] = 1
+    R = R * dim_factor
+    x = np.linspace(-1.1 * R[0], 1.1 * R[0], int(1000))[:, None]
+    p = []
+
+    for i in N:
+        n = i * np.array([1, 1, 1])
+        dx = R / n
+        n = n * dim_factor
+        D = DVR(n, R)
+        print('dx= {}w'.format(dx / D.w))
+        print('R= {}w'.format(R / D.w))
+        print('n=', n)
+        V, W = H_solver(D)
+        E = np.append(E, V[:k].reshape(1, -1), axis=0)
+        p.append(psi(n, dx[0], W, x)[:, :level])
+    dE = np.diff(E, axis=0)
+
+    return np.array(N), dE, E, x / R[0], p
+
+
+def R_convergence(N, dx):
+    # Convergence of energy vs R, to reproduce Fig. 5b in PRA paper
+    E = np.array([]).reshape(0, k)
+
+    for i in N:
+        Nlist = i * np.array([1, 1, 2]) + np.array([0, 0, 1])
+        R = Nlist * dx
+        D = DVR(Nlist, R)
+        V, W = H_solver(D)
+        E = np.append(E, V[:k].reshape(1, -1), axis=0)
+    dE = np.diff(E, axis=0)
+    R = np.array(N) * dx[0] / D.w
+    return R, dE, E

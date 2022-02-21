@@ -1,1 +1,3 @@
 *.pdf
+output
+__pycache__
