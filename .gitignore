@@ -1,3 +1,12 @@
+# PDFs and others
 *.pdf
+*.xlsx
+*.pptx
+
+# Temp files and temp outputs
+*.csv
 output
 __pycache__
+
+# Executables
+
