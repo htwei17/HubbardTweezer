@@ -31,10 +31,10 @@ class dynamics(DVR):
         self.R0 = R
         print("param_set: model is {} potential.".format(model))
 
-        if model is 'Gaussian':
+        if model == 'Gaussian':
             if N == 0:
                 N = 10
-        elif model is 'sho':
+        elif model == 'sho':
             if N == 0:
                 N = 15
 
@@ -55,7 +55,7 @@ class dynamics(DVR):
         self.t_step = 0
         self.is_period = False
 
-        self.t_step = self.stop_time_list / self.step_no
+        self.t_step_list = self.stop_time_list / self.step_no
 
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
@@ -68,6 +68,7 @@ class dynamics(DVR):
     def set_each_freq(self, fi) -> float:
         self.freq = self.freq_list[fi]
         self.stop_time = self.stop_time_list[fi]
+        self.t_step = self.t_step_list[fi]
         # for ax in axs:
         #     ax.label_outer()
         # ax = fig.add_subplot(1, len_freq_list, fi + 1)
@@ -90,7 +91,7 @@ class dynamics(DVR):
 
         return self.set_t_step(self.t_step, self.T)
 
-    def set_t_step(self, t_step, T):
+    def set_t_step(self, t_step: float, T: float) -> float:
         if self.is_period:
             t_step = T
         if self.realtime:
@@ -127,11 +128,13 @@ def get_stop_time(freq_list: np.ndarray, dim, t=0, V0_SI=0) -> np.ndarray:
         elif dim == 3:
             st = 2.5E-5 * np.exp(freq_list * 0.0954747)
             st[np.nonzero(freq_list < 39.4)] = 1E-3
-            if V0_SI / (2 * np.pi) > 1.5E5:
+            if V0_SI > 1.5E5 * 2 * np.pi:
                 st *= 2
     else:
         if isinstance(t, (int, float)):
             st = copy_to_list(t, len(freq_list))
+        else:
+            st = t
     if isinstance(st, (list, tuple)):
         st = np.array(st)
     return st

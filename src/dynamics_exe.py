@@ -25,6 +25,13 @@ parser.add_argument(
     "Spatial range in dynamics w/o absorption region: [Rx Ry Rz] in unit of w.",
     default=[3, 3, 7.2])
 parser.add_argument(
+    "-p",
+    "--trap",
+    nargs="+",
+    type=float,
+    help="Trap parameters of potential: [V_0 w] in unit of kHz and meter.",
+    default=[104.52, 1E-6])
+parser.add_argument(
     "-t",
     "--time",
     nargs="+",

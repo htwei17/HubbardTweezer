@@ -55,7 +55,7 @@ class DVR:
                  R,
                  avg=1,
                  model='Gaussian',
-                 trap=(1.0452E2, 1E-6),
+                 trap=(104.52, 1E-6),
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
@@ -82,7 +82,7 @@ class DVR:
             print('{}-reflection symmetry is used.'.format(axis[n != 0]))
         self.init = get_init(self.n, self.p)
 
-        if model is 'Gaussian':
+        if model == 'Gaussian':
             # Experiment parameters in atomic units
             self.m = 6.015122 * amu  # Lithium-6 atom mass, in unit of electron mass
 
@@ -115,7 +115,7 @@ class DVR:
             # Fixed R value, should be larger than Rayleigh length scale
             self.R0 = self.w * np.array([1, 1, 2.4])
 
-        elif model is 'sho':
+        elif model == 'sho':
             # Harmonic parameters
             self.dx0 = 1 / 3 * np.ones(3, dtype=float)
             self.Nmax = 30
@@ -136,11 +136,11 @@ class DVR:
 
     def Vfun(self, x, y, z):
         # Potential function
-        if self.model is 'Gaussian':
+        if self.model == 'Gaussian':
             # Tweezer potential funciton, Eq. 2 in PRA
             den = 1 + (z / self.zR)**2
             V = -1 / den * np.exp(-2 * (x**2 + y**2) / (self.w**2 * den))
-        elif self.model is 'sho':
+        elif self.model == 'sho':
             # Harmonic potential function
             V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)
         return V
@@ -180,7 +180,7 @@ def Vmat(DVR):
         L[DVR.n == 0] = np.inf
         V = V.astype(complex) + DVR.Vabs(X[0], X[1], X[2], L, Ri)
     # V * identity rank-6 tensor, sparse
-    no = DVR.n + 1 - init
+    no = DVR.n + 1 - DVR.init
     V = np.diag(V.reshape(-1))
     V = V.reshape(np.concatenate((no, no)))
     return V, no

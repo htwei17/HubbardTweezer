@@ -49,7 +49,7 @@ class Output:
             self.rho_trap = trap[0]
             self.psi = trap[1]
 
-    def write_to_file(self, fn):
+    def write_to_file(self, fn: str):
         with h5py.File(fn, "a") as f:
             append_to_table(f, 't', self.t)
             append_to_table(f, 'rho_gs', self.rho_gs)
@@ -57,10 +57,10 @@ class Output:
                 append_to_table(f, 'rho_trap', self.rho_trap)
                 append_to_table(f,
                                 'psi',
-                                psi.astype(np.complex),
+                                self.psi.astype(np.complex),
                                 dtype=np.complex)
 
-    def read_file(self, fn, path='../output/'):
+    def read_file(self, fn: str, path: str = '../output/'):
         with h5py.File(path + fn, 'r') as f:
             self.t = np.array(f['t'])
             self.rho_gs = np.array(f['rho_gs'])
@@ -98,7 +98,7 @@ def DVR_exe(dvr: dynamics) -> None:
 
     print("n={}, dx={}w, p={}, model={},\nt={},\nt_step={}\nstarts.".format(
         dvr.n, dvr.dx / dvr.w, dvr.p, dvr.model, dvr.stop_time_list,
-        dvr.initial_t_step * dvr.t_unit))
+        dvr.t_step))
     mem_est(dvr.n, dvr.p)
 
     time1 = time()
@@ -237,14 +237,13 @@ def mem_check(limit=6):
 
 def dynamics_period(dynamics: dynamics, t_step, cond_str, psi1, psi, time6, fn,
                     W, n_period, E_power_n):
-    for t_count in np.arange(t_step, dynamics.stop_time + t_step, t_step):
+    for t in np.arange(t_step, dynamics.stop_time + t_step, t_step):
         psi = dynamics_by_period(n_period,
                                  E_power_n,
                                  W,
                                  psi0=psi,
                                  fixed_period=True)
 
-        t = t_count * dynamics.t_unit
         rho_gs = abs(psi1 @ psi)**2
         if dynamics.wavefunc:
             psi_w = W @ psi

@@ -3,12 +3,15 @@
 *.xlsx
 *.pptx
 
-# Temp files and temp outputs
+# Temp files
 .DS_Store
-*.csv
 *.pyo
-output
 __pycache__
+
+# Temp outputs
+output
+*.csv
+*.h5
 
 # Executables
 
