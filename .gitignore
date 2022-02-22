@@ -4,7 +4,9 @@
 *.pptx
 
 # Temp files and temp outputs
+.DS_Store
 *.csv
+*.pyo
 output
 __pycache__
 
