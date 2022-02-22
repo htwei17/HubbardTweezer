@@ -132,7 +132,7 @@ R = np.array(args.range)
 trap = args.trap
 step, t = args.time
 
-st = get_stop_time(freq_list, args.dim, t, trap[0] * 2 * np.pi)
+st = get_stop_time(freq_list, t, trap[0] * 2 * np.pi)
 
 dvr = dynamics(N, R, freq_list, (step, st), 1 / 2, args.dim, args.model, trap,
                args.mem_eff, True, args.realtime, args.symmetry,

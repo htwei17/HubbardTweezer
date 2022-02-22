@@ -15,7 +15,7 @@ class plot(dynamics):
                  cvg='N',
                  quantity='gs',
                  N=10,
-                 R: np.ndarray = 3 * np.array([1, 1, 2.4]),
+                 R0: np.ndarray = 3 * np.array([1, 1, 2.4]),
                  freq_list: np.ndarray = np.arange(20, 200, 20),
                  time=(1000.0, 0),
                  avg=1,
@@ -28,7 +28,7 @@ class plot(dynamics):
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
-        super().__init__(N, R, freq_list, time, avg, dim, model, trap, mem_eff,
+        super().__init__(N, R0, freq_list, time, avg, dim, model, trap, mem_eff,
                          wavefunc, realtime, symmetry, absorber, ab_param)
         self.cvg = cvg
         self.set_quantity(quantity)
@@ -42,21 +42,21 @@ class plot(dynamics):
 
     def set_each_n(self, N_list, R0_list, i):
         self.update_N(N_list[i])
-        self.update_R(R0_list[i])
-        if self.cvg is 'N':
-            self.cvg_str = 'R={}w'.format(self.R[:self.dim] / self.w)
-        elif self.cvg is 'R':
-            self.cvg_str = 'dx={}w'.format(self.dx[:self.dim] / self.w)
+        self.update_R0(R0_list[i])
+        if self.cvg == 'N':
+            self.cvg_str = '$R_0$={}w'.format(self.R0[:self.dim])
+        elif self.cvg == 'R':
+            self.cvg_str = 'dx={}w'.format(self.dx[:self.dim])
         self.n_list.append(self.n)
         self.dx_list.append(self.dx)
         # n_list, dx_list are mutable, no need to output
         np.set_printoptions(precision=2, suppress=True)
-        if self.model is 'Gaussian':
+        if self.model == 'Gaussian':
             self.freq_unit_str = 'kHz'
             self.freq_unit = 1
             self.t_unit = 's'
             self.xlabel = 't/s'
-        elif self.model is 'sho':
+        elif self.model == 'sho':
             self.freq_unit_str = '$\omega$'
             self.freq_unit = 1
             self.t_unit = ''
@@ -83,9 +83,9 @@ class plot(dynamics):
                 self.title1 = self.title2
                 self.title2 = None
 
-    def filename_gen(self, N_list: list, R_list: list, t_step, i: int):
+    def filename_gen(self, N_list: list, R0_list: list, t_step, i: int):
         self.update_N(N_list[i])
-        self.update_R(R_list[i])
+        self.update_R0(R0_list[i])
         return super().filename_gen(t_step)
 
 
@@ -141,7 +141,6 @@ def plot_dynamics(N_list,
         dvr.set_all_n(N_list, R0_list, avg_no, avg)
 
         data = get_data(N_list, R0_list, dvr, t_step)
-
         plot_length = int(data[0].t.shape[0] / length)
         # final_val = np.array([])
         lifetime = np.array([])
@@ -202,12 +201,13 @@ def plot_dynamics(N_list,
     return subfigs, ax_list
 
 
-def get_data(N_list, R_list, dvr: plot, t_step):
-    fn = lambda i: dvr.filename_gen(N_list, R_list, t_step, i)
+def get_data(N_list, R0_list, dvr: plot, t_step):
+    fn = lambda i: dvr.filename_gen(N_list, R0_list, t_step, i)
     data = []
     for i in range(len(N_list)):
         io = Output(wavefunc=dvr.wavefunc)
-        data.append(io.read_file(fn(i)))
+        io.read_file(fn(i))
+        data.append(io)
         if dvr.quantity == 'trap':
             data[i].rho_gs = data[i].rho_trap
             data[i].rho_trap = None
@@ -221,7 +221,7 @@ def moving_avg(rho_gs, rho_avg, avg_no):
 
 
 def plot_lifetime(N_list,
-                  R_list,
+                  R0_list,
                   dvr: plot,
                   ext_ax=None,
                   file=False,
@@ -254,7 +254,7 @@ def plot_lifetime(N_list,
         dvr.w = 1E-6 / a0  # ~1000nm, waist length, in unit of Bohr radius
 
         # TODO: CHECK IF R AND L VARYING WITH W CAUSES THE DIFFERENCE ON THE LIFETIME
-        lt_vs_freq = tau_from_waist(N_list, R_list, dvr, t_step, avg_no, tau,
+        lt_vs_freq = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no, tau,
                                     no_file, lt_vs_freq)
 
         if err:
@@ -262,14 +262,14 @@ def plot_lifetime(N_list,
             dvr.V0_SI = 7.6E4 * dvr.kHz_2p * hb  # trap depth for tightest waist
             dvr.w = 8.61E-7 / a0  # tightest waist length
 
-            lt_err[0] = tau_from_waist(N_list, R_list, dvr, t_step, avg_no,
+            lt_err[0] = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no,
                                        tau, no_file, lt_err[0])
 
             # FATTEST WAIST
             dvr.V0_SI = 1.56E5 * dvr.kHz_2p * hb  # trap depth for fattest waist
             dvr.w = 1.18E-6 / a0  # fattest waist length
 
-            lt_err[1] = tau_from_waist(N_list, R_list, dvr, t_step, avg_no,
+            lt_err[1] = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no,
                                        tau, no_file, lt_err[1])
 
     if no_file:
@@ -320,7 +320,7 @@ def plot_lifetime(N_list,
             ' ' + dvr.cvg_str)
     else:
         ax.set_title('Lifetime of {}D {}\ncompared w/ exp\'t @'.format(
-            dvr.dim, dvr.model) + ' $R_0$={}w'.format(R_list[0][:dim] / dvr.w))
+            dvr.dim, dvr.model) + ' $R_0$={}w'.format(R0_list[0][:dim]))
         # ax.set_title(
         #     'Lifetime of 3D {} GS\n with $\\tau_{{eff}}$ vs w/o $\\tau_{{eff}}$ @'.
         #     format(model) + ' $R_0$={}w'.format(R0 / w))
@@ -331,7 +331,7 @@ def plot_lifetime(N_list,
     return ax
 
 
-def tau_from_waist(N_list, R_list, dvr: plot, t_step, avg_no, tau, no_file,
+def tau_from_waist(N_list, R0_list, dvr: plot, t_step, avg_no, tau, no_file,
                    lt_vs_freq) -> np.ndarray:
     if avg_no == 0:
         avg_no = 10
@@ -339,15 +339,15 @@ def tau_from_waist(N_list, R_list, dvr: plot, t_step, avg_no, tau, no_file,
     else:
         avg = True
 
-    dvr.set_all_n(N_list, R_list, avg_no, avg)
+    dvr.set_all_n(N_list, R0_list, avg_no, avg)
 
     if no_file:
         lt_vs_freq = get_tau(N_list, dvr, avg_no, tau, lt_vs_freq, t_step)
     return lt_vs_freq
 
 
-def get_tau(N_list, R_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
-    data = get_data(N_list, R_list, dvr, t_step)
+def get_tau(N_list, R0_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
+    data = get_data(N_list, R0_list, dvr, t_step)
 
     final_val = np.array([])
     lifetime = np.array([])
@@ -403,9 +403,9 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
             io.read_file(fn(i))
 
             dx = dvr.dx_list[i][0]
-            dvr.update_R(R0_list[i])
+            dvr.update_R0(R0_list[i])
             R = dvr.R[0]
-            R0 = R - dvr.LI
+            R0 = dvr.R0[0]
             t_len = int(len(io.t) / length)
             n_period = int(io.t[t_len - 1] / dvr.T)
 

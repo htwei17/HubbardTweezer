@@ -13,7 +13,7 @@ class dynamics(DVR):
 
     def __init__(self,
                  N=10,
-                 R: np.ndarray = 3 * np.array([1, 1, 2.4]),
+                 R0: np.ndarray = 3 * np.array([1, 1, 2.4]),
                  freq_list: np.ndarray = np.arange(20, 200, 20),
                  time=(1000.0, 0),
                  avg=1,
@@ -26,24 +26,24 @@ class dynamics(DVR):
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
-        self.N = N
-        self.R0 = R
+        self.R0 = R0.copy()
+        # if __debug__:
+        #     print(R0)
         print("param_set: model is {} potential.".format(model))
 
-        if model == 'Gaussian':
-            if N == 0:
-                N = 10
-        elif model == 'sho':
-            if N == 0:
-                N = 15
+        if model == 'Gaussian' and N == 0:
+            N = 10
+        elif model == 'sho' and N == 0:
+            N = 15
 
+        self.N = N
         n = np.zeros(3, dtype=int)
         n[:dim] = N
 
-        super().__init__(n, R, avg, model, trap, symmetry, absorber, ab_param)
+        super().__init__(n, R0, avg, model, trap, symmetry, absorber, ab_param)
         self.freq_list_len = len(freq_list)
         self.step_no = time[0]
-        self.stop_time_list = get_stop_time(freq_list, dim, time[1],
+        self.stop_time_list = get_stop_time(freq_list, time[1],
                                             self.V0_SI)  # Time in SI unit
         self.freq_list = np.array(freq_list)
         self.dim = dim
@@ -112,23 +112,19 @@ class dynamics(DVR):
         if self.absorber:
             ab_str = ' ab {:.2g} {:.2g}'.format(self.LI, self.VI)
         np.set_printoptions(precision=2, suppress=True)
-        return '{} {} {:g} {:.2g} {:.2g} {}{}{}.h5'.format(
-            self.n, self.dx, self.freq, self.stop_time, t_step, self.model,
-            rt_str, ab_str)
+        return '{} {} {:g} {:g} {:g} {:.2g} {:.2g} {}{}{}.h5'.format(
+            self.n[:self.dim], self.dx[:self.dim], self.V0_SI / self.kHz_2p,
+            self.w, self.freq, self.stop_time, t_step, self.model, rt_str,
+            ab_str)
 
 
-def get_stop_time(freq_list: np.ndarray, dim, t=0, V0_SI=0) -> np.ndarray:
+def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
-        if dim == 1:
-            st = 5E-5 * np.exp(freq_list * 0.0954747)
-            st[np.nonzero(freq_list < 39.4)] = 1E-2
-            st[np.nonzero(freq_list == 39.4)] = .125
-        elif dim == 3:
-            st = 2.5E-5 * np.exp(freq_list * 0.0954747)
-            st[np.nonzero(freq_list < 39.4)] = 1E-3
-            if V0_SI > 1.5E5 * 2 * np.pi:
-                st *= 2
+        st = 2.5E-5 * np.exp(freq_list * 0.0954747)
+        st[np.nonzero(freq_list < 39.4)] = 1E-3
+        if V0_SI > 1.5E5 * 2 * np.pi:
+            st *= 2
     else:
         if isinstance(t, (int, float)):
             st = copy_to_list(t, len(freq_list))

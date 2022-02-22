@@ -33,45 +33,56 @@ class harray(np.ndarray):
 
 class DVR:
     def update_n(self, n: np.ndarray):
-        self.n = n
+        self.n = n.copy()
         self.dx = np.zeros(n.shape)
-        if self.absorber:
-            self.dx[n != 0] = (self.R[n != 0] - self.LI) / n[n != 0]
-            self.n[n != 0] = int(self.R[n != 0] / self.dx[n != 0])
-        else:
-            self.dx[n != 0] = self.R[n != 0] / n[n != 0]
+        self.nd = n != 0
+        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]
+        self.update_ab()
 
-    def update_R(self, R):
-        nd = self.n != 0
-        self.R = R
+    #TODO: SET LENGTH UNIT IN WAIST
+    def update_R0(self, R: np.ndarray):
+        self.R0 = R.copy()
+        self.n[self.nd] = int(self.R0[self.nd] / self.dx[self.nd])
+        self.update_ab()
+
+    def update_ab(self):
         if self.absorber:
-            self.R += self.LI
-        self.n[nd] = int(self.R[nd] / self.dx[nd])
+            # if __debug__:
+            #     print(self.R0)
+            #     print(self.LI, '\n')
+            self.n[self.nd] += int(self.LI / self.dx[self.nd])
+            # if __debug__:
+            #     print(self.n)
+            self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
 
     def __init__(self,
-                 n,
-                 R,
+                 n: np.ndarray,
+                 R0: np.ndarray,
                  avg=1,
                  model='Gaussian',
                  trap=(104.52, 1E-6),
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
-        self.n = n
-        self.R = R  # In unit of waist
+        self.n = n.copy()
+        self.R0 = R0.copy()  # Physical region size, In unit of waist
+        self.R = R0.copy()  # Total region size, R = R0 + LI
         self.avg = avg
         self.model = model
         self.absorber = absorber
+        self.nd = n != 0  # Nonzero dimensions
 
         self.dx = np.zeros(n.shape)
-        self.dx[n != 0] = self.R[n != 0] / n[n != 0]  # In unit of waist
+        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of waist
         if self.absorber:
             self.VI, self.LI = ab_param
-            self.R += self.LI
-            self.n[n != 0] = int(self.R[n != 0] / self.dx[n != 0])
         else:
             self.VI = 0
             self.LI = 0
+        self.update_ab()
+        # if __debug__:
+        #     print(self.R)
+        #     print(self.R0)
 
         self.p = np.zeros(dim, dtype=int)
         if symmetry:
@@ -87,8 +98,6 @@ class DVR:
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
             self.V0_SI = trap[0] * self.kHz_2p * hb  # Input in unit of kHz
             self.w = trap[1] / a0  # Input in unit of meter
-            self.R *= self.w
-            self.dx *= self.w
 
             # NORMAL WAIST
             # V0_SI = 1.0452E5 * 2 * np.pi  # 104.52kHz * h, potential depth, in SI unit, since hbar is set to 1 this should be multiplied by 2pi
@@ -104,14 +113,9 @@ class DVR:
             # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
 
             self.mtV0 = self.m * self.V0
-            self.zR = np.pi * self.w**2 / l  # ~4000nm, Rayleigh range
+            self.zR = np.pi * self.w / l  # ~4000nm, Rayleigh range, in unit of waist
 
             self.Nmax = np.array([20, 20, 20])  # Max number of grid points
-            self.dx0 = self.w * np.array([.15, 1.5, 0.36
-                                          ])  # Fixed delta x value
-            # dx0 = np.array([.1 * w, .1 * w, 0.25 * w])  # Fixed delta x value
-            # Fixed R value, should be larger than Rayleigh length scale
-            self.R0 = self.w * np.array([1, 1, 2.4])
 
         elif model == 'sho':
             # Harmonic parameters
@@ -125,29 +129,35 @@ class DVR:
             self.V0_SI = 1.0
             self.kHz = 1.0
 
+        self.R0 *= self.nd
+        self.R *= self.nd
+        self.dx *= self.nd
         ## Abosorbers
         if absorber:
             self.VI *= self.kHz_2p / self.V0_SI  # Absorption potential strength in unit of V0
-            self.LI *= self.w  # Absorption region, in unit of w
-
-        self.dx *= n != 0
 
     def Vfun(self, x, y, z):
         # Potential function
         if self.model == 'Gaussian':
             # Tweezer potential funciton, Eq. 2 in PRA
             den = 1 + (z / self.zR)**2
-            V = -1 / den * np.exp(-2 * (x**2 + y**2) / (self.w**2 * den))
+            V = -1 / den * np.exp(-2 * (x**2 + y**2) / den)
         elif self.model == 'sho':
             # Harmonic potential function
             V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)
         return V
 
-    def Vabs(self, x, y, z, L=np.inf * np.ones(dim), R=np.zeros(dim)):
+    def Vabs(self, x, y, z):
         r = np.array([x, y, z]).transpose(1, 2, 3, 0)
         np.set_printoptions(threshold=sys.maxsize)
-        d = abs(r) - R
+        d = abs(r) - self.R0
         d = (d > 0) * d
+        L = self.R - self.R0
+        L[np.invert(self.nd)] = np.inf
+        # if __debug__:
+        #     print(self.R)
+        #     print(self.R0)
+        #     print(L)
         Vi = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
             V = -1j * self.VI * Vi
@@ -162,23 +172,20 @@ def get_init(n, p):
     return init
 
 
-def Vmat(DVR):
+def Vmat(dvr: DVR):
     # Potential energy tensor, index order [x y z x' y' z']
     # NOTE: here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
     #       potential(x, y, z) is a function handle to be processed as potential function for solving
     x = []
     for i in range(dim):
-        x.append(np.arange(DVR.init[i], DVR.n[i] + 1) * DVR.dx[i])
+        x.append(np.arange(dvr.init[i], dvr.n[i] + 1) * dvr.dx[i])
     X = np.meshgrid(x[0], x[1], x[2], indexing='ij')
     # 3 index tensor V(x, y, z)
-    V = DVR.avg * DVR.Vfun(X[0], X[1], X[2])
-    if DVR.absorber:  # add absorption layer
-        L = DVR.LI * (DVR.n > 0)
-        Ri = DVR.n * DVR.dx - DVR.LI
-        L[DVR.n == 0] = np.inf
-        V = V.astype(complex) + DVR.Vabs(X[0], X[1], X[2], L, Ri)
+    V = dvr.avg * dvr.Vfun(X[0], X[1], X[2])
+    if dvr.absorber:  # add absorption layer
+        V = V.astype(complex) + dvr.Vabs(X[0], X[1], X[2])
     # V * identity rank-6 tensor, sparse
-    no = DVR.n + 1 - DVR.init
+    no = dvr.n + 1 - dvr.init
     V = np.diag(V.reshape(-1))
     V = V.reshape(np.concatenate((no, no)))
     return V, no
@@ -229,17 +236,17 @@ def Tmat_1d(n, dx, mtV0, p=0):
     return T
 
 
-def Tmat(DVR) -> np.ndarray:
+def Tmat(dvr: DVR) -> np.ndarray:
     # Kinetic energy tensor, index order [x y z x' y' z']
     # NOTE: 1. here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
     #       2. p=0, d=-1 means no symmetry applied
     delta = []
     T0 = []
     for i in range(dim):
-        delta.append(np.eye(DVR.n[i] + 1 - DVR.init[i]))  # eg. delta_xx'
-        if DVR.n[i] > 0:
-            T0.append(Tmat_1d(DVR.n[i], DVR.dx[i], DVR.mtV0,
-                              DVR.p[i]))  # append p-sector
+        delta.append(np.eye(dvr.n[i] + 1 - dvr.init[i]))  # eg. delta_xx'
+        if dvr.n[i] > 0:
+            T0.append(Tmat_1d(dvr.n[i], dvr.dx[i], dvr.mtV0,
+                              dvr.p[i]))  # append p-sector
         # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
         else:
             T0.append(None)
@@ -255,15 +262,17 @@ def Tmat(DVR) -> np.ndarray:
     return T
 
 
-def H_mat(DVR):
+def H_mat(DVR: DVR):
     # Construct Hamiltonian matrix
 
     DVR.p *= DVR.n != 0
     DVR.dx *= DVR.n != 0
 
     np.set_printoptions(precision=2, suppress=True)
-    print("H_mat: n={} dx={}w p={} {} starts.".format(DVR.n, DVR.dx / DVR.w,
-                                                      DVR.p, DVR.model))
+    print("H_mat: n={} dx={}w p={} {} starts.".format(DVR.n[DVR.nd],
+                                                      DVR.dx[DVR.nd],
+                                                      DVR.p[DVR.nd],
+                                                      DVR.model))
     T = Tmat(DVR)
     V, no = Vmat(DVR)
     H = T + V

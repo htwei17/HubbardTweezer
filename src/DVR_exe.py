@@ -18,25 +18,24 @@ def mem_est(n, p):
         .format(mem, 2 * mem))
 
 
-def eigen_list(dynamics: dynamics):
-    dynamics.avg = 1
-    E1, W1 = H_solver(dynamics)
+def eigen_list(dvr: dynamics):
+    dvr.avg = 1
+    E1, W1 = H_solver(dvr)
     # NOTE: this potential indication is needed to determine what parameters are used in kinetic energy
-    dynamics.avg = 0
-    E2, W2 = H_solver(dynamics)
+    dvr.avg = 0
+    E2, W2 = H_solver(dvr)
     E_list = [E1, E2]
     W_list = [W1, W2]
     print(
         'n={}, dx={}, p={}, model={}, t={} stroboscopic states preparation finished.'
-        .format(dynamics.n, dynamics.dx / dynamics.w, dynamics.p,
-                dynamics.model, dynamics.stop_time_list))
+        .format(dvr.n[dvr.dim], dvr.dx[dvr.dim], dvr.p[dvr.dim], dvr.model,
+                dvr.stop_time_list))
     print("eigen_list: eigenstates memory usage: {:.2f} MiB.".format(
         asizeof(W_list) / 2**20))
     return E_list, W_list
 
 
 class Output:
-
     def __init__(self,
                  t=None,
                  gs=None,
@@ -92,13 +91,13 @@ def DVR_exe(dvr: dynamics) -> None:
 
     np.set_printoptions(precision=2, suppress=True)
     print("{}D N={} R0={}w\nfreq={}kHz\n{} potential starts.".format(
-        dim, N, dvr.R0 / dvr.w, dvr.freq_list, dvr.model))
+        dvr.dim, dvr.N, dvr.R0[:dvr.dim], dvr.freq_list, dvr.model))
 
     time0 = time()
 
     print("n={}, dx={}w, p={}, model={},\nt={},\nt_step={}\nstarts.".format(
-        dvr.n, dvr.dx / dvr.w, dvr.p, dvr.model, dvr.stop_time_list,
-        dvr.t_step))
+        dvr.n[:dvr.dim], dvr.dx[:dvr.dim], dvr.p[:dvr.dim], dvr.model,
+        dvr.stop_time_list, dvr.t_step_list))
     mem_est(dvr.n, dvr.p)
 
     time1 = time()
@@ -130,7 +129,7 @@ def DVR_exe(dvr: dynamics) -> None:
     if dvr.absorber:
         print(
             'Absorption potential is enabled. Paramter: L={:.2f}w V_OI={:.2f}kHz\n'
-            .format(dvr.LI / dvr.w, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+            .format(dvr.LI, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
 
     for fi in range(dvr.freq_list_len):  # frequency unit, V0 ~ 104.52kHz
         time4 = time()
