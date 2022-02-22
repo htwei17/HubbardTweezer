@@ -11,24 +11,23 @@ mpl.rcParams['figure.dpi'] = 300
 
 
 class plot(dynamics):
-
     def __init__(self,
                  cvg='N',
                  quantity='gs',
                  N=10,
-                 R: np.ndarray = ...,
-                 freq_list: np.ndarray = ...,
-                 time=...,
+                 R: np.ndarray = 3 * np.array([1, 1, 2.4]),
+                 freq_list: np.ndarray = np.arange(20, 200, 20),
+                 time=(1000.0, 0),
                  avg=1,
                  dim=3,
                  model='Gaussian',
-                 trap=...,
+                 trap=(1.0452E2, 1E-6),
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
                  symmetry=False,
                  absorber=False,
-                 ab_param=...) -> None:
+                 ab_param=(57.04, 1)) -> None:
         super().__init__(N, R, freq_list, time, avg, dim, model, trap, mem_eff,
                          wavefunc, realtime, symmetry, absorber, ab_param)
         self.cvg = cvg
@@ -84,9 +83,9 @@ class plot(dynamics):
                 self.title1 = self.title2
                 self.title2 = None
 
-    def filename_gen(self, t_step, i):
-        self.update_n(self.n_list[i])
-        self.update_R(self.R_list[i])
+    def filename_gen(self, N_list: list, R_list: list, t_step, i: int):
+        self.update_N(N_list[i])
+        self.update_R(R_list[i])
         return super().filename_gen(t_step)
 
 
@@ -141,7 +140,7 @@ def plot_dynamics(N_list,
 
         dvr.set_all_n(N_list, R0_list, avg_no, avg)
 
-        data = get_data(N_list, dvr, t_step)
+        data = get_data(N_list, R0_list, dvr, t_step)
 
         plot_length = int(data[0].t.shape[0] / length)
         # final_val = np.array([])
@@ -203,8 +202,8 @@ def plot_dynamics(N_list,
     return subfigs, ax_list
 
 
-def get_data(N_list, dvr, t_step):
-    fn = lambda i: dvr.filename_gen(i, t_step)
+def get_data(N_list, R_list, dvr: plot, t_step):
+    fn = lambda i: dvr.filename_gen(N_list, R_list, t_step, i)
     data = []
     for i in range(len(N_list)):
         io = Output(wavefunc=dvr.wavefunc)
@@ -347,8 +346,8 @@ def tau_from_waist(N_list, R_list, dvr: plot, t_step, avg_no, tau, no_file,
     return lt_vs_freq
 
 
-def get_tau(N_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
-    data = get_data(N_list, dvr, t_step)
+def get_tau(N_list, R_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
+    data = get_data(N_list, R_list, dvr, t_step)
 
     final_val = np.array([])
     lifetime = np.array([])
@@ -397,7 +396,7 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
     for fi in range(dvr.freq_list_len):
         t_step = dvr.set_each_freq(fi)
         dvr.set_all_n(N_list, R0_list, 0, False)
-        fn = lambda i: dvr.filename_gen(i, t_step)
+        fn = lambda i: dvr.filename_gen(N_list, R0_list, i, t_step)
 
         for i in range(len(N_list)):
             io = Output(wavefunc=dvr.wavefunc)

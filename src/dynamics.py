@@ -5,7 +5,6 @@ import sys
 
 
 class dynamics(DVR):
-
     def update_N(self, N):
         self.N = N
         self.n = np.zeros(3, dtype=int)
@@ -215,10 +214,10 @@ def one_period_evo(E_list,
                    dvr: dynamics,
                    Winv_list=[None, None]):
     # interacting part
-    U0 = int_evo_ops(t1, E_list[0], W_list[0], dvr.absorber, Winv_list[0])
+    U0 = int_evo_ops(dvr, E_list[0], W_list[0], t1, Winv_list[0])
     # free part
     # U1 = free_evo_ops(n, dx, t1)
-    U1 = int_evo_ops(t2, E_list[1], W_list[1], dvr.absorber, Winv_list[1])
+    U1 = int_evo_ops(dvr, E_list[1], W_list[1], t2, Winv_list[1])
     if dvr.realtime:
         return U0, U1
     else:
@@ -342,7 +341,6 @@ def shftdVfun(x, y, z, x0):
 
 
 def coherent_state(n, dx, x0):
-
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 

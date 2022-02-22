@@ -26,15 +26,13 @@ dim = 3  # space dimension
 
 
 class harray(np.ndarray):
-
     @property
     def H(self):
         return self.conj().T
 
 
 class DVR:
-
-    def update_n(self, n):
+    def update_n(self, n: np.ndarray):
         self.n = n
         self.dx = np.zeros(n.shape)
         if self.absorber:
@@ -152,7 +150,7 @@ class DVR:
         d = (d > 0) * d
         Vi = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
-            V = -1j * self.VI0 * Vi
+            V = -1j * self.VI * Vi
         return V
 
 
