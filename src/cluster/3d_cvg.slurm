@@ -37,8 +37,7 @@ echo "Task No.: "$SLURM_ARRAY_TASK_ID
 
 # Code run
 cd $WORKING_LOCAL_PATH
-python3 -O -m compileall *.py 
-python3 -u dynamics_exe.py -n $SLURM_ARRAY_TASK_ID -d 3 -m Gaussian -f $fi $ff $fs
+python3 -OO -u dynamics_exe.py -n $SLURM_ARRAY_TASK_ID -d 3 -m Gaussian -f $fi $ff $fs
 
 # Final steps
 # rm -r $WORKING_LOCAL_PATH/*.out
