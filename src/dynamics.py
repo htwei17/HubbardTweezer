@@ -2,6 +2,7 @@ import numpy as np
 import scipy.linalg as la
 from DVR_full import *
 import sys
+import copy
 
 
 class dynamics(DVR):
@@ -59,9 +60,12 @@ class dynamics(DVR):
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
         print('init_state: initial state of T+%.1fV is calculated.' % self.avg)
+        ab = copy.deepcopy(self.absorber)
+        self.absorber = False
         __, W = H_solver(self)
         psi = W[:, 0]
         del W
+        self.absorber = ab
         return psi
 
     def set_each_freq(self, fi) -> float:
@@ -106,16 +110,18 @@ class dynamics(DVR):
         return t_step
 
     def filename_gen(self, t_step):
-        rt_str, ab_str = ('' for i in range(2))
+        rt_str, sym_str, ab_str = ('' for i in range(3))
         if self.realtime:
             rt_str = ' rt'
+        if self.symmetry:
+            sym_str = ' sym'
         if self.absorber:
             ab_str = ' ab {:.2g} {:.2g}'.format(self.LI, self.VI)
         np.set_printoptions(precision=2, suppress=True)
-        return '{} {} {:g} {:g} {:g} {:.2g} {:.2g} {}{}{}.h5'.format(
+        return '{} {} {:g} {:g} {:g} {:.2g} {:.2g} {}{}{}{}.h5'.format(
             self.n[:self.dim], self.dx[:self.dim], self.V0_SI / self.kHz_2p,
             self.w, self.freq, self.stop_time, t_step, self.model, rt_str,
-            ab_str)
+            sym_str, ab_str)
 
 
 def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:

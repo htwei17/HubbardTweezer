@@ -47,12 +47,13 @@ class DVR:
 
     def update_ab(self):
         if self.absorber:
-            # if __debug__:
-            #     print(self.R0)
-            #     print(self.LI, '\n')
-            self.n[self.nd] += int(self.LI / self.dx[self.nd])
-            # if __debug__:
-            #     print(self.n)
+            if __debug__:
+                print('n=', self.n)
+                print('nd=', self.nd)
+                print('LI=', self.LI, '\n')
+            self.n[self.nd] += (self.LI / self.dx[self.nd]).astype(int)
+            if __debug__:
+                print('n=', self.n)
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
 
     def __init__(self,
@@ -70,6 +71,7 @@ class DVR:
         self.avg = avg
         self.model = model
         self.absorber = absorber
+        self.symmetry = symmetry
         self.nd = n != 0  # Nonzero dimensions
 
         self.dx = np.zeros(n.shape)
@@ -86,9 +88,9 @@ class DVR:
 
         self.p = np.zeros(dim, dtype=int)
         if symmetry:
-            self.p[n == 0] = 0
+            self.p[self.nd] = 1
             axis = np.array(['x', 'y', 'z'])
-            print('{}-reflection symmetry is used.'.format(axis[n != 0]))
+            print('{}-reflection symmetry is used.'.format(axis[self.nd]))
         self.init = get_init(self.n, self.p)
 
         if model == 'Gaussian':
@@ -98,16 +100,6 @@ class DVR:
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
             self.V0_SI = trap[0] * self.kHz_2p * hb  # Input in unit of kHz
             self.w = trap[1] / a0  # Input in unit of meter
-
-            # NORMAL WAIST
-            # V0_SI = 1.0452E5 * 2 * np.pi  # 104.52kHz * h, potential depth, in SI unit, since hbar is set to 1 this should be multiplied by 2pi
-            # w = 1E-6 / Par.a0  # ~1000nm, waist length, in unit of Bohr radius
-            # FATTEST WAIST
-            # V0_SI = 1.56E5 * 2 * np.pi  # trap depth for fattest waist
-            # w = 1.18E-6 / a0  # fattest waist length
-            # TIGHTEST WAIST
-            # V0_SI = 7.6E4 * 2 * np.pi  # trap depth for tightest waist
-            # w = 8.61E-7 / a0  # tightest waist length
 
             self.V0 = self.V0_SI / Eha  # potential depth in unit of Hartree energy
             # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
@@ -153,11 +145,11 @@ class DVR:
         d = abs(r) - self.R0
         d = (d > 0) * d
         L = self.R - self.R0
-        L[np.invert(self.nd)] = np.inf
-        # if __debug__:
-        #     print(self.R)
-        #     print(self.R0)
-        #     print(L)
+        L[L == 0] = np.inf
+        if __debug__:
+            print(self.R)
+            print(self.R0)
+            print(L)
         Vi = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
             V = -1j * self.VI * Vi
@@ -245,7 +237,7 @@ def Tmat(dvr: DVR) -> np.ndarray:
     for i in range(dim):
         delta.append(np.eye(dvr.n[i] + 1 - dvr.init[i]))  # eg. delta_xx'
         if dvr.n[i] > 0:
-            T0.append(Tmat_1d(dvr.n[i], dvr.dx[i], dvr.mtV0,
+            T0.append(Tmat_1d(dvr.n[i], dvr.dx[i] * dvr.w, dvr.mtV0,
                               dvr.p[i]))  # append p-sector
         # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
         else:

@@ -14,8 +14,8 @@ parser.add_argument("-f",
                     "--freq",
                     nargs="+",
                     type=float,
-                    help="Frequencies: [initial final step] in unit of V0/hb.",
-                    default=[0.02, 0.1, 0.02])
+                    help="Frequencies: [initial final step] in unit of kHz.",
+                    default=[100, 240, 10])
 parser.add_argument(
     "-R",
     "--range",
@@ -121,6 +121,16 @@ args = parser.parse_args()
 # WITH SYMMETRY, the effective n is reduced by half in each dimension.
 # SO WITH SYMMETRY THE MATRIX SIZE OF n = 12 IS ROUGHLY ORIGINALLY n = 6
 
+# NORMAL WAIST
+# V0_SI = 104.52 * 1E3 * 2 * np.pi  # 104.52kHz * h, potential depth, in SI unit, since hbar is set to 1 this should be multiplied by 2pi
+# w = 1E-6 / Par.a0  # ~1000nm, waist length, in unit of Bohr radius
+# FATTEST WAIST
+# V0_SI = 156 * 1E3 * 2 * np.pi  # trap depth for fattest waist
+# w = 1.18E-6 / a0  # fattest waist length
+# TIGHTEST WAIST
+# V0_SI = 76 * 1E3 * 2 * np.pi  # trap depth for tightest waist
+# w = 8.61E-7 / a0  # tightest waist length
+
 if len(args.freq) == 1:
     freq_list = np.array(args.freq)
 elif len(args.freq) == 3:
@@ -133,6 +143,13 @@ trap = args.trap
 step, t = args.time
 
 st = get_stop_time(freq_list, t, trap[0] * 2 * np.pi)
+
+if __debug__:
+    print(N)
+    print(R)
+    print(freq_list)
+    print(step, st)
+    print(trap)
 
 dvr = dynamics(N, R, freq_list, (step, st), 1 / 2, args.dim, args.model, trap,
                args.mem_eff, True, args.realtime, args.symmetry,

@@ -5,7 +5,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=128GB
+#SBATCH --mem=32GB
 #SBATCH --mail-user=hw50@rice.edu
 #SBATCH --mail-type=ALL
 #
@@ -26,9 +26,21 @@ unset __conda_setup
 conda activate ~/env
 
 # File preparations
-N=10
-freq=0.$(printf "%02d" $SLURM_ARRAY_TASK_ID)
-WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/DVR/"N="$N"_f="$freq
+fi=100
+ff=240
+fs=10
+
+# # NORMAL WAIST
+# V0=104.52
+# w=1e-6
+# # FATTEST WAIST
+# V0=156
+# w=1.18e-6
+# TIGHTEST WAIST
+V0=76
+w=8.61e-7
+
+WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/DVR/"N="$SLURM_ARRAY_TASK_ID"_f="$fi","$ff","$fs
 mkdir -p $WORKING_LOCAL_PATH
 cp -r $SLURM_SUBMIT_DIR/*.py $WORKING_LOCAL_PATH
 echo "I ran on: "$SLURM_NODELIST
@@ -36,16 +48,11 @@ echo "Task No.: "$SLURM_ARRAY_TASK_ID
 
 # Code run
 cd $WORKING_LOCAL_PATH
-# ulimit
-python3 -u dynamics_exe.py -n $N -d 3 -t 0.1 -m Gaussian -f $freq
+python3 -OO -u dynamics_exe.py -n $SLURM_ARRAY_TASK_ID -d 3 -m Gaussian -f $fi $ff $fs -a -p $V0 $w
 
 # Final steps
 # rm -r $WORKING_LOCAL_PATH/*.out
 # cd $SLURM_SUBMIT_DIR
 # mkdir -p ../output
-# cp -r $WORKING_LOCAL_PATH/*.csv ../output
-GROUP_WORK_PATH=/storage/hpc/work/kh30/hw50
-cd $GROUP_WORK_PATH
-mkdir -p DVR/output
-cp -r $WORKING_LOCAL_PATH/*.h5 DVR/output
+# cp -r $WORKING_LOCAL_PATH/*.h5 ../output
 # rm -r $WORKING_LOCAL_PATH/*

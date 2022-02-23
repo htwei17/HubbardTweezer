@@ -28,7 +28,7 @@ def eigen_list(dvr: dynamics):
     W_list = [W1, W2]
     print(
         'n={}, dx={}, p={}, model={}, t={} stroboscopic states preparation finished.'
-        .format(dvr.n[dvr.dim], dvr.dx[dvr.dim], dvr.p[dvr.dim], dvr.model,
+        .format(dvr.n[:dvr.dim], dvr.dx[:dvr.dim], dvr.p[:dvr.dim], dvr.model,
                 dvr.stop_time_list))
     print("eigen_list: eigenstates memory usage: {:.2f} MiB.".format(
         asizeof(W_list) / 2**20))
@@ -51,13 +51,21 @@ class Output:
     def write_to_file(self, fn: str):
         with h5py.File(fn, "a") as f:
             append_to_table(f, 't', self.t)
+            if __debug__:
+                print('t OK')
             append_to_table(f, 'rho_gs', self.rho_gs)
+            if __debug__:
+                print('gs OK')
             if self.wavefunc:
                 append_to_table(f, 'rho_trap', self.rho_trap)
+                if __debug__:
+                    print('trap OK')
                 append_to_table(f,
                                 'psi',
                                 self.psi.astype(np.complex),
                                 dtype=np.complex)
+                if __debug__:
+                    print('wavefunc OK')
 
     def read_file(self, fn: str, path: str = '../output/'):
         with h5py.File(path + fn, 'r') as f:
@@ -136,7 +144,7 @@ def DVR_exe(dvr: dynamics) -> None:
 
         t_step = dvr.set_each_freq(fi)
 
-        cond_str = "freq={:.2g}kHz model={} ".format(dvr.freq, dvr.model)
+        cond_str = "freq={:g}kHz model={} ".format(dvr.freq, dvr.model)
 
         print('\n' + cond_str +
               "starts. Time step={:g}, driving period={:g}.\n".format(
