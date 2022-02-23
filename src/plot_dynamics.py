@@ -28,8 +28,9 @@ class plot(dynamics):
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
-        super().__init__(N, R0, freq_list, time, avg, dim, model, trap, mem_eff,
-                         wavefunc, realtime, symmetry, absorber, ab_param)
+        super().__init__(N, R0, freq_list, time, avg, dim, model, trap,
+                         mem_eff, wavefunc, realtime, symmetry, absorber,
+                         ab_param)
         self.cvg = cvg
         self.set_quantity(quantity)
 
@@ -100,7 +101,6 @@ def avg_data(data, avg_no):
     return rho_avg
 
 
-# TODO: use dynamics as object passed to all the plot functions
 def plot_dynamics(N_list,
                   R0_list,
                   dvr: plot,
@@ -250,8 +250,10 @@ def plot_lifetime(N_list,
         t_step = dvr.set_each_freq(fi)
 
         # NORMAL WAIST
+        dvr.VI *= dvr.V0_SI / dvr.kHz_2p
         dvr.V0_SI = 104.52 * dvr.kHz_2p * hb  # 104.52kHz * h, potential depth, in SI unit, since hbar is set to 1 this should be multiplied by 2pi
         dvr.w = 1E-6 / a0  # ~1000nm, waist length, in unit of Bohr radius
+        dvr.VI *= dvr.kHz_2p / dvr.V0_SI
 
         # TODO: CHECK IF R AND L VARYING WITH W CAUSES THE DIFFERENCE ON THE LIFETIME
         lt_vs_freq = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no, tau,
@@ -259,15 +261,19 @@ def plot_lifetime(N_list,
 
         if err:
             # TIGHTEST WAIST
-            dvr.V0_SI = 7.6E4 * dvr.kHz_2p * hb  # trap depth for tightest waist
+            dvr.VI *= dvr.V0_SI / dvr.kHz_2p
+            dvr.V0_SI = 76 * dvr.kHz_2p * hb  # trap depth for tightest waist
             dvr.w = 8.61E-7 / a0  # tightest waist length
+            dvr.VI *= dvr.kHz_2p / dvr.V0_SI
 
             lt_err[0] = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no,
                                        tau, no_file, lt_err[0])
 
             # FATTEST WAIST
-            dvr.V0_SI = 1.56E5 * dvr.kHz_2p * hb  # trap depth for fattest waist
+            dvr.VI *= dvr.V0_SI / dvr.kHz_2p
+            dvr.V0_SI = 156 * dvr.kHz_2p * hb  # trap depth for fattest waist
             dvr.w = 1.18E-6 / a0  # fattest waist length
+            dvr.VI *= dvr.kHz_2p / dvr.V0_SI
 
             lt_err[1] = tau_from_waist(N_list, R0_list, dvr, t_step, avg_no,
                                        tau, no_file, lt_err[1])
@@ -286,9 +292,9 @@ def plot_lifetime(N_list,
     for ni in range(len(N_list)):
         if err:
             ax.fill_between(
-                dvr.freq_list[:, None],
+                dvr.freq_list.reshape(-1),
                 lt_err[0][:, ni],
-                lt_err[1][::-1, ni],
+                lt_err[1][:, ni],
                 # interpolate=True,
                 alpha=0.3)
         ax.semilogy(sav[:, 0],
@@ -342,7 +348,8 @@ def tau_from_waist(N_list, R0_list, dvr: plot, t_step, avg_no, tau, no_file,
     dvr.set_all_n(N_list, R0_list, avg_no, avg)
 
     if no_file:
-        lt_vs_freq = get_tau(N_list, dvr, avg_no, tau, lt_vs_freq, t_step)
+        lt_vs_freq = get_tau(N_list, R0_list, dvr, avg_no, tau, lt_vs_freq,
+                             t_step)
     return lt_vs_freq
 
 
@@ -357,7 +364,7 @@ def get_tau(N_list, R0_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
         fit_y = data[i].rho_gs.reshape(-1)
         popt, pcov = curve_fit(fit_fun, fit_x, fit_y, bounds=(1E-5, 1E8))
         lifetime = np.append(lifetime, 1 / (1 / tau + 1 / popt[-1]))
-    sat_freq = np.append(sat_freq, final_val[None], axis=0)
+    # sat_freq = np.append(sat_freq, final_val[None], axis=0)
     lt_vs_freq = np.append(lt_vs_freq, lifetime[None], axis=0)
     return lt_vs_freq
 

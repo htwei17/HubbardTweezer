@@ -39,21 +39,20 @@ class DVR:
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]
         self.update_ab()
 
-    #TODO: SET LENGTH UNIT IN WAIST
     def update_R0(self, R: np.ndarray):
         self.R0 = R.copy()
-        self.n[self.nd] = int(self.R0[self.nd] / self.dx[self.nd])
+        self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
         self.update_ab()
 
     def update_ab(self):
         if self.absorber:
-            if __debug__:
-                print('n=', self.n)
-                print('nd=', self.nd)
-                print('LI=', self.LI, '\n')
+            # if __debug__:
+            #     print('n=', self.n)
+            #     print('nd=', self.nd)
+            #     print('LI=', self.LI, '\n')
             self.n[self.nd] += (self.LI / self.dx[self.nd]).astype(int)
-            if __debug__:
-                print('n=', self.n)
+            # if __debug__:
+            #     print('n=', self.n)
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
 
     def __init__(self,

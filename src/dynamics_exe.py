@@ -142,7 +142,7 @@ R = np.array(args.range)
 trap = args.trap
 step, t = args.time
 
-st = get_stop_time(freq_list, t, trap[0] * 2 * np.pi)
+st = get_stop_time(freq_list, t, trap[0] * 1E3 * 2 * np.pi)
 
 if __debug__:
     print(N)

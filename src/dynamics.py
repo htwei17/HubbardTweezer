@@ -129,8 +129,8 @@ def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     if t is 0:
         st = 2.5E-5 * np.exp(freq_list * 0.0954747)
         st[np.nonzero(freq_list < 39.4)] = 1E-3
-        if V0_SI > 1.5E5 * 2 * np.pi:
-            st *= 2
+        # if V0_SI > 1.5E5 * 2 * np.pi:
+        #     st *= 2
     else:
         if isinstance(t, (int, float)):
             st = copy_to_list(t, len(freq_list))

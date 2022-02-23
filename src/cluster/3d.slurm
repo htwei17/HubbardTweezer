@@ -12,7 +12,7 @@
 
 module getdefault
 # conda initialization
-__conda_setup="$('/opt/apps/software/Anaconda3/2020.11/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+__conda_setup="$('/opt/apps/software/Anaconda3/2020.11/bin/conda' 'shell.bash' 'hook' 2>/dev/null)"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
@@ -30,17 +30,17 @@ fi=100
 ff=240
 fs=10
 
-# # NORMAL WAIST
+# NORMAL WAIST
 # V0=104.52
 # w=1e-6
-# # FATTEST WAIST
+# FATTEST WAIST
 # V0=156
 # w=1.18e-6
 # TIGHTEST WAIST
 V0=76
 w=8.61e-7
 
-WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/DVR/"N="$SLURM_ARRAY_TASK_ID"_f="$fi","$ff","$fs
+WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/DVR/"N="$SLURM_ARRAY_TASK_ID # "_f="$fi","$ff","$fs
 mkdir -p $WORKING_LOCAL_PATH
 cp -r $SLURM_SUBMIT_DIR/*.py $WORKING_LOCAL_PATH
 echo "I ran on: "$SLURM_NODELIST
@@ -52,7 +52,7 @@ python3 -OO -u dynamics_exe.py -n $SLURM_ARRAY_TASK_ID -d 3 -m Gaussian -f $fi $
 
 # Final steps
 # rm -r $WORKING_LOCAL_PATH/*.out
-# cd $SLURM_SUBMIT_DIR
+# cd $WORK/kh30/hw50/DVR
 # mkdir -p ../output
 # cp -r $WORKING_LOCAL_PATH/*.h5 ../output
 # rm -r $WORKING_LOCAL_PATH/*
