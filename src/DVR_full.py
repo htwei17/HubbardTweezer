@@ -56,9 +56,14 @@ class DVR:
         print('DVR: n={} is set.'.format(self.n))
         print('DVR: R0={}w is set.'.format(self.R0))
         if self.absorber:
+            print('DVR: Absorber width LI={:g}w'.format(self.LI))
             if __debug__:
-                print('Absorber width LI={:g}w'.format(self.LI))
-            self.n[self.nd] += (self.LI / self.dx[self.nd]).astype(int)
+                print(self.R0[0])
+                print(self.dx[0])
+                # a = self.LI / self.dx[self.nd]
+                # print(a[0])
+                # print(np.rint(self.LI / self.dx[self.nd]).astype(int))
+            self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
             print('DVR: n is set to {} by adding absorber.'.format(self.n))
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
             print('DVR: R={}w is set.'.format(self.R))
