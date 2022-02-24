@@ -6,11 +6,12 @@ import copy
 
 
 class dynamics(DVR):
-    def update_N(self, N):
+
+    def update_N(self, N, R0: np.ndarray):
         self.N = N
-        self.n = np.zeros(3, dtype=int)
-        self.n[:self.dim] = N
-        super().update_n(self.n)
+        n = np.zeros(3, dtype=int)
+        n[:self.dim] = N
+        super().update_n(n, R0)
 
     def __init__(self,
                  N=10,
@@ -343,6 +344,7 @@ def shftdVfun(x, y, z, x0):
 
 
 def coherent_state(n, dx, x0):
+
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 

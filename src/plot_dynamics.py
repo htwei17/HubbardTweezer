@@ -6,11 +6,13 @@ import h5py
 from scipy.optimize import curve_fit
 import matplotlib as mpl
 import matplotlib.colors as colors
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 mpl.rcParams['figure.dpi'] = 300
 
 
 class plot(dynamics):
+
     def __init__(self,
                  cvg='N',
                  quantity='gs',
@@ -42,8 +44,7 @@ class plot(dynamics):
             self.wavefunc = True
 
     def set_each_n(self, N_list, R0_list, i):
-        self.update_N(N_list[i])
-        self.update_R0(R0_list[i])
+        self.update_N(N_list[i], R0_list[i])
         if self.cvg == 'N':
             self.cvg_str = '$R_0$={}w'.format(self.R0[:self.dim])
         elif self.cvg == 'R':
@@ -85,8 +86,7 @@ class plot(dynamics):
                 self.title2 = None
 
     def filename_gen(self, N_list: list, R0_list: list, t_step, i: int):
-        self.update_N(N_list[i])
-        self.update_R0(R0_list[i])
+        self.update_N(N_list[i], R0_list[i])
         return super().filename_gen(t_step)
 
 
@@ -228,7 +228,7 @@ def plot_lifetime(N_list,
                   err=False,
                   avg_no=10,
                   tau=np.inf,
-                  extrapolte=False):
+                  extrapolte=-1):
 
     N_list = list(N_list)
     lt_vs_freq = np.array([]).reshape(0, len(N_list))
@@ -290,8 +290,8 @@ def plot_lifetime(N_list,
         ax = ext_ax
         fmt = 's-.'
 
-    if extrapolte:
-        Nmin = 2
+    if extrapolte != -1 and isinstance(extrapolte, int):
+        Nmin = extrapolte
         ext_lt = np.array([]).reshape(0, 2)
         for i in range(sav.shape[0]):
             fit = np.polyfit(1. / np.array(N_list[Nmin:]), sav[i, Nmin + 1:],
@@ -299,6 +299,16 @@ def plot_lifetime(N_list,
             p = np.poly1d(fit)
             ext = np.array([p(0), abs(p(0) - sav[i, -1])])[None]
             ext_lt = np.append(ext_lt, ext, axis=0)
+            if i == 6:
+                # f2 = plt.figure()
+                # ax2 = f2.add_subplot()
+                ax2 = inset_axes(ax, width=1.3, height=0.9, loc=2)
+                ax2.plot(1. / np.array(N_list), sav[i, 1:], '.')
+                x = np.linspace(0, 1 / N_list[0])
+                ax2.plot(x, p(x), '-')
+                ax2.set_xlabel('1/N')
+                ax2.set_ylabel('$\\tau/s$')
+                ax2.set_title('Fitting')
         ax.errorbar(sav[:, 0],
                     ext_lt[:, 0],
                     yerr=ext_lt[:, 1],
