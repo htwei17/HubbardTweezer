@@ -227,10 +227,10 @@ def plot_lifetime(N_list,
                   file=False,
                   err=False,
                   avg_no=10,
-                  tau=np.inf):
+                  tau=np.inf,
+                  extrapolte=False):
 
     N_list = list(N_list)
-    # sat_freq = np.array([]).reshape(0, len(N_list))
     lt_vs_freq = np.array([]).reshape(0, len(N_list))
 
     if err:
@@ -289,6 +289,22 @@ def plot_lifetime(N_list,
     else:
         ax = ext_ax
         fmt = 's-.'
+
+    if extrapolte:
+        Nmin = 2
+        ext_lt = np.array([]).reshape(0, 2)
+        for i in range(sav.shape[0]):
+            fit = np.polyfit(1. / np.array(N_list[Nmin:]), sav[i, Nmin + 1:],
+                             1)
+            p = np.poly1d(fit)
+            ext = np.array([p(0), abs(p(0) - sav[i, -1])])[None]
+            ext_lt = np.append(ext_lt, ext, axis=0)
+        ax.errorbar(sav[:, 0],
+                    ext_lt[:, 0],
+                    yerr=ext_lt[:, 1],
+                    fmt=fmt,
+                    label='{}D {} extrapolated $V_I$={:.2f}kHz'.format(
+                        dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
     for ni in range(len(N_list)):
         if err:
             ax.fill_between(
@@ -313,7 +329,7 @@ def plot_lifetime(N_list,
         ax.set_ylabel('$\\tau/s$')
         # ax.set_ylim([.3, 20])
         # ax.set_xlim([0, 1000])
-        ax.set_xlim([70, 240])
+        ax.set_xlim([80, 250])
         ax = expt_data(ax)
 
     ax.legend()

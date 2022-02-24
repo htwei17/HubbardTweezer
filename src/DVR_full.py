@@ -33,6 +33,7 @@ class harray(np.ndarray):
 
 class DVR:
     def update_n(self, n: np.ndarray):
+        # Change n with fixing R0
         self.n = n.copy()
         self.dx = np.zeros(n.shape)
         self.nd = n != 0
@@ -40,6 +41,7 @@ class DVR:
         self.update_ab()
 
     def update_R0(self, R: np.ndarray):
+        # Change R0 with fixing dx
         self.R0 = R.copy()
         self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
         self.update_ab()
