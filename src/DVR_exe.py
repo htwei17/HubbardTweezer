@@ -51,21 +51,21 @@ class Output:
     def write_to_file(self, fn: str):
         with h5py.File(fn, "a") as f:
             append_to_table(f, 't', self.t)
-            if __debug__:
-                print('t OK')
+            # if __debug__:
+            #     print('t OK')
             append_to_table(f, 'rho_gs', self.rho_gs)
-            if __debug__:
-                print('gs OK')
+            # if __debug__:
+            #     print('gs OK')
             if self.wavefunc:
                 append_to_table(f, 'rho_trap', self.rho_trap)
-                if __debug__:
-                    print('trap OK')
+                # if __debug__:
+                #     print('trap OK')
                 append_to_table(f,
                                 'psi',
                                 self.psi.astype(np.complex),
                                 dtype=np.complex)
-                if __debug__:
-                    print('wavefunc OK')
+                # if __debug__:
+                #     print('wavefunc OK')
 
     def read_file(self, fn: str, path: str = '../output/'):
         with h5py.File(path + fn, 'r') as f:

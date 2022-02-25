@@ -314,7 +314,7 @@ def plot_lifetime(N_list,
                     yerr=ext_lt[:, 1],
                     fmt=fmt,
                     label='{}D {} extrapolated $V_I$={:.2f}kHz'.format(
-                        dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+                        dvr.dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
     for ni in range(len(N_list)):
         if err:
             ax.fill_between(
@@ -327,7 +327,7 @@ def plot_lifetime(N_list,
                     sav[:, ni + 1],
                     fmt,
                     label='{}D {} N={} $V_I$={:.2f}kHz'.format(
-                        dim, dvr.quantity, N_list[ni],
+                        dvr.dim, dvr.quantity, N_list[ni],
                         dvr.VI * dvr.V0_SI / dvr.kHz_2p))
     # ax.set_ylim([0, 30])
     if ext_ax == None:
