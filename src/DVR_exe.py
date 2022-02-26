@@ -180,6 +180,8 @@ def DVR_exe(dvr: dynamics) -> None:
         else:  # Calculate dynamics at integer times of driving period
             if dvr.mem_eff:
                 U = one_period_mem_eff(dvr.t1, dvr.t2, dvr)
+            elif dvr.smooth:
+                U = one_period_evo_smooth(dvr)
             else:
                 U = one_period_evo(E_list, W_list, dvr.t1, dvr.t2, dvr,
                                    Winv_list)

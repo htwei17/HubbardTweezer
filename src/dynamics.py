@@ -25,6 +25,7 @@ class dynamics(DVR):
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
+                 smooth=(0, 10),
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
@@ -57,6 +58,11 @@ class dynamics(DVR):
         self.is_period = False
 
         self.t_step_list = self.stop_time_list / self.step_no
+
+        self.smooth = False
+        if smooth[0] > 0:
+            self.T0, self.Nslice = smooth
+            self.smooth = True
 
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
@@ -226,6 +232,44 @@ def one_period_evo(E_list,
     else:
         U = U1 @ U0
         return U
+
+
+def f(t, T0=0.01):
+    # function of t as factor in H = T + f*V
+    # t is actually reduced time, t / T
+    f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
+    return f
+
+
+def fa(T0=0.01):
+    # Time average of function f(t)
+    favg = T0 * (np.log((1 + np.exp(1 / T0)) / 2) - 0.5 / T0)
+    favg /= 1 - np.exp(-0.5 / T0)
+    return favg
+
+
+#TODO: get smooth dynamics done
+def one_period_evo_smooth(dvr: dynamics):
+    # f: function of t as factor in H = T + f*V
+    favg = fa(dvr.T0)
+
+    def H_mat_w_f(dvr, favg=favg):
+        dvr.avg = favg
+        return H_mat(dvr)
+
+    dt = dvr.T / dvr.Nslice
+    n = np.arange(0, dvr.T + dt, dt) / dvr.T
+    ft = f(n, dvr.T0)
+    H = dvr.T * H_mat_w_f(dvr, favg)
+    commutator = lambda x, y: x @ y - y @ x
+    for i in range(dvr.Nslice):
+        for j in range(i):
+            H += dt * dvr.V0_SI / 2 * (-1j * dt / hb) * commutator(
+                H_mat_w_f(dvr, ft[i]), H_mat_w_f(dvr, ft[j]))
+
+    E, W = la.eig(H)
+    U = W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
+    return U
 
 
 def mem_eff_int_ops(t1, DVR):
