@@ -1,3 +1,4 @@
+from typing import Iterable
 import numpy as np
 import scipy.linalg as la
 from DVR_full import *
@@ -6,7 +7,6 @@ import copy
 
 
 class dynamics(DVR):
-
     def update_N(self, N, R0: np.ndarray):
         self.N = N
         n = np.zeros(3, dtype=int)
@@ -60,8 +60,8 @@ class dynamics(DVR):
         self.t_step_list = self.stop_time_list / self.step_no
 
         self.smooth = False
+        self.T0, self.Nslice = smooth
         if smooth[0] > 0:
-            self.T0, self.Nslice = smooth
             self.smooth = True
 
     def init_state(self) -> np.ndarray:
@@ -117,18 +117,29 @@ class dynamics(DVR):
         return t_step
 
     def filename_gen(self, t_step):
-        rt_str, sym_str, ab_str = ('' for i in range(3))
-        if self.realtime:
-            rt_str = ' rt'
-        if self.symmetry:
-            sym_str = ' sym'
-        if self.absorber:
-            ab_str = ' ab {:.2g} {:.2g}'.format(self.LI, self.VI)
+        rt_str = add_str(self.realtime, 'rt')
+        sym_str = add_str(self.symmetry, 'sym')
+        ab_str = add_str(self.absorber, 'ab', (self.LI, self.VI))
+        sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
-        return '{} {} {:g} {:g} {:g} {:.2g} {:.2g} {}{}{}{}.h5'.format(
+        filename = '{} {} {:g} {:g} {:g} {:.2g} {:.2g} '.format(
             self.n[:self.dim], self.dx[:self.dim], self.V0_SI / self.kHz_2p,
-            self.w, self.freq, self.stop_time, t_step, self.model, rt_str,
-            sym_str, ab_str)
+            self.w, self.freq, self.stop_time, t_step)
+        for str in (self.model, rt_str, sym_str, ab_str, sm_str):
+            filename += str
+        filename += '.h5'
+        return filename
+
+
+def add_str(flag, label, param=None):
+    if flag:
+        str = ' ' + label
+        if isinstance(param, Iterable):
+            for item in param:
+                str += ' {:.2g}'.format(item)
+    else:
+        str = ''
+    return str
 
 
 def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
@@ -139,17 +150,17 @@ def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
         # if V0_SI > 1.5E5 * 2 * np.pi:
         #     st *= 2
     else:
-        if isinstance(t, (int, float)):
+        if not isinstance(t, Iterable):
             st = copy_to_list(t, len(freq_list))
         else:
             st = t
-    if isinstance(st, (list, tuple)):
+    if isinstance(st, Iterable):
         st = np.array(st)
     return st
 
 
 def copy_to_list(n, copy_time):
-    if isinstance(n, (list, tuple)):
+    if isinstance(n, Iterable):
         n_list = n * np.ones(copy_time)
         return n_list
     else:
@@ -238,37 +249,44 @@ def f(t, T0=0.01):
     # function of t as factor in H = T + f*V
     # t is actually reduced time, t / T
     f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
+    f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
     return f
 
 
-def fa(T0=0.01):
-    # Time average of function f(t)
-    favg = T0 * (np.log((1 + np.exp(1 / T0)) / 2) - 0.5 / T0)
-    favg /= 1 - np.exp(-0.5 / T0)
-    return favg
-
-
-#TODO: get smooth dynamics done
 def one_period_evo_smooth(dvr: dynamics):
     # f: function of t as factor in H = T + f*V
-    favg = fa(dvr.T0)
 
-    def H_mat_w_f(dvr, favg=favg):
-        dvr.avg = favg
+    def H_mat_w_f(dvr: dynamics, f):
+        dvr.avg = f
         return H_mat(dvr)
 
     dt = dvr.T / dvr.Nslice
-    n = np.arange(0, dvr.T + dt, dt) / dvr.T
+    n = np.arange(0, dvr.T, dt) / dvr.T
     ft = f(n, dvr.T0)
-    H = dvr.T * H_mat_w_f(dvr, favg)
-    commutator = lambda x, y: x @ y - y @ x
-    for i in range(dvr.Nslice):
-        for j in range(i):
-            H += dt * dvr.V0_SI / 2 * (-1j * dt / hb) * commutator(
-                H_mat_w_f(dvr, ft[i]), H_mat_w_f(dvr, ft[j]))
+    # H = dvr.T * H_mat_w_f(dvr, 1 / 2)
+    # if __debug__:
+    #     print(dvr.T)
+    #     print(n)
+    # commutator = lambda x, y: x @ y - y @ x
 
-    E, W = la.eig(H)
-    U = W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
+    no = dvr.n + 1 - dvr.init
+    N = np.prod(no)
+    U = np.eye(N)
+    for i in range(dvr.Nslice):
+        H = H_mat_w_f(dvr, ft[i])
+        # E, W = la.eig(H)
+        # U @= W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
+
+        U = la.expm(-1j * dt * H * dvr.V0_SI / hb) @ U
+        # for j in range(i):
+        #     H += dt * dvr.V0_SI / 2 * (-1j * dt / hb) * commutator(
+        #         H_mat_w_f(dvr, ft[i]), H_mat_w_f(dvr, ft[j]))
+    # if __debug__:
+    #     print('norm H =', la.norm(H))
+    #     print('norm H0 =', la.norm(H0))
+    # H += H0
+    # E, W = la.eig(H)
+    # U = W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
     return U
 
 
@@ -388,7 +406,6 @@ def shftdVfun(x, y, z, x0):
 
 
 def coherent_state(n, dx, x0):
-
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 

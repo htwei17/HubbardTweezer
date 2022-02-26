@@ -12,7 +12,6 @@ mpl.rcParams['figure.dpi'] = 300
 
 
 class plot(dynamics):
-
     def __init__(self,
                  cvg='N',
                  quantity='gs',
@@ -22,6 +21,7 @@ class plot(dynamics):
                  time=(1000.0, 0),
                  avg=1,
                  dim=3,
+                 smooth=(0, 10),
                  model='Gaussian',
                  trap=(1.0452E2, 1E-6),
                  mem_eff=False,
@@ -31,8 +31,8 @@ class plot(dynamics):
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
         super().__init__(N, R0, freq_list, time, avg, dim, model, trap,
-                         mem_eff, wavefunc, realtime, symmetry, absorber,
-                         ab_param)
+                         mem_eff, wavefunc, realtime, smooth, symmetry,
+                         absorber, ab_param)
         self.cvg = cvg
         self.set_quantity(quantity)
 
@@ -314,7 +314,8 @@ def plot_lifetime(N_list,
                     yerr=ext_lt[:, 1],
                     fmt=fmt,
                     label='{}D {} extrapolated $V_I$={:.2f}kHz'.format(
-                        dvr.dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+                        dvr.dim, dvr.quantity,
+                        dvr.VI * dvr.V0_SI / dvr.kHz_2p))
     for ni in range(len(N_list)):
         if err:
             ax.fill_between(

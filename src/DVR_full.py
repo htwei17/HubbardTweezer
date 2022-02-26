@@ -158,10 +158,10 @@ class DVR:
         d = (d > 0) * d
         L = self.R - self.R0
         L[L == 0] = np.inf
-        if __debug__:
-            print(self.R)
-            print(self.R0)
-            print(L)
+        # if __debug__:
+        #     print(self.R)
+        #     print(self.R0)
+        #     print(L)
         Vi = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
             V = -1j * self.VI * Vi
@@ -282,6 +282,7 @@ def H_mat(DVR: DVR):
     H = T + V
     del T, V
     N = np.prod(no)
+    # DVR.Nmat = N
     H = H.reshape((N, N))
     if not DVR.absorber:
         H = (H + H.T.conj()) / 2
