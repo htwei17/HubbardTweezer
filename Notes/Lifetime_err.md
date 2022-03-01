@@ -26,15 +26,22 @@ The extrapolation is slightly hard to obtain as at high frequency the error of f
 
 ## 1D tests
 
-## Absorption strenth
+### Absorption strenth
 
 <div align=center> <img src=1d_zeno_lt.jpg width="400" />
+
+As we have already known, the Zeno effect is observed at large absorption limit, and for a wide range of strength (in the theoretically estimated window) the lifetime remains unchanged.
 </div>
 
-## Stop time
+### Stop time
 
 <div align=center> <img src=1d_st_lt.jpg width="400" />
 
-The lifetime from dynamics of different stop time. THe 1st curve has inaccurate lifetime because its stop times are smaller than the driving period. The other curves agree well.
+The lifetime from dynamics of different stop time. THe 1st curve has inaccurate lifetime because its stop times are smaller than the driving period. The other curves agree well, showing an irrelavence of our fitting results vs. stop time.
 </div>
 
+## TODOs
+
+1. Make linear error addition
+2. Estimate lifetime by Fermi’s golden rule
+3. Write Method part of the paper
