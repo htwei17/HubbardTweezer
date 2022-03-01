@@ -299,7 +299,7 @@ def plot_lifetime(N_list,
             p = np.poly1d(fit)
             ext = np.array([p(0), abs(p(0) - sav[i, -1])])[None]
             ext_lt = np.append(ext_lt, ext, axis=0)
-            if i == 6:
+            if i == 9:
                 # f2 = plt.figure()
                 # ax2 = f2.add_subplot()
                 ax2 = inset_axes(ax, width=1.3, height=0.9, loc=2)
