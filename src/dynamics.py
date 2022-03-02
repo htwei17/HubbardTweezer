@@ -245,12 +245,12 @@ def one_period_evo(E_list,
         return U
 
 
-def f(t, T0=0.01):
+def wave_shape_fun(t, T0=0.01):
     # function of t as factor in H = T + f*V
     # t is actually reduced time, t / T
-    f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
-    f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
-    return f
+    # f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
+    # f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
+    return (1 + np.cos(2 * np.pi * t)) / 2
 
 
 def one_period_evo_smooth(dvr: dynamics):
@@ -262,7 +262,7 @@ def one_period_evo_smooth(dvr: dynamics):
 
     dt = dvr.T / dvr.Nslice
     n = np.arange(0, dvr.T, dt) / dvr.T
-    ft = f(n, dvr.T0)
+    ft = wave_shape_fun(n, dvr.T0)
     # H = dvr.T * H_mat_w_f(dvr, 1 / 2)
     # if __debug__:
     #     print(dvr.T)

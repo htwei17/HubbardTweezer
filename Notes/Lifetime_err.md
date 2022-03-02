@@ -40,6 +40,11 @@ As we have already known, the Zeno effect is observed at large absorption limit,
 The lifetime from dynamics of different stop time. THe 1st curve has inaccurate lifetime because its stop times are smaller than the driving period. The other curves agree well, showing an irrelavence of our fitting results vs. stop time.
 </div>
 
+### Smooth strobe
+
+<div align=center> <img src=1d_smooth_lt.jpg width="400" />
+</div>
+
 ## TODOs
 
 1. Make linear error addition

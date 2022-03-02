@@ -90,8 +90,11 @@ class plot(dynamics):
         return super().filename_gen(t_step)
 
 
-def fit_fun(x, b):
-    return np.exp(-x / b)
+def fit_fun(x, b, rvs_flg=False):
+    if rvs_flg:
+        return np.exp(-x * b)
+    else:
+        return np.exp(-x / b)
 
 
 def avg_data(data, avg_no):
@@ -151,10 +154,7 @@ def plot_dynamics(N_list,
             #     np.set_printoptions(precision=6, suppress=False)
             #     print(data[i][1][:plot_length])
             if fit:
-                fit_x = data[i].t.reshape(-1)
-                fit_y = data[i].rho_gs.reshape(-1)
-                popt, pcov = curve_fit(fit_fun, fit_x, fit_y)
-                lifetime = np.append(lifetime, 1 / popt[-1])
+                lifetime, popt, rvs_flag = fit_tau(np.inf, lifetime, data[i])
             if avg:
                 rho_avg = avg_data(data[i].rho_gs, avg_no)
                 axs[0].plot(data[i].t[:plot_length],
@@ -172,11 +172,14 @@ def plot_dynamics(N_list,
                 if fit:
                     axs[0].semilogy(
                         data[i].t[:plot_length],
-                        fit_fun(data[i].t[:plot_length], *popt),
+                        fit_fun(data[i].t[:plot_length],
+                                *popt,
+                                rvs_flg=rvs_flag),
                         '--',
                         label='fitting N={} $V_I$={:.2f}kHz'.format(
                             N_list[i], dvr.VI * dvr.V0_SI / dvr.kHz_2p),
                         lw=3)
+                axs[0].set_ylim([1E-3, 1])
         # if fit:
         #     left, bottom, width, height = [0.3, 0.6, 0.2, 0.2]
         #     ax2 = subfigs[fi].add_axes([left, bottom, width, height])
@@ -228,7 +231,7 @@ def plot_lifetime(N_list,
                   err=False,
                   avg_no=10,
                   tau=np.inf,
-                  extrapolte=-1):
+                  extrapolte=None):
 
     N_list = list(N_list)
     lt_vs_freq = np.array([]).reshape(0, len(N_list))
@@ -290,25 +293,27 @@ def plot_lifetime(N_list,
         ax = ext_ax
         fmt = 's-.'
 
-    if extrapolte != -1 and isinstance(extrapolte, int):
+    if extrapolte != None and isinstance(extrapolte, int):
         Nmin = extrapolte
         ext_lt = np.array([]).reshape(0, 2)
         for i in range(sav.shape[0]):
-            fit = np.polyfit(1. / np.array(N_list[Nmin:]), sav[i, Nmin + 1:],
+            fit = np.polyfit(1. / np.array(N_list[Nmin:]), sav[i, 1:][Nmin:],
                              1)
             p = np.poly1d(fit)
             ext = np.array([p(0), abs(p(0) - sav[i, -1])])[None]
             ext_lt = np.append(ext_lt, ext, axis=0)
-            if i == 9:
+            inset = True
+            if sav[i, 0] > 220 and inset:
                 # f2 = plt.figure()
                 # ax2 = f2.add_subplot()
+                inset = False
                 ax2 = inset_axes(ax, width=1.3, height=0.9, loc=2)
                 ax2.plot(1. / np.array(N_list), sav[i, 1:], '.')
                 x = np.linspace(0, 1 / N_list[0])
                 ax2.plot(x, p(x), '-')
                 ax2.set_xlabel('1/N')
                 ax2.set_ylabel('$\\tau/s$')
-                ax2.set_title('Fitting')
+                ax2.set_title('Fitting of f=%dkHz' % sav[i, 0])
         ax.errorbar(sav[:, 0],
                     ext_lt[:, 0],
                     yerr=ext_lt[:, 1],
@@ -324,12 +329,17 @@ def plot_lifetime(N_list,
                 lt_err[1][:, ni],
                 # interpolate=True,
                 alpha=0.3)
-        ax.semilogy(sav[:, 0],
-                    sav[:, ni + 1],
-                    fmt,
-                    label='{}D {} N={} $V_I$={:.2f}kHz'.format(
-                        dvr.dim, dvr.quantity, N_list[ni],
-                        dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+        ax.semilogy(
+            sav[:, 0],
+            sav[:, ni + 1],
+            fmt,
+            # label='{}D {} N={} $V_I$={:.2f}kHz'.format(
+            #     dvr.dim, dvr.quantity, N_list[ni],
+            #     dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+            label='{}D {} N={} $t_{{stop}}$={:.2g}$t_0$'.format(
+                dvr.dim, dvr.quantity, N_list[ni],
+                float(dvr.stop_time /
+                      get_stop_time(np.array([dvr.freq_list[-1]])))))
     # ax.set_ylim([0, 30])
     if ext_ax == None:
         if tau < np.inf:
@@ -360,7 +370,7 @@ def plot_lifetime(N_list,
     # print(freq_list[:, None] * freq_SIunit)
     # print(lt_vs_freq)
     # return freq_list[:, None] * freq_SIunit, lt_vs_freq
-    plt.savefig('3d{}d_{}_lt.jpg'.format(dvr.dim, dvr.quantity))
+    plt.savefig('3d{}d_{}_{}_lt.jpg'.format(dvr.dim, dvr.cvg, dvr.quantity))
     return ax
 
 
@@ -387,13 +397,34 @@ def get_tau(N_list, R0_list, dvr: plot, avg_no, tau, lt_vs_freq, t_step):
     lifetime = np.array([])
     for i in range(len(N_list)):
         final_val = moving_avg(data[i].rho_gs, final_val, 16 * avg_no)
-        fit_x = data[i].t.reshape(-1)
-        fit_y = data[i].rho_gs.reshape(-1)
-        popt, pcov = curve_fit(fit_fun, fit_x, fit_y, bounds=(1E-5, 1E8))
-        lifetime = np.append(lifetime, 1 / (1 / tau + 1 / popt[-1]))
+        lifetime, popt = fit_tau(tau, lifetime, data[i])
+
     # sat_freq = np.append(sat_freq, final_val[None], axis=0)
     lt_vs_freq = np.append(lt_vs_freq, lifetime[None], axis=0)
     return lt_vs_freq
+
+
+def fit_tau(tau, lifetime, data):
+    def ognl_fit_fun(x, b):
+        return fit_fun(x, b, rvs_flg=False)
+    
+    def rvs_fit_fun(x, b):
+        return fit_fun(x, b, rvs_flg=True)
+
+    fit_x = data.t.reshape(-1)
+    fit_y = data.rho_gs.reshape(-1)
+    rvs_flag = False
+
+    popt, pcov = curve_fit(ognl_fit_fun, fit_x, fit_y, bounds=(1E-5, 1E6))
+    # print('popt =', popt[0])
+    # print('pcov =', pcov[0][0])
+    if pcov[0][-1] < np.inf:
+        lifetime = np.append(lifetime, 1 / (1 / tau + 1 / popt[-1]))
+    else:
+        rvs_flag = True
+        popt, pcov = curve_fit(rvs_fit_fun, fit_x, fit_y, bounds=(1E-10, 1))
+        lifetime = np.append(lifetime, 1 / (1 / tau + popt[-1]))
+    return lifetime, popt, rvs_flag
 
 
 def expt_data(ax):
