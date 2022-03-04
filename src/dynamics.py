@@ -145,7 +145,8 @@ def add_str(flag, label, param=None):
 def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
-        st = 2.5E-5 * np.exp(freq_list * 0.0954747)
+        st = 4E-5 * np.exp(freq_list * 0.085) # More accurate results
+        # st = 2.5E-5 * np.exp(freq_list * 0.0954747)
         st[np.nonzero(freq_list < 39.4)] = 1E-3
         # if V0_SI > 1.5E5 * 2 * np.pi:
         #     st *= 2

@@ -229,7 +229,7 @@ def DVR_exe(dvr: dynamics) -> None:
               "finished. Time spent on this freq: {:.2f}s.".format(time7 -
                                                                    time6[0]))
     timef = time()
-    print('All done. Total time spent: {:.2f}s.'.format(timef - time0))
+    print('All done. Total time spent: {:.2f}s.\n'.format(timef - time0))
 
 
 def init_save(dvr: dynamics, t_step, psi0):

@@ -26,14 +26,12 @@ dim = 3  # space dimension
 
 
 class harray(np.ndarray):
-
     @property
     def H(self):
         return self.conj().T
 
 
 class DVR:
-
     def update_n(self, n: np.ndarray, R0: np.ndarray):
         # Change n with fixing R0
         self.n = n.copy()
@@ -52,9 +50,9 @@ class DVR:
     #     self.update_ab()
 
     def update_ab(self):
-        print('DVR: dx={}w is set.'.format(self.dx))
-        print('DVR: n={} is set.'.format(self.n))
-        print('DVR: R0={}w is set.'.format(self.R0))
+        print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
+        print('DVR: n={} is set.'.format(self.n[self.nd]))
+        print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
         if self.absorber:
             print('DVR: Absorber width LI={:g}w'.format(self.LI))
             # if __debug__:
@@ -66,7 +64,7 @@ class DVR:
             self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
             print('DVR: n is set to {} by adding absorber.'.format(self.n))
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
-            print('DVR: R={}w is set.'.format(self.R))
+            print('DVR: R={}w is set.'.format(self.R[self.nd]))
 
     def __init__(self,
                  n: np.ndarray,
