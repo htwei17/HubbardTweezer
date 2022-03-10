@@ -24,7 +24,7 @@ class plot(dynamics):
                  time=(1000.0, 0),
                  avg=1,
                  dim=3,
-                 smooth=(0, 10),
+                 smooth=(-1, 10),
                  model='Gaussian',
                  trap=(1.0452E2, 1E-6),
                  mem_eff=False,

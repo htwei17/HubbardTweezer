@@ -25,7 +25,7 @@ class dynamics(DVR):
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
-                 smooth=(0, 10),
+                 smooth=(-1, 10),
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
@@ -61,8 +61,9 @@ class dynamics(DVR):
 
         self.smooth = False
         self.T0, self.Nslice = smooth
-        if smooth[0] > 0:
+        if smooth[0] >= 0:
             self.smooth = True
+            self.smooth_mode = smooth[0]
 
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
@@ -145,7 +146,7 @@ def add_str(flag, label, param=None):
 def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
-        st = 4E-5 * np.exp(freq_list * 0.085) # More accurate scaling
+        st = 4E-5 * np.exp(freq_list * 0.085)  # More accurate scaling
         # st = 2.5E-5 * np.exp(freq_list * 0.0954747) # Legacy scaling to access 3D data
         st[np.nonzero(freq_list < 39.4)] = 1E-3
         # if V0_SI > 1.5E5 * 2 * np.pi:
@@ -246,12 +247,19 @@ def one_period_evo(E_list,
         return U
 
 
-def wave_shape_fun(t, T0=0.01):
+def cos_func(t, T0=0.01):
     # function of t as factor in H = T + f*V
     # t is actually reduced time, t / T
     # f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
     # f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
     return (1 + np.cos(2 * np.pi * t)) / 2
+
+
+def sqr_func(t) -> float:
+    if t >= 0.5:
+        return 0
+    elif t < 0.5:
+        return 1
 
 
 def one_period_evo_smooth(dvr: dynamics):
@@ -263,12 +271,10 @@ def one_period_evo_smooth(dvr: dynamics):
 
     dt = dvr.T / dvr.Nslice
     n = np.arange(0, dvr.T, dt) / dvr.T
-    ft = wave_shape_fun(n, dvr.T0)
-    # H = dvr.T * H_mat_w_f(dvr, 1 / 2)
-    # if __debug__:
-    #     print(dvr.T)
-    #     print(n)
-    # commutator = lambda x, y: x @ y - y @ x
+    if dvr.smooth_mode > 0:
+        ft = cos_func(n, dvr.T0)
+    elif dvr.smooth_mode == 0:
+        ft = sqr_func(n)
 
     no = dvr.n + 1 - dvr.init
     N = np.prod(no)
