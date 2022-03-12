@@ -2,6 +2,7 @@ from re import M
 from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
+from pyparsing import line
 from DVR_exe import *
 from matplotlib import gridspec
 import h5py
@@ -10,11 +11,22 @@ from scipy.stats.mstats import gmean
 import matplotlib as mpl
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from cycler import cycler
 
-mpl.rcParams['figure.dpi'] = 300
+params = {
+    'figure.dpi': 300,
+    # 'figure.figsize': (15, 5),
+    'legend.fontsize': 'x-large',
+    'axes.labelsize': 'xx-large',
+    'axes.titlesize': 'xx-large',
+    'xtick.labelsize': 'xx-large',
+    'ytick.labelsize': 'xx-large'
+}
+mpl.rcParams.update(params)
 
 
 class plot(dynamics):
+
     def __init__(self,
                  cvg='N',
                  quantity='gs',
@@ -295,7 +307,7 @@ def plot_lifetime(N_list,
     first_fig = False
     if fig == None:
         fig = plt.figure(figsize=[8, 6])
-        ax = fig.add_subplot()
+        ax = set_axes(fig)
         first_fig = True
         # fmt = 'o-'
     else:
@@ -317,6 +329,7 @@ def plot_lifetime(N_list,
             # popt, pcov = curve_fit(fit_func, fit_x, fit_y)
             # p = lambda x: fit_func(x, *popt)
             # ext = np.array([p(0), abs(p(0) - fit_y[-1])])[None]
+
             #### USE LAST DATAPOINT
             ext = np.array([fit_y[-1], abs(fit_y[-1] - fit_y[-2])])[None]
             ext_lt = np.append(ext_lt, ext, axis=0)
@@ -335,13 +348,13 @@ def plot_lifetime(N_list,
             #     ax2.set_title('FSS f=%dkHz w/ ' % sav[i, 0] + dvr.cvg_str)
             #     f2.savefig('{}d_{}_{}_fss.jpg'.format(dvr.dim, dvr.cvg,
             #                                            sav[i, 0]))
-        ax.errorbar(sav[:, 0],
-                    ext_lt[:, 0],
-                    yerr=ext_lt[:, 1],
-                    fmt=fmt,
-                    label='{}D {} extrapolated $\Gamma$={:.2g}kHz'.format(
-                        dvr.dim, dvr.quantity,
-                        dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+        ax.errorbar(
+            sav[:, 0],
+            ext_lt[:, 0],
+            yerr=ext_lt[:, 1],
+            # fmt=fmt,
+            label='{}D {} extrapolated $\Gamma$={:.2g}kHz'.format(
+                dvr.dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
     for ni in range(len(N_list)):
         if dvr.cvg == 'N':
             cvg_str = ' $N_0$={} '.format(N_list[ni])
@@ -354,23 +367,27 @@ def plot_lifetime(N_list,
                 lt_err[1][:, ni],
                 # interpolate=True,
                 alpha=0.3)
-        ax_label = '{}D {}'.format(dvr.dim, dvr.quantity) + cvg_str
+        ax_label = ''
+        # ax_label += '{}D {}'.format(dvr.dim, dvr.quantity)
+        # ax_label += cvg_str
         if dvr.smooth:
             ax_label += 'smooth'
         # ax_label += '$\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI /
         #                                         dvr.kHz_2p)
-        # + ' L={:.2g}w'.format(dvr.L)
-        # + ' $t_{{stop}}$={:.2g}$t_0$'.format(
+        # ax_label += ' '
+        ax_label += 'L={:.2g}w'.format(dvr.L)
+        # ax_label += ' '
+        # + '$t_{{stop}}$={:.2g}$t_0$'.format(
         #     float(dvr.stop_time /
         #           get_stop_time(np.array([dvr.freq_list[-1]]))))
-        ax.semilogy(sav[:, 0], sav[:, ni + 1], fmt, label=ax_label)
+        ax.semilogy(sav[:, 0], sav[:, ni + 1], label=ax_label)
     # ax.set_ylim([0, 30])
     if first_fig:
         if tau < np.inf:
             ax.axhline(y=tau, color='gray', label='$\\tau=%.2fs$' % tau)
-        if dvr.dim == 3:
-            ax = expt_data(ax)
-            ax = fgr(ax)
+        # if dvr.dim == 3:
+        #     ax = expt_data(ax)
+        #     ax = fgr(ax)
         ax.grid(visible=True)
         ax.set_xlabel('freq/kHz')
         # ax.set_ylabel('$\\rho$')
@@ -383,9 +400,9 @@ def plot_lifetime(N_list,
     # ax.set_title('Saturation value of {}D {:g}s-averaged {} GS population @ \n\
     # stop time {:g}s '.format(dim, 16 * avg_no / step_no *
     #                  stop_time, model, stop_time) + final_str)
-    ax.set_title(
-        'Lifetime of {}D {} {} @'.format(dvr.dim, dvr.model, dvr.quantity) +
-        ' ' + dvr.cvg_str)
+    # ax.set_title(
+    #     'Lifetime of {}D {} {} @'.format(dvr.dim, dvr.model, dvr.quantity) +
+    #     ' ' + dvr.cvg_str)
     # else:
     #     ax.set_title('Lifetime of {}D {}\ncompared w/ exp\'t @'.format(
     #         dvr.dim, dvr.model) + ' $R_0$={}w'.format(R0_list[0][:dim]))
@@ -397,6 +414,29 @@ def plot_lifetime(N_list,
     # return freq_list[:, None] * freq_SIunit, lt_vs_freq
     fig.savefig('{}d_{}_{}_lt.pdf'.format(dvr.dim, dvr.cvg, dvr.quantity))
     return fig
+
+
+def set_axes(fig):
+    markercycle = cycler(marker=[
+        'o', "s", "v", "^", 'D', "p", '+', '*', '.', "<", "d", ">", "8", 'x',
+        'l'
+    ])
+    linecycle = cycler(ls=[
+        '-', '--', '-.', ':', (0, (1,
+                                   10)), (0,
+                                          (5,
+                                           10)), (0,
+                                                  (5,
+                                                   1)), (0, (3, 5, 1, 5, 1, 5))
+    ])
+    colorcycle = cycler(
+        color=plt.rcParams['axes.prop_cycle'].by_key()['color'])
+
+    ax = fig.add_subplot()
+    ax.set_prop_cycle(markercycle[:len(linecycle)] +
+                      colorcycle[:len(linecycle)] + linecycle)
+    # gca()=current axis
+    return ax
 
 
 def tau_from_waist(N_list, R0_list, dvr: plot, t_step, avg_no, tau, length,
@@ -437,6 +477,7 @@ def get_tau(N_list,
 
 
 def fit_tau(lifetime, data, tau=np.inf, length=1):
+
     def ognl_fit_fun(x, b):
         return fit_fun(x, b, rvs_flg=False)
 
@@ -477,9 +518,13 @@ def expt_data(ax: plt.Axes):
     ub3 = np.array([17])
     err3 = ub3 - lifetime3
 
-    ax.errorbar(strobe, lifetime, yerr=err, fmt='v', label='exp\'t 12/12')
-    ax.errorbar(strobe2, lifetime2, yerr=err2, fmt='v', label='exp\'t 12/13')
-    ax.errorbar(strobe3, lifetime3, yerr=err3, fmt='v', label='exp\'t 12/14')
+    strobe = np.concatenate((strobe, strobe2, strobe3))
+    lifetime = np.concatenate((lifetime, lifetime2, lifetime3))
+    err = np.concatenate((err, err2, err3))
+    ax.errorbar(strobe, lifetime, yerr=err, fmt='D', label='experiment')
+    # ax.errorbar(strobe, lifetime, yerr=err, fmt='D', label='exp\'t 12/12')
+    # ax.errorbar(strobe2, lifetime2, yerr=err2, fmt='D', label='exp\'t 12/13')
+    # ax.errorbar(strobe3, lifetime3, yerr=err3, fmt='D', label='exp\'t 12/14')
     # ax.set_yscale('log', nonposy='clip')
     return ax
 
@@ -489,21 +534,24 @@ def fgr(ax: plt.Axes) -> plt.Axes:
     m = 6.015122 * 1.66E-27
     h = 6.626E-34
     hb = h / (2 * np.pi)
-    f = 2 * np.pi * np.array([26.22, 26.22, 4.6]) * 1E3
+    f = np.sqrt(2) * np.pi * np.array(
+        [26.22, 26.22, 4.6]
+    ) * 1E3  # THe time-avged potential is V/2, so omega has a factor of 1/sqrt(2)
     fm = gmean(f)
     V = 104.52E3 * 2 * np.pi
     hl = np.sqrt(hb / (m * fm))
     leff2 = 1 / (4 / w**2 + 1 / hl**2)
-    Eg = np.sum(f) / 2 - V
+    Eg = np.sum(f) / 2 - V / 2
 
     def fgr_func(freq):
         omega = 2 * np.pi * freq * 1E3
-        tau = 2 * np.pi * hl / (2 * V**2 * leff2) * np.sqrt(
-            h * (omega + Eg) / m) * np.exp(m * omega * leff2 / hb)
+        kw = omega + Eg
+        tau = 2 * np.pi * hl / (V**2 * leff2) * np.sqrt(h * kw / m) * np.exp(
+            m * kw * leff2 / hb)
         return tau
 
     x = np.linspace(100, 240)
-    ax.plot(x, fgr_func(x), label='FGR')
+    ax.plot(x, fgr_func(x), marker='', ls='--', label='FGR')
     return ax
 
 
