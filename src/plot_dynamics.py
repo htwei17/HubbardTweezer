@@ -12,6 +12,7 @@ import matplotlib as mpl
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from cycler import cycler
+from scipy.special import erf
 
 params = {
     'figure.dpi': 300,
@@ -90,7 +91,7 @@ class plot(dynamics):
             self.title1 = self.title1 + self.t_unit
             self.title1 = self.title1 + ' moving-avged {} {} population \n'.format(
                 self.model, self.quantity)
-            final_str = 'w/ freq={:g}'.format(self.freq * self.freq_unit) + self.freq_unit_str \
+            final_str = 'w/ f={:g}'.format(self.freq * self.freq_unit) + self.freq_unit_str \
                             + ' ' + self.cvg_str
             self.title1 = self.title1 + final_str
             self.title2 = '{}D {} {} population \n'.format(
@@ -159,14 +160,9 @@ def plot_dynamics(N_list,
 
         data = get_data(N_list, R0_list, dvr, t_step)
         plot_length = int(data[0].t.shape[0] / length)
-        # final_val = np.array([])
         lifetime = np.array([])
 
         for i in range(len(N_list)):
-            # final_val = moving_avg(data[i][1], final_val, 16 * avg_no)
-            # if i == len(N_list)-1:
-            #     np.set_printoptions(precision=6, suppress=False)
-            #     print(data[i][1][:plot_length])
             if fit:
                 lifetime, popt, rvs_flag = fit_tau(lifetime, data[i])
             if avg:
@@ -178,24 +174,47 @@ def plot_dynamics(N_list,
                             data[i].rho_gs[:plot_length],
                             label='$N_0$={}'.format(N_list[i]))
             else:
-                axs[0].semilogy(
-                    data[i].t[:plot_length],
-                    data[i].rho_gs[:plot_length],
-                    label='$N_0$={} $\Gamma$={:.2g}kHz $t_{{stop}}$={:.2g}$t_0$'
-                    .format(
-                        N_list[i], dvr.VI * dvr.V0_SI / dvr.kHz_2p,
-                        float(dvr.stop_time /
-                              get_stop_time(np.array([dvr.freq])))))
+                if dvr.cvg == 'N':
+                    cvg_str = ' $N_0$={} '.format(N_list[i])
+                elif dvr.cvg == 'R':
+                    cvg_str = ' $R_0$={}w '.format(N_list[i] *
+                                                   dvr.dx[:dvr.dim])
+
+                ax_label = ''
+                # ax_label += '{}D {}'.format(dvr.dim, dvr.quantity)
+                ax_label += cvg_str
+                if dvr.smooth:
+                    if dvr.smooth_mode == 0:
+                        ax_label += 'smooth sqre check'
+                    else:
+                        ax_label += 'smooth'
+                # ax_label += '$\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI /
+                #                                         dvr.kHz_2p)
+                # ax_label += ' '
+                # ax_label += 'L={:.2g}w'.format(dvr.L)
+                # ax_label += ' '
+                # + '$t_{{stop}}$={:.2g}$t_0$'.format(
+                #     float(dvr.stop_time /
+                #           get_stop_time(np.array([dvr.freq_list[-1]]))))
+
+                axs[0].semilogy(data[i].t[:plot_length],
+                                data[i].rho_gs[:plot_length],
+                                label=ax_label)
+
+                savdata = np.concatenate(
+                    (data[i].t[:plot_length], data[i].rho_gs[:plot_length]),
+                    axis=1)
+                np.savetxt('{}d_{}.csv'.format(dvr.dim, dvr.freq),
+                           savdata,
+                           delimiter=',')
                 if fit:
-                    axs[0].semilogy(
-                        data[i].t[:plot_length],
-                        fit_fun(data[i].t[:plot_length],
-                                *popt,
-                                rvs_flg=rvs_flag),
-                        '--',
-                        label='fitting $N_0$={} $\Gamma$={:.2g}kHz'.format(
-                            N_list[i], dvr.VI * dvr.V0_SI / dvr.kHz_2p),
-                        lw=3)
+                    axs[0].semilogy(data[i].t[:plot_length],
+                                    fit_fun(data[i].t[:plot_length],
+                                            *popt,
+                                            rvs_flg=rvs_flag),
+                                    '--',
+                                    label='fitting ' + ax_label,
+                                    lw=2)
                 # axs[0].set_ylim([0.9, 1.1])
         # if fit:
         #     left, bottom, width, height = [0.3, 0.6, 0.2, 0.2]
@@ -217,7 +236,7 @@ def plot_dynamics(N_list,
             axs[2].set_xlabel(dvr.xlabel)
             axs[2].set_title(dvr.title2)
         ax_list.append(axs)
-    plt.savefig('{}d_{}.jpg'.format(dvr.dim, dvr.quantity))
+    plt.savefig('{}d_{}.pdf'.format(dvr.dim, dvr.quantity))
     return fig
 
 
@@ -248,6 +267,7 @@ def plot_lifetime(N_list,
                   length=1,
                   err=False,
                   avg_no=10,
+                  show_fgr=False,
                   tau=np.inf,
                   extrapolte=None):
 
@@ -300,19 +320,21 @@ def plot_lifetime(N_list,
                                        tau, length, no_file, lt_err[1])
 
     if no_file:
-        sav = np.concatenate((dvr.freq_list[:, None], lt_vs_freq), axis=1)
+        if err:
+            sav = np.concatenate(
+                (dvr.freq_list[:, None], lt_vs_freq, lt_err[0], lt_err[1]),
+                axis=1)
+        else:
+            sav = np.concatenate((dvr.freq_list[:, None], lt_vs_freq), axis=1)
         np.savetxt(fn, sav, delimiter=',')
 
-    fmt = 'o-'
     first_fig = False
     if fig == None:
         fig = plt.figure(figsize=[8, 6])
         ax = set_axes(fig)
         first_fig = True
-        # fmt = 'o-'
     else:
         ax = fig.axes[0]
-        # fmt = 's-.'
 
     if extrapolte != None and isinstance(extrapolte, int):
         Nmin = extrapolte
@@ -352,9 +374,9 @@ def plot_lifetime(N_list,
             sav[:, 0],
             ext_lt[:, 0],
             yerr=ext_lt[:, 1],
-            # fmt=fmt,
-            label='{}D {} extrapolated $\Gamma$={:.2g}kHz'.format(
-                dvr.dim, dvr.quantity, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+            label='{}D {} with err'.format(dvr.dim, dvr.quantity)
+            # + ' $\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI / dvr.kHz_2p)
+        )
     for ni in range(len(N_list)):
         if dvr.cvg == 'N':
             cvg_str = ' $N_0$={} '.format(N_list[ni])
@@ -369,13 +391,16 @@ def plot_lifetime(N_list,
                 alpha=0.3)
         ax_label = ''
         # ax_label += '{}D {}'.format(dvr.dim, dvr.quantity)
-        # ax_label += cvg_str
+        ax_label += cvg_str
         if dvr.smooth:
-            ax_label += 'smooth'
+            if dvr.smooth_mode == 0:
+                ax_label += 'sqr smooth'
+            elif dvr.smooth_mode == 1:
+                ax_label += 'cos smooth'
         # ax_label += '$\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI /
         #                                         dvr.kHz_2p)
         # ax_label += ' '
-        ax_label += 'L={:.2g}w'.format(dvr.L)
+        # ax_label += 'L={:.2g}w'.format(dvr.L)
         # ax_label += ' '
         # + '$t_{{stop}}$={:.2g}$t_0$'.format(
         #     float(dvr.stop_time /
@@ -385,18 +410,17 @@ def plot_lifetime(N_list,
     if first_fig:
         if tau < np.inf:
             ax.axhline(y=tau, color='gray', label='$\\tau=%.2fs$' % tau)
-        # if dvr.dim == 3:
-        #     ax = expt_data(ax)
-        #     ax = fgr(ax)
+        if show_fgr:
+            ax = expt_data(ax)
+            ax = fgr(ax, dvr.dim)
         ax.grid(visible=True)
-        ax.set_xlabel('freq/kHz')
-        # ax.set_ylabel('$\\rho$')
+        ax.set_xlabel('f/kHz')
         ax.set_ylabel('$\\tau/s$')
         # ax.set_ylim([.3, 20])
         # ax.set_xlim([0, 1000])
         ax.set_xlim([80, 250])
 
-    ax.legend()
+    ax.legend(loc='upper left')
     # ax.set_title('Saturation value of {}D {:g}s-averaged {} GS population @ \n\
     # stop time {:g}s '.format(dim, 16 * avg_no / step_no *
     #                  stop_time, model, stop_time) + final_str)
@@ -412,7 +436,7 @@ def plot_lifetime(N_list,
     # print(freq_list[:, None] * freq_SIunit)
     # print(lt_vs_freq)
     # return freq_list[:, None] * freq_SIunit, lt_vs_freq
-    fig.savefig('{}d_{}_{}_lt.pdf'.format(dvr.dim, dvr.cvg, dvr.quantity))
+    fig.savefig('{}d_{}_{}.pdf'.format(dvr.dim, dvr.cvg, dvr.quantity))
     return fig
 
 
@@ -529,29 +553,61 @@ def expt_data(ax: plt.Axes):
     return ax
 
 
-def fgr(ax: plt.Axes) -> plt.Axes:
+def fgr(ax: plt.Axes, dim: int = 3) -> plt.Axes:
     w = 1E-6
     m = 6.015122 * 1.66E-27
     h = 6.626E-34
     hb = h / (2 * np.pi)
-    f = np.sqrt(2) * np.pi * np.array(
-        [26.22, 26.22, 4.6]
-    ) * 1E3  # THe time-avged potential is V/2, so omega has a factor of 1/sqrt(2)
-    fm = gmean(f)
-    V = 104.52E3 * 2 * np.pi
-    hl = np.sqrt(hb / (m * fm))
-    leff2 = 1 / (4 / w**2 + 1 / hl**2)
+    hf = np.array([26.54, 26.54, 4.66])
+    f = 2 * np.pi * hf[:dim] * 1E3 / np.sqrt(
+        2
+    )  # THe time-avged potential is V/2, so omega has a factor of 1/sqrt(2)
+    V = 104.52E3 * 2 * np.pi  # The perturbed V is V
+    l = np.sqrt(hb / (m * f))
     Eg = np.sum(f) / 2 - V / 2
+    if dim == 3:
+        w0 = 2 / (f * np.sqrt(2)) * np.sqrt(hb * V / m)
+        # w0 = np.array([1, 1, 2.4]) * w
+        # l2 = 1 / (4 / w**2 + 1 / l**2)
+        # leff2 = 1 / np.mean(1 / l2)
+        leff = 1 / np.sqrt(1 / w0**2 + 1 / (4 * l**2))
 
-    def fgr_func(freq):
-        omega = 2 * np.pi * freq * 1E3
-        kw = omega + Eg
-        tau = 2 * np.pi * hl / (V**2 * leff2) * np.sqrt(h * kw / m) * np.exp(
-            m * kw * leff2 / hb)
-        return tau
+        def fgr_func(freq):
+            # omega = 2 * np.pi * freq * 1E3
+            # kw = omega + Eg
+            # tau = hb**2 * (2 * np.pi)**4 / (V**2 * m * np.pi) * np.prod(
+            #     hl / l2) / np.sqrt(2 * np.pi * m * hb * kw) * np.exp(
+            #         2 * m * kw * leff2 / hb)
+            # return tau
+            if not isinstance(freq, Iterable):
+                freq = np.array([freq])
+            omega = 2 * np.pi * freq * 1E3
+            kw = omega + Eg
+            kf = leff[None] * np.sqrt(2 * m * kw[:, None] / hb)
+            kf_norm = la.norm(kf, axis=1)
+
+            tau = 4 * (2 * np.pi)**5 * kw / (V**2 * np.pi**(3 / 2)) * np.prod(
+                l / leff)
+            tau *= kf_norm / (np.prod(kf, axis=1) * np.pi *
+                              np.sqrt(2 * np.pi) * erf(kf_norm / np.sqrt(2)))
+            tau *= np.exp(np.prod(kf[:, :2], axis=1) / 2)
+            return tau.reshape(-1)
+
+    elif dim == 1:
+        # l *= 1.9
+        leff2 = 1 / (4 / w**2 + 1 / l**2)
+        
+        def fgr_func(freq):
+            if not isinstance(freq, Iterable):
+                freq = np.array([freq])
+            omega = 2 * np.pi * freq * 1E3
+            kw = omega + Eg
+            tau = l / (V**2 * leff2) * np.sqrt(
+                2 * np.pi * hb * kw / m) * np.exp(m * kw * leff2 / hb)
+            return tau
 
     x = np.linspace(100, 240)
-    ax.plot(x, fgr_func(x), marker='', ls='--', label='FGR')
+    ax.plot(x, fgr_func(x), marker='', ls='--', label='{}D FGR'.format(dim))
     return ax
 
 
@@ -604,7 +660,7 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
             gs = sf[1].subplots()
             ab_str = '$\Gamma$={:.2f}kHz'.format(dvr.VI * dvr.V0_SI /
                                                  dvr.kHz_2p)
-            final_str = 'freq={:.3f}kHz '.format(
+            final_str = 'f={:.3f}kHz '.format(
                 dvr.freq) + dvr.cvg_str + ' ' + ab_str
             ax.set_title('{}D {} GS probability @ \n\
                     stop time {:.2g}s '.format(dvr.dim, dvr.model,

@@ -26,12 +26,14 @@ dim = 3  # space dimension
 
 
 class harray(np.ndarray):
+
     @property
     def H(self):
         return self.conj().T
 
 
 class DVR:
+
     def update_n(self, n: np.ndarray, R0: np.ndarray):
         # Change n with fixing R0
         self.n = n.copy()
@@ -109,7 +111,8 @@ class DVR:
 
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
             self.V0_SI = trap[0] * self.kHz_2p * hb  # Input in unit of kHz
-            self.w = trap[1] / a0  # Input in unit of meter
+            self.w = trap[
+                1] / a0  # Input in unit of meter, converted to Bohr radius
 
             self.V0 = self.V0_SI / Eha  # potential depth in unit of Hartree energy
             # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
@@ -119,6 +122,8 @@ class DVR:
 
             self.Nmax = np.array([20, 20, 20])  # Max number of grid points
 
+            print("param_set: trap parameter V0={}kHz w={}m".format(
+                trap[0], trap[1]))
         elif model == 'sho':
             # Harmonic parameters
             self.dx0 = 1 / 3 * np.ones(3, dtype=float)
@@ -130,6 +135,9 @@ class DVR:
             self.mtV0 = self.m
             self.V0_SI = 1.0
             self.kHz = 1.0
+
+            print("param_set: trap parameter V0={} w={}".format(
+                self.V0_SI, self.w))
 
         self.R0 *= self.nd
         self.R *= self.nd

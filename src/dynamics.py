@@ -7,6 +7,7 @@ import copy
 
 
 class dynamics(DVR):
+
     def update_N(self, N, R0: np.ndarray):
         self.N = N
         n = np.zeros(3, dtype=int)
@@ -147,8 +148,8 @@ def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
         st = 4E-5 * np.exp(freq_list * 0.085)  # More accurate scaling
-        # st = 2.5E-5 * np.exp(
-        #     freq_list * 0.0954747)  # Legacy scaling to access 3D data
+        st = 2.5E-5 * np.exp(
+            freq_list * 0.0954747)  # Legacy scaling to access 3D data
         st[np.nonzero(freq_list < 39.4)] = 1E-3
         # if V0_SI > 1.5E5 * 2 * np.pi:
         #     st *= 2
@@ -253,14 +254,22 @@ def cos_func(t, T0=0.01):
     # t is actually reduced time, t / T
     # f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
     # f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
-    return (1 + np.cos(2 * np.pi * t)) / 2
+    # return (1 + np.cos(2 * np.pi * t)) / 2
+    return np.cos(2 * np.pi * t)
 
 
-def sqr_func(t) -> float:
-    if t >= 0.5:
-        return 0
-    elif t < 0.5:
-        return 1
+def sqr_func(t: np.ndarray) -> float:
+    if isinstance(t, Iterable):
+        t = np.array(t)
+    if isinstance(t, np.ndarray):
+        ans = np.ones(t.shape)
+        ans[t >= 0.5] = 0
+    elif isinstance(t, (float, int)):
+        if t >= 0.5:
+            ans = 0
+        else:
+            ans = 1
+    return ans
 
 
 def one_period_evo_smooth(dvr: dynamics):
@@ -272,7 +281,7 @@ def one_period_evo_smooth(dvr: dynamics):
 
     dt = dvr.T / dvr.Nslice
     n = np.arange(0, dvr.T, dt) / dvr.T
-    if dvr.smooth_mode > 0:
+    if dvr.smooth_mode == 1:
         ft = cos_func(n, dvr.T0)
     elif dvr.smooth_mode == 0:
         ft = sqr_func(n)
@@ -414,6 +423,7 @@ def shftdVfun(x, y, z, x0):
 
 
 def coherent_state(n, dx, x0):
+
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 

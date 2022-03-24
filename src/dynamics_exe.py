@@ -152,7 +152,7 @@ if __debug__:
     print(trap)
 
 dvr = dynamics(N, R, freq_list, (step, st), 1 / 2, args.dim, args.model, trap,
-               args.mem_eff, True, args.realtime, (0, 10), args.symmetry,
+               args.mem_eff, True, args.realtime, (-1, 10), args.symmetry,
                args.absorption, args.ab_param)
 
 DVR_exe(dvr)
