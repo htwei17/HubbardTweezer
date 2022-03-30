@@ -254,9 +254,7 @@ def cos_func(t, T0=0.01):
     # t is actually reduced time, t / T
     # f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
     # f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
-    # return (1 + np.cos(2 * np.pi * t)) / 2
-    return np.cos(2 * np.pi * t)
-
+    return (1 + np.cos(2 * np.pi * t)) / 2
 
 def sqr_func(t: np.ndarray) -> float:
     if isinstance(t, Iterable):
