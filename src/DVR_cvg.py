@@ -12,6 +12,8 @@ from time import time
 # from einops import rearrange, reduce, repeat
 from DVR_full import *
 
+k = 10  # Number of energy levels to track
+
 
 def N_convergence(N, R, avg=1, dim=3, level=1):
     # Convergence of energy vs N, to reproduce Fig. 5a in PRA paper
@@ -26,9 +28,9 @@ def N_convergence(N, R, avg=1, dim=3, level=1):
         n = i * np.array([1, 1, 1])
         dx = R / n
         n = n * dim_factor
-        D = DVR(n, R)
-        print('dx= {}w'.format(dx / D.w))
-        print('R= {}w'.format(R / D.w))
+        D = DVR(n, R, sparse=True)
+        print('dx= {}w'.format(dx))
+        print('R= {}w'.format(R))
         print('n=', n)
         V, W = H_solver(D)
         E = np.append(E, V[:k].reshape(1, -1), axis=0)

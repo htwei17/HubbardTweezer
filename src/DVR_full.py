@@ -5,15 +5,13 @@ from statistics import mode
 from tkinter import N
 import numpy as np
 import scipy.linalg as la
-# import scipy.sparse.linalg as sla
-# import scipy.sparse as sp
-# from scipy.sparse.linalg import LinearOperator
-# import sparse
+import scipy.sparse.linalg as sla
+import scipy.sparse as sp
+from scipy.sparse.linalg import LinearOperator
+import sparse
 from opt_einsum import contract
 from time import time
 # from einops import rearrange, reduce, repeat
-
-k = 10  # Number of energy levels to track
 
 # Fundamental constants
 a0 = 5.29E-11  # Bohr radius, in unit of meter
@@ -74,9 +72,10 @@ class DVR:
                  avg=1,
                  model='Gaussian',
                  trap=(104.52, 1E-6),
-                 symmetry=False,
-                 absorber=False,
-                 ab_param=(57.04, 1)) -> None:
+                 symmetry: bool = False,
+                 absorber: bool = False,
+                 ab_param=(57.04, 1),
+                 sparse: bool = False) -> None:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of waist
         self.R = R0.copy()  # Total region size, R = R0 + LI
@@ -85,6 +84,7 @@ class DVR:
         self.absorber = absorber
         self.symmetry = symmetry
         self.nd = n != 0  # Nonzero dimensions
+        self.sparse = sparse
 
         self.dx = np.zeros(n.shape)
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of waist
@@ -189,15 +189,16 @@ def Vmat(dvr: DVR):
     x = []
     for i in range(dim):
         x.append(np.arange(dvr.init[i], dvr.n[i] + 1) * dvr.dx[i])
-    X = np.meshgrid(x[0], x[1], x[2], indexing='ij')
+    X = np.meshgrid(*x, indexing='ij')
     # 3 index tensor V(x, y, z)
-    V = dvr.avg * dvr.Vfun(X[0], X[1], X[2])
+    V = dvr.avg * dvr.Vfun(*X)
     if dvr.absorber:  # add absorption layer
         V = V.astype(complex) + dvr.Vabs(X[0], X[1], X[2])
-    # V * identity rank-6 tensor, sparse
     no = dvr.n + 1 - dvr.init
-    V = np.diag(V.reshape(-1))
-    V = V.reshape(np.concatenate((no, no)))
+    # V * identity rank-6 tensor
+    if not dvr.sparse:
+        V = np.diag(V.reshape(-1))
+        V = V.reshape(np.concatenate((no, no)))
     return V, no
 
 
@@ -261,15 +262,35 @@ def Tmat(dvr: DVR) -> np.ndarray:
         else:
             T0.append(None)
 
-    # delta_xx' delta_yy' T_zz'
-    # delta_xx' T_yy' delta_zz'
-    # T_xx' delta_yy' delta_zz'
-    T = 0
-    for i in range(dim):
-        if isinstance(T0[i], np.ndarray):
-            T += contract('ij,kl,mn->ikmjln', *delta[:i], T0[i],
-                          *delta[i + 1:])
-    return T
+    if dvr.sparse:
+        for i in range(dim):
+            if not isinstance(T0[i], np.ndarray):
+                T0[i] = np.zeros((1, 1))
+        return T0
+    else:
+        # delta_xx' delta_yy' T_zz'
+        # delta_xx' T_yy' delta_zz'
+        # T_xx' delta_yy' delta_zz'
+        T = 0
+        for i in range(dim):
+            if isinstance(T0[i], np.ndarray):
+                T += contract('ij,kl,mn->ikmjln', *delta[:i], T0[i],
+                              *delta[i + 1:])
+        return T
+
+
+def H_op(DVR: DVR, T, V, no, psi0):
+    # Define Hamiltonian operator for sparse solver
+
+    DVR.p *= DVR.n != 0
+    DVR.dx *= DVR.n != 0
+
+    psi0 = psi0.reshape(*no)
+    psi = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
+    psi += np.einsum('ij,jkl->ikl', T[0], psi0)  # T_xx' delta_yy' delta_zz'
+    psi += np.einsum('jl,ilk->ijk', T[1], psi0)  # delta_xx' T_yy' delta_zz'
+    psi += np.einsum('ij,klj->kli', T[2], psi0)  # delta_xx' delta_yy' T_zz'
+    return psi.reshape(-1)
 
 
 def H_mat(DVR: DVR):
@@ -278,7 +299,7 @@ def H_mat(DVR: DVR):
     DVR.p *= DVR.n != 0
     DVR.dx *= DVR.n != 0
 
-    np.set_printoptions(precision=2, suppress=True)
+    # np.set_printoptions(precision=2, suppress=True)
     print("H_mat: n={} dx={}w p={} {} starts.".format(DVR.n[DVR.nd],
                                                       DVR.dx[DVR.nd],
                                                       DVR.p[DVR.nd],
@@ -288,7 +309,6 @@ def H_mat(DVR: DVR):
     H = T + V
     del T, V
     N = np.prod(no)
-    # DVR.Nmat = N
     H = H.reshape((N, N))
     if not DVR.absorber:
         H = (H + H.T.conj()) / 2
@@ -296,17 +316,42 @@ def H_mat(DVR: DVR):
     return H
 
 
-def H_solver(DVR) -> tuple[np.ndarray, np.ndarray]:
+def H_solver(DVR: DVR, k=10) -> tuple[np.ndarray, np.ndarray]:
     # Solve Hamiltonian matrix
-    # avg factor is used to control the time average potential strength
-    H = H_mat(DVR)
-    # [E, W] = sla.eigsh(H, which='SA')
-    t0 = time()
-    if DVR.absorber:
-        E, W = la.eig(H)
+
+    if DVR.sparse:
+        print(
+            "H_op: n={} dx={}w p={} {} sparse diagonalization is enabled. Lowest {} states are to be calculated."
+            .format(DVR.n[DVR.nd], DVR.dx[DVR.nd], DVR.p[DVR.nd], DVR.model,
+                    k))
+
+        T = Tmat(DVR)
+        V, no = Vmat(DVR)
+        print("H_op: n={} dx={}w p={} {} operator constructed.".format(
+            DVR.n[DVR.nd], DVR.dx[DVR.nd], DVR.p[DVR.nd], DVR.model))
+
+        def applyH(psi):
+            return H_op(DVR, T, V, no, psi)
+
+        t0 = time()
+        N = np.product(no)
+        H = LinearOperator((N, N), matvec=applyH)
+        if DVR.absorber:
+            E, W = sla.eigs(H, k, which='SA')
+        else:
+            E, W = sla.eigsh(H, k, which='SA')
     else:
-        E, W = la.eigh(H)
+        # avg factor is used to control the time average potential strength
+        H = H_mat(DVR)
+        # [E, W] = sla.eigsh(H, which='SA')
+        t0 = time()
+        if DVR.absorber:
+            E, W = la.eig(H)
+        else:
+            E, W = la.eigh(H)
+
     t1 = time()
+
     if DVR.avg > 0:
         print('H_solver: {} Hamiltonian solved. Time spent: {:.2f}s.'.format(
             DVR.model, t1 - t0))
