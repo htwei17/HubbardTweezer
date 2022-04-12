@@ -1,5 +1,5 @@
 """
-Module containing manifolds of n-dimensional unitaries
+Module containing manifolds of n-dimensional rotations
 """
 
 from __future__ import division
@@ -10,49 +10,46 @@ import numpy.random as rnd
 from scipy.linalg import expm, logm
 from scipy.special import comb
 
-from pymanopt.tools.multi import multiprod, multihconj, multiherm, multiskewh
+from pymanopt.tools.multi import multiprod, multitransp, multisym, multiskew
 from pymanopt.manifolds.manifold import Manifold
 
 
-class Unitaries(Manifold):
+class Rotations(Manifold):
     """
-    Returns a manifold structure to optimize over unitary matrices.
-    
-    manifold = Unitaries(n)
-    manifold = Unitaries(n, k)
+    Returns a manifold structure to optimize over rotation matrices.
 
-    Unitary group: deals with arrays U of size n x n x k (or n x n if k = 1,
-    which is the default) such that each n x n matrix is unitary, that is,
-        X.conj().T @ X = eye(n) if k = 1, or
-        X[i].conj().T @ X[i] = eye(n) for i = 1 : k if k > 1.
+    manifold = Rotations(n)
+    manifold = Rotations(n, k)
 
-    This is a description of U(n)^k with the induced metric from the
-    embedding space (C^nxn)^k, i.e., this manifold is a Riemannian
-    submanifold of (C^nxn)^k endowed with the usual real inner product on
-    C^nxn, namely, <A, B> = real(trace(A.conj().T @ B)).
+    Special orthogonal group (the manifold of rotations): deals with matrices
+    X of size k x n x n (or n x n if k = 1, which is the default) such that
+    each n x n matrix is orthogonal, with determinant 1, i.e.,
+    dot(X.T, X) = eye(n) if k = 1, or dot(X[i].T, X[i]) = eye(n) if k > 1.
 
-    This is important:
-    Tangent vectors are represented in the Lie algebra, i.e., as
-    skew-Hermitian matrices. Use the function M.tangent2ambient(X, H) to
+    This is a description of SO(n)^k with the induced metric from the
+    embedding space (R^nxn)^k, i.e., this manifold is a Riemannian
+    submanifold of (R^nxn)^k endowed with the usual trace inner product.
+
+    Tangent vectors are represented in the Lie algebra, i.e., as skew
+    symmetric matrices. Use the function manifold.tangent2ambient(X, H) to
     switch from the Lie algebra representation to the embedding space
-    representation. This is often necessary to define problem.ehess(X, H),
-    as the input H will then be a skew-Hermitian matrix (but the output must
-    not be, as the output is the Hessian in the embedding Euclidean space.)
+    representation. This is often necessary when defining
+    problem.ehess(X, H).
 
     By default, the retraction is only a first-order approximation of the
     exponential. To force the use of a second-order approximation, call
-    manifold.retr = manifold.retr2 after creating manifold object. This switches from a 
+    manifold.retr = manifold.retr2 after creating manifold object. This switches from a
     QR-based computation to an SVD-based computation.
 
     By default, k = 1.
-    
+
     Example. Based on the example found at:
     http://www.manopt.org/manifold_documentation_rotations.html
 
     >>> import numpy as np
     >>> from pymanopt import Problem
     >>> from pymanopt.solvers import TrustRegions
-    >>> from pymanopt.manifolds import Unitaries
+    >>> from pymanopt.manifolds import Rotations
 
     Generate the problem data.
     >>> n = 3
@@ -61,29 +58,29 @@ class Unitaries(Manifold):
     >>> B = np.random.randn(n, m)
     >>> ABt = np.dot(A,B.T)
 
-    Create manifold - U(n).
-    >>> manifold = Unitaries(n)
+    Create manifold - SO(n).
+    >>> manifold = Rotations(n)
 
     Define the cost function.
-    >>> cost = lambda X : -np.tensordot(X.conj(), ABt, axes=X.ndim)
+    >>> cost = lambda X : -np.tensordot(X, ABt, axes=X.ndim)
 
     Define and solve the problem.
     >>> problem = Problem(manifold=manifold, cost=cost)
     >>> solver = TrustRegions()
     >>> X = solver.solve(problem)
 
-    See also: Stiefel Rotations
+    See also: Stiefel
 
-    This file is based on unitaryfactory from Manopt: www.manopt.org
-    Ported by: Haotian Wei
-    Original author: Nicolas Boumal, June 18, 2019.
+    This file is based on rotationsfactory from Manopt: www.manopt.org
+    Ported by: Lars Tingelstad
+    Original author: Nicolas Boumal, Dec. 30, 2012.
     """
 
     def __init__(self, n, k=1):
         if k == 1:
-            self._name = 'Unitary manifold U({n})'.format(n=n)
+            self._name = 'Rotations manifold SO({n})'.format(n=n)
         elif k > 1:
-            self._name = 'Product unitary manifold U({n})^{k}'.format(n=n, k=k)
+            self._name = 'Rotations manifold SO({n})^{k}'.format(n=n, k=k)
         else:
             raise RuntimeError("k must be an integer no less than 1.")
 
@@ -95,10 +92,10 @@ class Unitaries(Manifold):
 
     @property
     def dim(self):
-        return self._k * self._n**2
+        return self._k * comb(self._n, 2)
 
     def inner(self, X, U, V):
-        return np.tensordot(U.conj(), V, axes=U.ndim)
+        return np.tensordot(U, V, axes=U.ndim)
 
     def norm(self, X, U):
         return la.norm(U)
@@ -108,10 +105,10 @@ class Unitaries(Manifold):
         return np.pi * np.sqrt(self._n * self._k)
 
     def proj(self, X, H):
-        return multiskewh(multiprod(multihconj(X), H))
+        return multiskew(multiprod(multitransp(X), H))
 
     def tangent(self, X, H):
-        return multiskewh(H)
+        return multiskew(H)
 
     def tangent2ambient(self, X, U):
         return multiprod(X, U)
@@ -119,16 +116,13 @@ class Unitaries(Manifold):
     egrad2rgrad = proj
 
     def ehess2rhess(self, X, egrad, ehess, H):
-        Xt = multihconj(X)
+        Xt = multitransp(X)
         Xtegrad = multiprod(Xt, egrad)
-        symXtegrad = multiherm(Xtegrad)
+        symXtegrad = multisym(Xtegrad)
         Xtehess = multiprod(Xt, ehess)
-        return multiskewh(Xtehess - multiprod(H, symXtegrad))
+        return multiskew(Xtehess - multiprod(H, symXtegrad))
 
-    # QR-based retraction or Polar-based retraction
-    # QR-based retraction
     def retr(self, X, U):
-
         def retri(Y):
             Q, R = la.qr(Y)
             return np.dot(Q, np.diag(np.sign(np.sign(np.diag(R)) + 0.5)))
@@ -141,9 +135,7 @@ class Unitaries(Manifold):
                 Y[i] = retri(Y[i])
             return Y
 
-    # Polar-based retraction
     def retr2(self, X, U):
-
         def retr2i(Y):
             U, _, Vt = la.svd(Y)
             return np.dot(U, Vt)
@@ -166,25 +158,20 @@ class Unitaries(Manifold):
             return multiprod(X, expU)
 
     def log(self, X, Y):
-        U = multiprod(multihconj(X), Y)
+        U = multiprod(multitransp(X), Y)
         if self._k == 1:
-            return multiskewh(logm(U))
+            return multiskew(np.real(logm(U)))
         else:
             for i in range(self._k):
-                U[i] = logm(U[i])
-        return multiskewh(U)
-
-    # An unused function in current Python version, not enabled temorarily
-    # def hash(X):
-    #     return 'z {}'.format(
-    #         hashlib.md5(np.real(X.reshape(-1)), np.imag(X.reshape(-1))))
+                U[i] = np.real(logm(U[i]))
+        return multiskew(U)
 
     def rand(self):
-        return randunitary(self._n, self._k)
+        return randrot(self._n, self._k)
 
     def randvec(self, X):
-        U = randskewh(self._n, self._k)
-        nrmU = np.sqrt(np.tensordot(U.conj(), U, axes=U.ndim))
+        U = randskew(self._n, self._k)
+        nrmU = np.sqrt(np.tensordot(U, U, axes=U.ndim))
         return U / nrmU
 
     def zerovec(self, X):
@@ -205,35 +192,40 @@ class Unitaries(Manifold):
         return self.norm(x, self.log(x, y))
 
 
-def randunitary(n, N=1):
-    # Generates uniformly random unitary matrices.
+def randrot(n, N=1):
 
     if n == 1:
-        U = rnd.randn((N, 1, 1)) + 1j * rnd.randn((N, 1, 1))
-        return U / np.abs(U)
+        return np.ones((N, 1, 1))
 
-    U = np.zeros((N, n, n))
+    R = np.zeros((N, n, n))
 
     for i in range(N):
         # Generated as such, Q is uniformly distributed over O(n), the set
         # of orthogonal matrices.
-        A = rnd.randn(n, n) + 1j * rnd.randn(n, n)
+        A = rnd.randn(n, n)
         Q, RR = la.qr(A)
-        U[i] = Q
+        Q = np.dot(Q, np.diag(np.sign(np.diag(RR))))  # Mezzadri 2007
+
+        # If Q is in O(n) but not in SO(n), we permute the two first
+        # columns of Q such that det(new Q) = -det(Q), hence the new Q will
+        # be in SO(n), uniformly distributed.
+        if la.det(Q) < 0:
+            Q[:, [0, 1]] = Q[:, [1, 0]]
+
+        R[i] = Q
 
     if N == 1:
-        U = U.reshape(n, n)
+        R = R.reshape(n, n)
 
-    return U
+    return R
 
 
-def randskewh(n, N=1):
-    # Generate random skew-hermitian matrices with normal entries.
+def randskew(n, N=1):
     idxs = np.triu_indices(n, 1)
     S = np.zeros((N, n, n))
     for i in range(N):
         S[i][idxs] = rnd.randn(int(n * (n - 1) / 2))
-        S = S - multihconj(S)
+        S = S - multitransp(S)
     if N == 1:
         return S.reshape(n, n)
     return S
