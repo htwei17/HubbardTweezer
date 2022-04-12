@@ -21,7 +21,8 @@ class Wannier(DVR):
             self,
             n: np.ndarray,
             R0: np.ndarray,
-            lattice: np.ndarray = (2),  # Square lattice size
+            lattice: np.ndarray = np.array([2],
+                                           dtype=int),  # Square lattice size
             lc=(ax, ay),  # Lattice constant
             avg=1,
             model='Gaussian',
@@ -54,23 +55,24 @@ def lattice_graph(size: np.ndarray):
 
     edge = []
     links = []
-    for i in range(size.ndim):
+    for i in range(size.size):
         edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
-    if size.ndim == 1:
-        graph = [np.arrary([i, 0]) for i in edge]
+    if size.size == 1:
+        graph = [np.array([i, 0]) for i in edge[0]]
         links = [np.array([i, i + 1]) for i in range(size[0] - 1)]
-    elif size.ndim == 2:
+    elif size.size == 2:
         graph = []
         links = np.array([]).reshape(0, 2)
-        node_idx = 0  # Linear index is column prefered
-        for i in edge[0]:
-            for j in edge[1]:
-                graph.append(np.array([i, j]))
-                if i > 0 and j > 0:
+        node_idx = 0  # Linear index is column (y) prefered
+        for i in range(len(edge[0])):
+            for j in range(len(edge[1])):
+                graph.append(np.array([edge[0][i], edge[1][j]]))
+                if i > 0:
                     links = np.append(links,
-                                      np.array([node_idx - edge[1],
+                                      np.array([node_idx - size[1],
                                                 node_idx])[None],
                                       axis=0)  # Row link
+                if j > 0:
                     links = np.append(links,
                                       np.array([node_idx - 1, node_idx])[None],
                                       axis=0)  # Column linke
@@ -120,7 +122,7 @@ def add_sector(sector, dvr: Wannier, Nsite, E, W, parity):
 
 
 def two_site_TB(dvr: Wannier):
-    lattice = (2)
+    lattice = np.array([2], dtype=int)
     Nsite = np.prod(np.array(lattice))
     dvr.update_lattice(lattice)
     E, W, parity = Wannier_eig_basis(dvr)
@@ -129,6 +131,7 @@ def two_site_TB(dvr: Wannier):
     U = parity_transfm(dvr)
     block_boundary = 0  # For 2-site
     # B = <Delta_i|Delta_j>_B, where _B means integration only over the block of local site
+    # TODO: make the entire space divided into blocks, and correspondingly the identity matrix is divided into different projects B
     Bdiag = np.ones(2 * dvr.n[i] + 1)
     x = np.arange(-dvr.n[i], dvr.n[i] + 1) * dvr.dx[i]
     Bdiag[x > block_boundary] = 0

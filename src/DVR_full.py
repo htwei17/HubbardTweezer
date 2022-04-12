@@ -316,46 +316,46 @@ def H_mat(DVR: DVR):
     return H
 
 
-def H_solver(DVR: DVR, k=10) -> tuple[np.ndarray, np.ndarray]:
+def H_solver(dvr: DVR, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
     # Solve Hamiltonian matrix
 
-    if DVR.sparse:
+    if dvr.sparse:
         print(
             "H_op: n={} dx={}w p={} {} sparse diagonalization is enabled. Lowest {} states are to be calculated."
-            .format(DVR.n[DVR.nd], DVR.dx[DVR.nd], DVR.p[DVR.nd], DVR.model,
+            .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
                     k))
 
-        T = Tmat(DVR)
-        V, no = Vmat(DVR)
+        T = Tmat(dvr)
+        V, no = Vmat(dvr)
         print("H_op: n={} dx={}w p={} {} operator constructed.".format(
-            DVR.n[DVR.nd], DVR.dx[DVR.nd], DVR.p[DVR.nd], DVR.model))
+            dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model))
 
         def applyH(psi):
-            return H_op(DVR, T, V, no, psi)
+            return H_op(dvr, T, V, no, psi)
 
         t0 = time()
         N = np.product(no)
         H = LinearOperator((N, N), matvec=applyH)
-        if DVR.absorber:
+        if dvr.absorber:
             E, W = sla.eigs(H, k, which='SA')
         else:
             E, W = sla.eigsh(H, k, which='SA')
     else:
         # avg factor is used to control the time average potential strength
-        H = H_mat(DVR)
+        H = H_mat(dvr)
         # [E, W] = sla.eigsh(H, which='SA')
         t0 = time()
-        if DVR.absorber:
+        if dvr.absorber:
             E, W = la.eig(H)
         else:
             E, W = la.eigh(H)
 
     t1 = time()
 
-    if DVR.avg > 0:
+    if dvr.avg > 0:
         print('H_solver: {} Hamiltonian solved. Time spent: {:.2f}s.'.format(
-            DVR.model, t1 - t0))
-    elif DVR.avg == 0:
+            dvr.model, t1 - t0))
+    elif dvr.avg == 0:
         print(
             'H_solver: free particle Hamiltonian solved. Time spent: {:.2f}s.'.
             format(t1 - t0))
