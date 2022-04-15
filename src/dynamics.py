@@ -15,14 +15,14 @@ class dynamics(DVR):
         super().update_n(n, R0)
 
     def __init__(self,
-                 N=10,
+                 N: int = 10,
                  R0: np.ndarray = 3 * np.array([1, 1, 2.4]),
                  freq_list: np.ndarray = np.arange(20, 200, 20),
                  time=(1000.0, 0),
                  avg=1,
                  dim=3,
                  model='Gaussian',
-                 trap=(1.0452E2, 1E-6),
+                 trap=(1.0452E2, 1000),
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
@@ -30,7 +30,7 @@ class dynamics(DVR):
                  symmetry=False,
                  absorber=False,
                  ab_param=(57.04, 1)) -> None:
-        self.R0 = R0.copy()
+        # self.R0 = R0.copy()
         # if __debug__:
         #     print(R0)
         print("param_set: model is {} potential.".format(model))
@@ -255,6 +255,7 @@ def cos_func(t, T0=0.01):
     # f = 1 / (np.exp(-t / T0) + 1) * 1 / (np.exp((t - 0.5) / T0) + 1)
     # f += 1 / (np.exp(-(t - 1) / T0) + 1) * 1 / (np.exp((t - 1.5) / T0) + 1)
     return (1 + np.cos(2 * np.pi * t)) / 2
+
 
 def sqr_func(t: np.ndarray) -> float:
     if isinstance(t, Iterable):

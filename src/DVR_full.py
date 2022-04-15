@@ -19,6 +19,7 @@ Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
 amu = 1822.89  # atomic mass, in unit of electron mass
 hb = 1  # Reduced Planck const
 l = 780E-9 / a0  # 780nm, light wavelength
+# l = 707E-9 / a0  # 707nm, light wavelength
 
 dim = 3  # space dimension
 
@@ -41,13 +42,14 @@ class DVR:
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]
         self.update_ab()
 
-    # def update_R0(self, R0: np.ndarray, dx: np.ndarray):
-    #     self.R0 = R0.copy()
-    #     self.dx = dx.copy()
-    #     self.nd = R0 != 0
-    #     self.dx[np.invert(self.nd)] = 0
-    #     self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
-    #     self.update_ab()
+    def update_R0(self, R0: np.ndarray, dx: np.ndarray):
+        self.R0 = R0.copy()
+        self.dx = dx.copy()
+        self.nd = R0 != 0
+        self.n[self.nd == 0] = 0
+        self.dx[self.nd == 0] = 0
+        self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
+        self.update_ab()
 
     def update_ab(self):
         print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
@@ -66,12 +68,16 @@ class DVR:
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
             print('DVR: R={}w is set.'.format(self.R[self.nd]))
 
+    def update_p(self, p):
+        self.p = p
+        self.init = get_init(self.n, p)
+
     def __init__(self,
                  n: np.ndarray,
                  R0: np.ndarray,
                  avg=1,
                  model='Gaussian',
-                 trap=(104.52, 1E-6),
+                 trap=(104.52, 1000),
                  symmetry: bool = False,
                  absorber: bool = False,
                  ab_param=(57.04, 1),
@@ -108,11 +114,12 @@ class DVR:
         if model == 'Gaussian':
             # Experiment parameters in atomic units
             self.m = 6.015122 * amu  # Lithium-6 atom mass, in unit of electron mass
+            # self.m = 87 * amu  # Rubidium-87 atom mass, in unit of electron mass
 
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
-            self.V0_SI = trap[0] * self.kHz_2p * hb  # Input in unit of kHz
+            self.V0_SI = trap[0] * self.kHz_2p * hb  # Input is in unit of kHz
             self.w = trap[
-                1] / a0  # Input in unit of meter, converted to Bohr radius
+                1] * 1E-9 / a0  # Input in unit of nm, converted to Bohr radius
 
             self.V0 = self.V0_SI / Eha  # potential depth in unit of Hartree energy
             # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
@@ -188,29 +195,30 @@ def Vmat(dvr: DVR):
     #       potential(x, y, z) is a function handle to be processed as potential function for solving
     x = []
     for i in range(dim):
-        x.append(np.arange(dvr.init[i], dvr.n[i] + 1) * dvr.dx[i])
+        x.append(np.arange(dvr.init[i], dvr.n[i] + 1) *
+                 dvr.dx[i])  # In unit of w
     X = np.meshgrid(*x, indexing='ij')
     # 3 index tensor V(x, y, z)
     V = dvr.avg * dvr.Vfun(*X)
-    if dvr.absorber:  # add absorption layer
-        V = V.astype(complex) + dvr.Vabs(X[0], X[1], X[2])
+    if dvr.absorber:  # add absorber
+        V = V.astype(complex) + dvr.Vabs(*X)
     no = dvr.n + 1 - dvr.init
     # V * identity rank-6 tensor
     if not dvr.sparse:
         V = np.diag(V.reshape(-1))
-        V = V.reshape(np.concatenate((no, no)))
+        V = V.reshape(*no, *no)
     return V, no
 
 
 def psi(n, dx, W, x, p=0) -> np.ndarray:
     init = get_init(n, p)
-    V = np.sum(W.reshape(*(np.append(n + 1 - init, -1))), axis=(
-        1, 2
-    ))  # Sum over y, z index to get y=z=0 cross section of the wavefunction
-    xn = np.arange(init[0], n[0] + 1)[None] * dx
-    W = np.sinc((x - xn) / dx)
+    V = np.sum(
+        W.reshape(*(np.append(n + 1 - init, -1))), axis=1
+    )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
+    xn = np.arange(init, n + 1)[None] * dx
+    W = np.sinc((x[:, None] - xn) / dx)
     if p != 0:
-        W += p * np.sinc((x + xn) / dx)
+        W += p * np.sinc((x[:, None] + xn) / dx)
     W /= np.sqrt(2)
     if p == 1:
         W[:, 0] /= np.sqrt(2)
@@ -255,7 +263,7 @@ def Tmat(dvr: DVR) -> np.ndarray:
     T0 = []
     for i in range(dim):
         delta.append(np.eye(dvr.n[i] + 1 - dvr.init[i]))  # eg. delta_xx'
-        if dvr.n[i] > 0:
+        if dvr.n[i]:
             T0.append(Tmat_1d(dvr.n[i], dvr.dx[i] * dvr.w, dvr.mtV0,
                               dvr.p[i]))  # append p-sector
         # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
@@ -279,11 +287,11 @@ def Tmat(dvr: DVR) -> np.ndarray:
         return T
 
 
-def H_op(DVR: DVR, T, V, no, psi0):
+def H_op(dvr: DVR, T, V, no, psi0):
     # Define Hamiltonian operator for sparse solver
 
-    DVR.p *= DVR.n != 0
-    DVR.dx *= DVR.n != 0
+    dvr.p *= dvr.n != 0
+    dvr.dx *= dvr.n != 0
 
     psi0 = psi0.reshape(*no)
     psi = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
@@ -293,30 +301,30 @@ def H_op(DVR: DVR, T, V, no, psi0):
     return psi.reshape(-1)
 
 
-def H_mat(DVR: DVR):
+def H_mat(dvr: DVR):
     # Construct Hamiltonian matrix
 
-    DVR.p *= DVR.n != 0
-    DVR.dx *= DVR.n != 0
+    dvr.p *= dvr.n != 0
+    dvr.dx *= dvr.n != 0
 
     # np.set_printoptions(precision=2, suppress=True)
-    print("H_mat: n={} dx={}w p={} {} starts.".format(DVR.n[DVR.nd],
-                                                      DVR.dx[DVR.nd],
-                                                      DVR.p[DVR.nd],
-                                                      DVR.model))
-    T = Tmat(DVR)
-    V, no = Vmat(DVR)
+    print("H_mat: n={} dx={}w p={} {} starts.".format(dvr.n[dvr.nd],
+                                                      dvr.dx[dvr.nd],
+                                                      dvr.p[dvr.nd],
+                                                      dvr.model))
+    T = Tmat(dvr)
+    V, no = Vmat(dvr)
     H = T + V
     del T, V
     N = np.prod(no)
     H = H.reshape((N, N))
-    if not DVR.absorber:
+    if not dvr.absorber:
         H = (H + H.T.conj()) / 2
     print("H_mat: H matrix memory usage: {:.2f} MiB.".format(H.nbytes / 2**20))
     return H
 
 
-def H_solver(dvr: DVR, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
+def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
     # Solve Hamiltonian matrix
 
     if dvr.sparse:
@@ -336,19 +344,26 @@ def H_solver(dvr: DVR, k: int = 10) -> tuple[np.ndarray, np.ndarray]:
         t0 = time()
         N = np.product(no)
         H = LinearOperator((N, N), matvec=applyH)
+
+        if k <= 0:
+            k = 10
         if dvr.absorber:
+            print('H_solver: diagonalize sparse non-hermitian matrix.')
             E, W = sla.eigs(H, k, which='SA')
         else:
+            print('H_solver: diagonalize sparse hermitian matrix.')
             E, W = sla.eigsh(H, k, which='SA')
     else:
         # avg factor is used to control the time average potential strength
         H = H_mat(dvr)
-        # [E, W] = sla.eigsh(H, which='SA')
         t0 = time()
         if dvr.absorber:
             E, W = la.eig(H)
         else:
             E, W = la.eigh(H)
+        if k > 0:
+            E = E[:k]
+            W = W[:, :k]
 
     t1 = time()
 
