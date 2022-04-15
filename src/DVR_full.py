@@ -19,7 +19,6 @@ Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
 amu = 1822.89  # atomic mass, in unit of electron mass
 hb = 1  # Reduced Planck const
 l = 780E-9 / a0  # 780nm, light wavelength
-# l = 707E-9 / a0  # 707nm, light wavelength
 
 dim = 3  # space dimension
 
@@ -114,7 +113,7 @@ class DVR:
         if model == 'Gaussian':
             # Experiment parameters in atomic units
             self.m = 6.015122 * amu  # Lithium-6 atom mass, in unit of electron mass
-            # self.m = 87 * amu  # Rubidium-87 atom mass, in unit of electron mass
+            self.m = 87 * amu  # Rubidium-87 atom mass, in unit of electron mass
 
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
             self.V0_SI = trap[0] * self.kHz_2p * hb  # Input is in unit of kHz
@@ -126,6 +125,7 @@ class DVR:
 
             self.mtV0 = self.m * self.V0
             self.zR = np.pi * self.w / l  # ~4000nm, Rayleigh range, in unit of waist
+            self.zR = 2.17E3 / trap[1]  # PRA parameter, in unit of waist
 
             self.Nmax = np.array([20, 20, 20])  # Max number of grid points
 

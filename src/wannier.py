@@ -18,7 +18,7 @@ import numpy.linalg as la
 
 class Wannier(DVR):
 
-    def update_lattice(self, lattice: np.ndarray, lc=(ax, ay)):
+    def update_lattice(self, lattice: np.ndarray, lc=(1520, 1690)):
         # graph : each line represents coordinate (x, y) of one lattice site
         self.lattice = lattice.copy()
         self.graph, self.links = lattice_graph(lattice)
@@ -43,7 +43,7 @@ class Wannier(DVR):
             lattice: np.ndarray = np.array(
                 [2], dtype=int),  # Square lattice dimensions
             lc=(1520, 1690),  # Lattice constant, in unit of nm
-            ascatt=200,  # Scattering length, in unit of Bohr radius
+            ascatt=400,  # Scattering length, in unit of Bohr radius
             avg=1,
             dim: int = 3,
             model='Gaussian',
@@ -133,7 +133,6 @@ def eigen_basis(dvr: Wannier):
                                       parity)  # [1 -1] sector
             E, W, parity = add_sector([-1, -1], dvr, E, W,
                                       parity)  # [-1 -1] sector
-
         # Sort everything by energy, only keetp lowest Nsite states
         idx = np.argsort(E)[:dvr.Nsite]
         E = E[idx]
@@ -252,8 +251,10 @@ def tight_binding(dvr: Wannier):
     return np.real(mu), abs(t)
 
 
-def inteaction(dvr: Wannier, U, W, parity):
-    T = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
+def interaction(dvr: Wannier, U, W, parity: np.ndarray):
+    p = parity.copy()
+    p = np.pad(p, pad_width=(0, 1), constant_values=1)
+    integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     for i in range(dvr.Nsite):
         Wi = W[i].conj()
         for j in range(dvr.Nsite):
@@ -263,12 +264,12 @@ def inteaction(dvr: Wannier, U, W, parity):
                 for l in range(dvr.Nsite):
                     Wl = W[l]
                     if dvr.symmetry:
-                        p_ijkl = np.concatenate((parity[i, :], parity[j, :],
-                                                 parity[k, :], parity[l, :]),
+                        p_ijkl = np.concatenate((p[i, :][None], p[j, :][None],
+                                                 p[k, :][None], p[l, :][None]),
                                                 axis=0)
                         pqrs = np.prod(p_ijkl, axis=0)
                         # Cancel n = 0 column for any p = -1 in one direction
-                        nlen = dvr.n
+                        nlen = dvr.n.copy()
                         # Mark which dimension has n=0 basis
                         line0 = np.all(p_ijkl != -1, axis=0)
                         nlen[line0] += 1
@@ -276,23 +277,28 @@ def inteaction(dvr: Wannier, U, W, parity):
                         pref = (1 + pqrs) / 4 * pref0  # prefactor of n>0 lines
 
                         for d in range(dim):
-                            f = pref[d] * np.ones(nlen[d])
-                            if line0[d]:
+                            f = pref[d] * np.ones(Wl.shape[d])
+                            if Wl.shape[d] > dvr.n[d]:
                                 f[0] = pref0[d]
                             idx = np.ones(dim, dtype=int)
                             idx[d] = len(f)
                             f = f.reshape(idx)
                             Wl = f * Wl
-                        T[i, j, k,
+                        integrl[i, j, k,
                           l] = contract('ijk,ijk,ijk,ijk', pick(Wi, nlen),
                                         pick(Wj, nlen), pick(Wk, nlen),
                                         pick(Wl, nlen))
                     else:
-                        T[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi, Wj, Wk,
+                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi, Wj, Wk,
                                                  Wl)
 
+    # Bands are degenerate, only differ by spin index, so they share the same set of Wannier functions
+    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U, integrl)
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
-    return u * V
+    Uint_onsite = np.zeros(dvr.Nsite)
+    for i in range(dvr.Nsite):
+        Uint_onsite[i] = u * Uint[i,i,i,i]
+    return Uint_onsite
 
 
 def pick(W, nlen):
