@@ -254,6 +254,7 @@ def tight_binding(dvr: Wannier):
 def interaction(dvr: Wannier, U, W, parity: np.ndarray):
     p = parity.copy()
     p = np.pad(p, pad_width=(0, 1), constant_values=1)
+    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     for i in range(dvr.Nsite):
         Wi = W[i].conj()
@@ -284,24 +285,27 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
                             idx[d] = len(f)
                             f = f.reshape(idx)
                             Wl = f * Wl
-                        integrl[i, j, k,
-                          l] = contract('ijk,ijk,ijk,ijk', pick(Wi, nlen),
-                                        pick(Wj, nlen), pick(Wk, nlen),
-                                        pick(Wl, nlen))
+                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
+                                                       pick(Wi, nlen),
+                                                       pick(Wj, nlen),
+                                                       pick(Wk, nlen),
+                                                       pick(Wl, nlen))
                     else:
-                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi, Wj, Wk,
-                                                 Wl)
+                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi,
+                                                       Wj, Wk, Wl)
 
-    # Bands are degenerate, only differ by spin index, so they share the same set of Wannier functions
-    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U, integrl)
+    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
+                    integrl)
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
     Uint_onsite = np.zeros(dvr.Nsite)
     for i in range(dvr.Nsite):
-        Uint_onsite[i] = u * Uint[i,i,i,i]
+        Uint_onsite[i] = u * Uint[i, i, i, i]
     return Uint_onsite
 
 
 def pick(W, nlen):
+    # Truncate matrix to only n>0 columns
     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
 
 
