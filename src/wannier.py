@@ -43,7 +43,9 @@ class Wannier(DVR):
             lattice: np.ndarray = np.array(
                 [2], dtype=int),  # Square lattice dimensions
             lc=(1520, 1690),  # Lattice constant, in unit of nm
-            ascatt=400,  # Scattering length, in unit of Bohr radius
+            atom=6.015122,  # Atom mass, in amu
+            laser=780,  # 780nm, laser wavelength
+            ascatt=560,  # Scattering length, in unit of Bohr radius
             avg=1,
             dim: int = 3,
             model='Gaussian',
@@ -57,8 +59,8 @@ class Wannier(DVR):
         self.scatt_len = ascatt
         n = np.zeros(3, dtype=int)
         n[:dim] = N
-        super().__init__(n, R0, avg, model, trap, symmetry, absorber, ab_param,
-                         sparse)
+        super().__init__(n, R0, avg, model, trap, atom, laser, symmetry,
+                         absorber, ab_param, sparse)
 
         self.update_lattice(lattice, lc)
 
@@ -300,7 +302,7 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
     Uint_onsite = np.zeros(dvr.Nsite)
     for i in range(dvr.Nsite):
-        Uint_onsite[i] = u * Uint[i, i, i, i]
+        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
     return Uint_onsite
 
 

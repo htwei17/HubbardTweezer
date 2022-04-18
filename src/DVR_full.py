@@ -18,7 +18,7 @@ a0 = 5.29E-11  # Bohr radius, in unit of meter
 Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
 amu = 1822.89  # atomic mass, in unit of electron mass
 hb = 1  # Reduced Planck const
-l = 780E-9 / a0  # 780nm, light wavelength
+# l = 780E-9 / a0  # 780nm, light wavelength
 
 dim = 3  # space dimension
 
@@ -71,16 +71,19 @@ class DVR:
         self.p = p
         self.init = get_init(self.n, p)
 
-    def __init__(self,
-                 n: np.ndarray,
-                 R0: np.ndarray,
-                 avg=1,
-                 model='Gaussian',
-                 trap=(104.52, 1000),
-                 symmetry: bool = False,
-                 absorber: bool = False,
-                 ab_param=(57.04, 1),
-                 sparse: bool = False) -> None:
+    def __init__(
+            self,
+            n: np.ndarray,
+            R0: np.ndarray,
+            avg=1,
+            model='Gaussian',
+            trap=(104.52, 1000),
+            atom=6.015122,  # Atom mass, in amu. Default Lithium-6
+            laser=780,  # 780nm, laser wavelength
+            symmetry: bool = False,
+            absorber: bool = False,
+            ab_param=(57.04, 1),
+            sparse: bool = False) -> None:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of waist
         self.R = R0.copy()  # Total region size, R = R0 + LI
@@ -112,9 +115,8 @@ class DVR:
 
         if model == 'Gaussian':
             # Experiment parameters in atomic units
-            self.m = 6.015122 * amu  # Lithium-6 atom mass, in unit of electron mass
-            self.m = 87 * amu  # Rubidium-87 atom mass, in unit of electron mass
-
+            self.m = atom * amu  # Atom mass, in unit of electron mass
+            self.l = laser * 1E-9 / a0  # Laser wavelength, in unit of Bohr radius
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
             self.V0_SI = trap[0] * self.kHz_2p * hb  # Input is in unit of kHz
             self.w = trap[
@@ -124,8 +126,10 @@ class DVR:
             # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
 
             self.mtV0 = self.m * self.V0
-            self.zR = np.pi * self.w / l  # ~4000nm, Rayleigh range, in unit of waist
-            self.zR = 2.17E3 / trap[1]  # PRA parameter, in unit of waist
+            if len(trap) < 3:
+                self.zR = np.pi * self.w / self.l  # ~4000nm, Rayleigh range, in unit of waist
+            else:
+                self.zR = trap[2] / trap[1]  # Rayleigh range input by hand
 
             self.Nmax = np.array([20, 20, 20])  # Max number of grid points
 
