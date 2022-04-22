@@ -5,6 +5,7 @@ from numpy import double, dtype
 from opt_einsum import contract
 from pyrsistent import get_in
 from positify import positify
+from scipy.integrate import romb
 
 import sparse
 import torch
@@ -265,20 +266,49 @@ def tight_binding(dvr: Wannier):
 
 
 def interaction(dvr: Wannier, U, W, parity: np.ndarray):
-    p = parity.copy()
-    p = np.pad(p, pad_width=(0, 1), constant_values=1)
-    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
-    integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
-    intgrl_mat(dvr, W, p, integrl) # np.ndarray is global variable
-    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
-    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
-                    integrl)
+    p = np.pad(parity, pad_width=((0, 0), (0, 1)), constant_values=1)
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
-    Uint_onsite = np.zeros(dvr.Nsite)
-    for i in range(dvr.Nsite):
-        print(np.real(Uint[i, i, i, i]) * np.sqrt(2 * np.pi)**dvr.dim)
-        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
-    return Uint_onsite
+    # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
+    # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
+    # intgrl_mat(dvr, W, p, integrl)  # np.ndarray is global variable
+    # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    # Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
+    #                 integrl)
+    # Uint_onsite = np.zeros(dvr.Nsite)
+    # for i in range(dvr.Nsite):
+    #     print(np.real(Uint[i, i, i, i]) * np.sqrt(2 * np.pi)**dvr.dim)
+    #     Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
+    # return Uint_onsite
+
+    x = []
+    dx = []
+    for i in range(dim):
+        if dvr.nd[i]:
+            x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], 129))
+            dx.append(x[i][1] - x[i][0])
+        else:
+            x.append(np.array([0]))
+            dx.append(0)
+    V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
+    for i in range(p.shape[0]):
+        V = np.append(V,
+                      psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., None],
+                      axis=dim)
+        print('{}-th Wannier function finished.'.format(i))
+    wannier = abs(V @ U)**4
+    Uint_onsite = intgrl3d(dx, wannier)
+    print(np.real(Uint_onsite) * np.sqrt(2 * np.pi)**dvr.dim)
+    # print(np.real(Uint_onsite))
+    return u * Uint_onsite
+
+
+def intgrl3d(dx, integrand):
+    for i in range(dim):
+        if dx[i] > 0:
+            integrand = romb(integrand, dx[i], axis=0)
+        else:
+            integrand = integrand[0, :]
+    return integrand
 
 
 def intgrl_mat(dvr, W, p, integrl):
@@ -330,13 +360,13 @@ def pick(W, nlen):
     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
 
 
-def wannier_func(x, dvr: Wannier, W, U, parity):
-    V = np.array([]).reshape(len(x), 0)
+def wannier_func(x, y, z, dvr: Wannier, W, U, parity):
+    V = np.array([]).reshape(len(x), len(y), len(z), 0)
     for i in range(parity.shape[0]):
+        p = np.concatenate((parity[i], np.array([1])))
         V = np.append(V,
-                      psi(dvr.n[0], dvr.dx[0], W[i], x,
-                          parity[i, 0]).reshape(-1, 1),
-                      axis=1)
+                      psi(dvr.n, dvr.dx, W[i], x, y, z, p)[..., None],
+                      axis=dim)
     return V @ U
 
 

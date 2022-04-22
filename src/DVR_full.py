@@ -220,30 +220,26 @@ def psi(n, dx, W, x, y, z, p=np.zeros(dim, dtype=int)) -> np.ndarray:
     # V = np.sum(
     #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
     # )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
-    X = np.meshgrid(x, y, z, indexing='ij')
+    deltax = dx.copy()
+    nd = deltax == 0
+    deltax[nd] = 1
     xn = [np.arange(init[i], n[i] + 1) for i in range(dim)]
-    Xn = np.meshgrid(*xn, indexing='ij')
-    Xn = [Xn[i][None, None, None] for i in range(dim)]
-    V = delta(dx, p, X, Xn)
-    psi = 1 / np.sqrt(dx) * contract('ijklmn,lmn', V, W)
+    V = delta(p, [x / deltax[0], y / deltax[1], z / deltax[2]], xn)
+    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmn', *V, W)
     return psi
 
 
-def delta(dx, p, X, Xn):
-    # Symmetrized sinc DVR basis funciton
-    W = 1
+def delta(p, x, xn):
+    # Symmetrized sinc DVR basis funciton, x, y, z are in unit of dx
+    W = []
     for i in range(dim):
-        Wx = np.sinc(X[i] / dx[i] - Xn[i])
+        Wx = np.sinc(x[i][:, None] - xn[i][None])
         if p[i] != 0:
-            Wx += p[i] * np.sinc(X[i] / dx[i] + Xn[i])
-        Wx /= np.sqrt(2)
-        if p[i] == 1:
-            idx = np.roll(np.arange(2 * dim), -i - dim)
-            Wx = np.transpose(Wx, idx)
-            Wx[0, ...] /= np.sqrt(2)
-            idx = np.roll(np.arange(2 * dim), i + dim)
-            Wx = np.transpose(Wx, idx)
-        W *= Wx
+            Wx += p[i] * np.sinc(x[i][:, None] + xn[i][None])
+            Wx /= np.sqrt(2)
+            if p[i] == 1:
+                Wx[:, 0] /= np.sqrt(2)
+        W.append(Wx)
     return W
 
 
