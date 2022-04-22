@@ -416,7 +416,7 @@ def plot_lifetime(N0_list,
         if show_fgr:
             ax = expt_data(ax)
             ax = fgr(ax, 1, factor=1E3)  # dvr.dim)
-            ax = fgr(ax, 3)  # dvr.dim)
+            ax = fgr(ax, 3, factor=1E3)  # dvr.dim)
         ax.grid(visible=True)
         ax.set_xlabel('$f_s$ (kHz)')
         ax.set_ylabel('$\\tau$ (s)')
@@ -566,25 +566,27 @@ def expt_data(ax: plt.Axes):
     return ax
 
 
-def fgr(ax: plt.Axes, dim: int = 3, factor=1E10) -> plt.Axes:
+def fgr(ax: plt.Axes, dim: int = 3, factor=1) -> plt.Axes:
     w = 1E-6
+    zR = 4E-6
     m = 6.015122 * 1.66E-27
     h = 6.626E-34
     hb = h / (2 * np.pi)
-    hf = np.array([26.54, 26.54, 4.66])
-    f = 2 * np.pi * hf[:dim] * 1E3 / np.sqrt(
-        2
-    )  # THe time-avged potential is V/2, so omega has a factor of 1/sqrt(2)
     V = 104.52E3 * 2 * np.pi  # The perturbed V is V
+    # The time-avged potential is V/2
+    f = np.sqrt(hb * V / m) * np.array(
+        [np.sqrt(2) / w, np.sqrt(2) / w, 1 / zR])[:dim]
     l = np.sqrt(hb / (m * f))
     Eg = np.sum(f) / 2 - V / 2
-    print('Eg=', Eg)
+    # print('V=', V * 1E-3)
+    # print('f=', *(f * 1E-3))
+    print('Eg=', Eg * 1E-3 / (2 * np.pi))
 
     if dim == 3:
         w0 = 2 / (f * np.sqrt(2)) * np.sqrt(hb * V / m)
         print('w0=', *w0)
         leff2 = 1 / (4 / w0**2 + 1 / l**2)
-        print('leff2=', *leff2)
+        print('leff=', *np.sqrt(leff2))
 
         def fgr_func(freq):
             if not isinstance(freq, Iterable):
@@ -593,15 +595,15 @@ def fgr(ax: plt.Axes, dim: int = 3, factor=1E10) -> plt.Axes:
             kw = omega + Eg
             kf = np.sqrt(2 * m * kw / hb)
 
-            tau = 2 * kw * np.sqrt(leff2[-1] - leff2[0]) / (
-                V**2 * np.pi * kf**3) * np.prod(l / leff2)
+            tau = hb * np.sqrt(leff2[-1] - leff2[0]) / (V**2 * np.pi *
+                                                        m) * np.prod(l / leff2)
             tau *= np.exp(2 * m * kw * leff2[0] / hb)
             return tau
 
     elif dim == 1:
         print('w=', w)
         leff2 = 1 / (4 / w**2 + 1 / l**2)
-        print('leff2=', *leff2)
+        print('leff=', *np.sqrt(leff2))
 
         def fgr_func(freq):
             if not isinstance(freq, Iterable):

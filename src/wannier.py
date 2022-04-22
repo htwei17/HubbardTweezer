@@ -1,4 +1,5 @@
 import imp
+import nis
 from typing import Iterable
 from numpy import double, dtype
 from opt_einsum import contract
@@ -22,7 +23,10 @@ class Wannier(DVR):
         # graph : each line represents coordinate (x, y) of one lattice site
         self.lattice = lattice.copy()
         self.graph, self.links = lattice_graph(lattice)
-        self.lc = np.array(lc) * 1E-9 / (a0 * self.w)  # In unit of w
+        if self.model == 'Gaussian':
+            self.lc = np.array(lc) * 1E-9 / (a0 * self.w)  # In unit of w
+        elif self.model == 'sho':
+            self.lc = np.array(lc)
         self.Nsite = np.prod(self.lattice)
 
         dx = np.zeros(self.n.shape)
@@ -57,6 +61,7 @@ class Wannier(DVR):
 
         self.N = N
         self.scatt_len = ascatt
+        self.dim = dim
         n = np.zeros(3, dtype=int)
         n[:dim] = N
         super().__init__(n, R0, avg, model, trap, atom, laser, symmetry,
@@ -68,9 +73,12 @@ class Wannier(DVR):
         V = 0
         # TODO: euqlize trap depths for n>3 traps?
         # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
-        for coord in self.graph:
-            shift = coord * self.lc
-            V += super().Vfun(x - shift[0], y - shift[1], z)
+        if self.model == 'sho' and self.Nsite == 2:
+            V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
+        else:
+            for coord in self.graph:
+                shift = coord * self.lc
+                V += super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
 
@@ -227,17 +235,20 @@ def cost_func(U, R) -> float:
 def optimization(dvr: Wannier, E, W, parity):
     R = multiTensor(cost_matrix(dvr, W, parity))
 
-    manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
+    if dvr.Nsite > 1:
+        manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
 
-    @pymanopt.function.pytorch(manifold)
-    def cost(point: torch.Tensor):
-        return cost_func(point, R)
+        @pymanopt.function.pytorch(manifold)
+        def cost(point: torch.Tensor):
+            return cost_func(point, R)
 
-    problem = pymanopt.Problem(manifold=manifold, cost=cost)
-    solver = pymanopt.solvers.SteepestDescent()
-    solution = solver.solve(problem)
+        problem = pymanopt.Problem(manifold=manifold, cost=cost)
+        solver = pymanopt.solvers.SteepestDescent()
+        solution = solver.solve(problem)
 
-    solution = positify(solution)
+        solution = positify(solution)
+    elif dvr.Nsite == 1:
+        solution = np.ones((1, 1))
 
     A = solution.conj().T @ (
         E[:, None] * solution
@@ -258,6 +269,20 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
     p = np.pad(p, pad_width=(0, 1), constant_values=1)
     # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
+    intgrl_mat(dvr, W, p, integrl) # np.ndarray is global variable
+    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
+                    integrl)
+    u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
+    Uint_onsite = np.zeros(dvr.Nsite)
+    for i in range(dvr.Nsite):
+        print(np.real(Uint[i, i, i, i]) * np.sqrt(2 * np.pi)**dvr.dim)
+        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
+    return Uint_onsite
+
+
+def intgrl_mat(dvr, W, p, integrl):
+    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     for i in range(dvr.Nsite):
         Wi = W[i].conj()
         for j in range(dvr.Nsite):
@@ -276,17 +301,20 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
                         # Mark which dimension has n=0 basis
                         line0 = np.all(p_ijkl != -1, axis=0)
                         nlen[line0] += 1
-                        pref0 = 1 / dvr.dx  # prefactor of n=0 line
-                        pref = (1 + pqrs) / 4 * pref0  # prefactor of n>0 lines
-
+                        # prefactor of n=0 line
+                        pref0 = np.zeros(dim)
+                        pref0[dvr.nd] = 1 / dvr.dx[dvr.nd]
+                        # prefactor of n>0 lines
+                        pref = (1 + pqrs) / 4 * pref0
                         for d in range(dim):
-                            f = pref[d] * np.ones(Wl.shape[d])
-                            if Wl.shape[d] > dvr.n[d]:
-                                f[0] = pref0[d]
-                            idx = np.ones(dim, dtype=int)
-                            idx[d] = len(f)
-                            f = f.reshape(idx)
-                            Wl = f * Wl
+                            if dvr.nd[d]:
+                                f = pref[d] * np.ones(Wl.shape[d])
+                                if Wl.shape[d] > dvr.n[d]:
+                                    f[0] = pref0[d]
+                                idx = np.ones(dim, dtype=int)
+                                idx[d] = len(f)
+                                f = f.reshape(idx)
+                                Wl = f * Wl
                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
                                                        pick(Wi, nlen),
                                                        pick(Wj, nlen),
@@ -295,15 +323,6 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
                     else:
                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi,
                                                        Wj, Wk, Wl)
-
-    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
-    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
-                    integrl)
-    u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
-    Uint_onsite = np.zeros(dvr.Nsite)
-    for i in range(dvr.Nsite):
-        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
-    return Uint_onsite
 
 
 def pick(W, nlen):

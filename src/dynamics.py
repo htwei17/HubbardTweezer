@@ -27,8 +27,8 @@ class dynamics(DVR):
                  wavefunc=False,
                  realtime=False,
                  smooth=(-1, 10),
-                 symmetry=False,
-                 absorber=False,
+                 symmetry: bool = False,
+                 absorber: bool = False,
                  ab_param=(57.04, 1)) -> None:
         # self.R0 = R0.copy()
         # if __debug__:
@@ -44,7 +44,14 @@ class dynamics(DVR):
         n = np.zeros(3, dtype=int)
         n[:dim] = N
 
-        super().__init__(n, R0, avg, model, trap, symmetry, absorber, ab_param)
+        super().__init__(n,
+                         R0,
+                         avg,
+                         model,
+                         trap,
+                         symmetry=symmetry,
+                         absorber=absorber,
+                         ab_param=ab_param)
         self.freq_list_len = len(freq_list)
         self.step_no = time[0]
         self.stop_time_list = get_stop_time(freq_list, time[1],
@@ -148,9 +155,9 @@ def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
         st = 4E-5 * np.exp(freq_list * 0.085)  # More accurate scaling
-        st = 2.5E-5 * np.exp(
-            freq_list * 0.0954747)  # Legacy scaling to access 3D data
-        st[np.nonzero(freq_list < 39.4)] = 1E-3
+        # st = 2.5E-5 * np.exp(
+        #     freq_list * 0.0954747)  # Legacy scaling to access 3D data
+        # st[np.nonzero(freq_list < 39.4)] = 1E-3
         # if V0_SI > 1.5E5 * 2 * np.pi:
         #     st *= 2
     else:

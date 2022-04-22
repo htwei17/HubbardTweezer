@@ -146,6 +146,7 @@ class DVR:
             self.mtV0 = self.m
             self.V0_SI = 1.0
             self.kHz = 1.0
+            self.kHz_2p = 1.0
 
             print("param_set: trap parameter V0={} w={}".format(
                 self.V0_SI, self.w))
@@ -214,20 +215,36 @@ def Vmat(dvr: DVR):
     return V, no
 
 
-def psi(n, dx, W, x, p=0) -> np.ndarray:
+def psi(n, dx, W, x, y, z, p=np.zeros(dim, dtype=int)) -> np.ndarray:
     init = get_init(n, p)
-    V = np.sum(
-        W.reshape(*(np.append(n + 1 - init, -1))), axis=1
-    )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
-    xn = np.arange(init, n + 1)[None] * dx
-    W = np.sinc((x[:, None] - xn) / dx)
-    if p != 0:
-        W += p * np.sinc((x[:, None] + xn) / dx)
-    W /= np.sqrt(2)
-    if p == 1:
-        W[:, 0] /= np.sqrt(2)
-    psi = 1 / np.sqrt(dx) * W @ V
+    # V = np.sum(
+    #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
+    # )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
+    X = np.meshgrid(x, y, z, indexing='ij')
+    xn = [np.arange(init[i], n[i] + 1) for i in range(dim)]
+    Xn = np.meshgrid(*xn, indexing='ij')
+    Xn = [Xn[i][None, None, None] for i in range(dim)]
+    V = delta(dx, p, X, Xn)
+    psi = 1 / np.sqrt(dx) * contract('ijklmn,lmn', V, W)
     return psi
+
+
+def delta(dx, p, X, Xn):
+    # Symmetrized sinc DVR basis funciton
+    W = 1
+    for i in range(dim):
+        Wx = np.sinc(X[i] / dx[i] - Xn[i])
+        if p[i] != 0:
+            Wx += p[i] * np.sinc(X[i] / dx[i] + Xn[i])
+        Wx /= np.sqrt(2)
+        if p[i] == 1:
+            idx = np.roll(np.arange(2 * dim), -i - dim)
+            Wx = np.transpose(Wx, idx)
+            Wx[0, ...] /= np.sqrt(2)
+            idx = np.roll(np.arange(2 * dim), i + dim)
+            Wx = np.transpose(Wx, idx)
+        W *= Wx
+    return W
 
 
 def kinetic_offdiag(T):
