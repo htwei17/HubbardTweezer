@@ -1,5 +1,3 @@
-import imp
-import nis
 from typing import Iterable
 from numpy import double, dtype
 from opt_einsum import contract
@@ -277,10 +275,11 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
                     integrl)
     Uint_onsite = np.zeros(dvr.Nsite)
     for i in range(dvr.Nsite):
-        print(
-            'Test with analytic calculation',
-            np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
-            np.prod(dvr.hl))
+        if dvr.model == 'sho':
+            print(
+                'Test with analytic calculation',
+                np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
+                np.prod(dvr.hl))
         Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
     return Uint_onsite
 
@@ -301,9 +300,11 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
         print('{}-th Wannier function finished.'.format(i))
     wannier = abs(V @ U)**4
     Uint_onsite = intgrl3d(dx, wannier)
-    print(
-        'Test with analytic calculation',
-        np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim * np.prod(dvr.hl))
+    if dvr.model == 'sho':
+        print(
+            'Test with analytic calculation',
+            np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim *
+            np.prod(dvr.hl))
     # print(np.real(Uint_onsite))
     return u * Uint_onsite
 
