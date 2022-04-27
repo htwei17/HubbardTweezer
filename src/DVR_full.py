@@ -118,7 +118,8 @@ class DVR:
             self.m = atom * amu  # Atom mass, in unit of electron mass
             self.l = laser * 1E-9 / a0  # Laser wavelength, in unit of Bohr radius
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
-            self.V0_SI = trap[0] * self.kHz_2p * hb  # Input is in unit of kHz
+            self.V0_SI = trap[
+                0] * self.kHz_2p * hb  # Input V0 is frequency in unit of kHz, convert to energy in unit of Joule
             self.w = trap[
                 1] * 1E-9 / a0  # Input in unit of nm, converted to Bohr radius
 
@@ -131,22 +132,25 @@ class DVR:
             else:
                 self.zR = trap[2] / trap[1]  # Rayleigh range input by hand
 
-            self.Nmax = np.array([20, 20, 20])  # Max number of grid points
+            # self.Nmax = np.array([20, 20, 20])  # Max number of grid points
+            self.omega = np.sqrt(self.V0_SI / self.m) * np.array(
+                [np.sqrt(2) / self.w,
+                 np.sqrt(2) / self.w, 1 / self.zR])  # Trap frequencies
+            self.hl = np.sqrt(hb /
+                              (self.m * self.omega))  # Trap harmonic lengths
 
             print("param_set: trap parameter V0={}kHz w={}m".format(
                 trap[0], trap[1]))
         elif model == 'sho':
             # Harmonic parameters
-            self.dx0 = 1 / 3 * np.ones(3, dtype=float)
-            self.Nmax = 30
-            self.R0 = self.Nmax * self.dx0
-            self.omega = 1.0
+            self.omega = np.ones(dim)  # Harmonic frequencies
             self.m = 1.0
             self.w = 1.0
             self.mtV0 = self.m
             self.V0_SI = 1.0
             self.kHz = 1.0
             self.kHz_2p = 1.0
+            self.hl = np.sqrt(hb / (self.m * self.omega))  # Harmonic lengths
 
             print("param_set: trap parameter V0={} w={}".format(
                 self.V0_SI, self.w))
@@ -154,6 +158,9 @@ class DVR:
         self.R0 *= self.nd
         self.R *= self.nd
         self.dx *= self.nd
+        self.hl[np.logical_not(
+            self.nd)] = 1  # To cancel effect of any h.l. multiplication
+
         ## Abosorbers
         if absorber:
             self.VI *= self.kHz_2p / self.V0_SI  # Absorption potential strength in unit of V0

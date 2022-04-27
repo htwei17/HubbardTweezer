@@ -32,8 +32,8 @@ class Wannier(DVR):
 
         dx = np.zeros(self.n.shape)
         dx[self.nd] = self.R0[self.nd] / self.n[self.nd]
-        lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), 3)
-        lc = np.resize(self.lc, 3)
+        lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), dim)
+        lc = np.resize(self.lc, dim)
         print('lattice: Full lattice sizes: {}'.format(lattice))
         print('lattice: lattice constants: {}w'.format(lc))
         # Let there be R0's wide outside the edge trap center
@@ -67,7 +67,6 @@ class Wannier(DVR):
         n[:dim] = N
         super().__init__(n, R0, avg, model, trap, atom, laser, symmetry,
                          absorber, ab_param, sparse)
-
         self.update_lattice(lattice, lc)
 
     def Vfun(self, x, y, z):
@@ -132,6 +131,7 @@ def eigen_basis(dvr: Wannier):
 
         dvr.p = np.zeros(dim, dtype=int)
         dvr.p[dvr.nd] = 1  # [1 1 1] sector
+        dvr.p[2] = -1
 
         E = np.array([])
         W = []
@@ -267,18 +267,22 @@ def tight_binding(dvr: Wannier):
 
 def interaction(dvr: Wannier, U, W, parity: np.ndarray):
     p = np.pad(parity, pad_width=((0, 0), (0, 1)), constant_values=1)
+    p[:, 2] = -1
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
-    # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
-    # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
-    # intgrl_mat(dvr, W, p, integrl)  # np.ndarray is global variable
-    # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
-    # Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
-    #                 integrl)
-    # Uint_onsite = np.zeros(dvr.Nsite)
-    # for i in range(dvr.Nsite):
-    #     print(np.real(Uint[i, i, i, i]) * np.sqrt(2 * np.pi)**dvr.dim)
-    #     Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
-    # return Uint_onsite
+    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
+    integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
+    intgrl_mat(dvr, W, p, integrl)  # np.ndarray is global variable
+    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
+                    integrl)
+    Uint_onsite = np.zeros(dvr.Nsite)
+    for i in range(dvr.Nsite):
+        print(
+            'Test with analytic calculation',
+            np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
+            np.prod(dvr.hl))
+        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
+    return Uint_onsite
 
     x = []
     dx = []
@@ -297,7 +301,9 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
         print('{}-th Wannier function finished.'.format(i))
     wannier = abs(V @ U)**4
     Uint_onsite = intgrl3d(dx, wannier)
-    print(np.real(Uint_onsite) * np.sqrt(2 * np.pi)**dvr.dim)
+    print(
+        'Test with analytic calculation',
+        np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim * np.prod(dvr.hl))
     # print(np.real(Uint_onsite))
     return u * Uint_onsite
 
