@@ -4,7 +4,7 @@ from opt_einsum import contract
 from pyrsistent import get_in
 from positify import positify
 from scipy.integrate import romb
-
+import itertools
 import sparse
 import torch
 import autograd
@@ -50,6 +50,7 @@ class Wannier(DVR):
             laser=780,  # 780nm, laser wavelength
             ascatt=560,  # Scattering length, in unit of Bohr radius
             avg=1,
+            band=1,  # Number of bands
             dim: int = 3,
             model='Gaussian',
             trap=(104.52, 1000),
@@ -61,6 +62,7 @@ class Wannier(DVR):
         self.N = N
         self.scatt_len = ascatt
         self.dim = dim
+        self.bands = band
         n = np.zeros(3, dtype=int)
         n[:dim] = N
         super().__init__(n, R0, avg, model, trap, atom, laser, symmetry,
@@ -119,54 +121,78 @@ def lattice_graph(size: np.ndarray):
 
 
 def eigen_basis(dvr: Wannier):
+    k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
         # The code is designed for 1D and 2D lattice, and
         # we always leave z direction to be in even sector.
         # So all sectors are [x x 1] with x collected below.
         # This is because the energy cost to go higher level
         # of z direction is of ~5kHz, way above the bandwidth ~200Hz.
-        # TODO: add support for 3D lattice
 
-        dvr.p = np.zeros(dim, dtype=int)
-        dvr.p[dvr.nd] = 1  # [1 1 1] sector
-        dvr.p[2] = -1
+        p_list = sector(dvr)
+        E_sb = np.array([])
+        W_sb = []
+        p_sb = np.array([], dtype=int).reshape(0, 2)
+        for p in p_list:
+            E_sb, W_sb, p_sb = add_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
-        E = np.array([])
-        W = []
-        parity = np.array([], dtype=int).reshape(0, 2)
-        E, W, parity = add_sector([1, 1], dvr, E, W, parity)  #  [1 1] sector
-        E, W, parity = add_sector([-1, 1], dvr, E, W, parity)  #  [-1 1] sector
-
-        if dvr.lattice.size > 1 and not any(dvr.lattice == 1):  # 2D lattice
-            E, W, parity = add_sector([1, -1], dvr, E, W,
-                                      parity)  # [1 -1] sector
-            E, W, parity = add_sector([-1, -1], dvr, E, W,
-                                      parity)  # [-1 -1] sector
-        # Sort everything by energy, only keetp lowest Nsite states
-        idx = np.argsort(E)[:dvr.Nsite]
-        E = E[idx]
-        W = [W[i] for i in idx]
-        parity = parity[idx, :]
-
+        # Sort everything by energy, only keetp lowest k states
+        idx = np.argsort(E_sb)[:k]
+        E_sb = E_sb[idx]
+        W_sb = [W_sb[i] for i in idx]
+        p_sb = p_sb[idx, :]
     else:
-        E, W = H_solver(dvr, dvr.Nsite)
-        W = [W[:, i] for i in range(dvr.Nsite)]
-        parity = np.zeros((dvr.Nsite, 2))
+        E_sb, W_sb = H_solver(dvr, k)
+        W_sb = [W_sb[:, i] for i in range(k)]
+        p_sb = np.zeros((k, 2))
+
+    E = []
+    W = []
+    parity = []
+    for b in range(dvr.bands):
+        E.append(E_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite])
+        W.append(W_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite])
+        parity.append(p_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite, :])
 
     return E, W, parity
 
 
-def add_sector(sector: np.ndarray, dvr: Wannier, E, W, parity):
-    sec_idx = np.array([True, True, False]) * dvr.nd
+def sector(dvr):
+    # BUild all sectors
+    # x direction
+    if dvr.Nsite == 1:
+        p_tuple = [[1]]
+    else:
+        p_tuple = [[1, -1]]
+    # y direction. Rule out geometry=[n, 1] case
+    if dvr.lattice.size > 1 and not any(dvr.lattice == 1):
+        p_tuple.append([1, -1])
+    else:
+        p_tuple.append([1])
+        # For a general omega_z << omega_x,y case,
+        # the lowest several bands are in
+        # z=1, z=-1, z=1 sector, etc... alternatively
+        # A simplest way to build bands is to simply collect
+        # Nband * Nsite lowest energy states
+        # z direction
+    if dvr.bands == 1:
+        p_tuple.append([1])
+    elif dvr.bands > 1:
+        p_tuple.append([1, -1])
+    p_list = list(itertools.product(*p_tuple))
+    return p_list
+
+
+def add_sector(sector: np.ndarray, dvr: Wannier, k, E, W, parity):
     p = dvr.p.copy()
-    p[sec_idx] = sector[:np.sum(sec_idx)]
+    p[:len(sector)] = sector
     dvr.update_p(p)
 
-    Em, Wm = H_solver(dvr, dvr.Nsite)
+    Em, Wm = H_solver(dvr, k)
     E = np.append(E, Em)
-    W += [Wm[:, i].reshape(dvr.n + 1 - dvr.init) for i in range(dvr.Nsite)]
+    W += [Wm[:, i].reshape(dvr.n + 1 - dvr.init) for i in range(k)]
     # Parity sector marker
-    parity = np.append(parity, np.tile(sector, (dvr.Nsite, 1)), axis=0)
+    parity = np.append(parity, np.tile(sector, (k, 1)), axis=0)
     return E, W, parity
 
 
@@ -232,6 +258,18 @@ def cost_func(U, R) -> float:
 
 
 def optimization(dvr: Wannier, E, W, parity):
+    # Multiband optimization
+    A = []
+    w = []
+    for b in range(dvr.bands):
+        t_ij, w_mu = singleband_optimization(dvr, E[b], W[b], parity[b])
+        A.append(t_ij)
+        w.append(w_mu)
+    return A, w
+
+
+def singleband_optimization(dvr: Wannier, E, W, parity):
+    # Singleband Wannier optimization
     R = multiTensor(cost_matrix(dvr, W, parity))
 
     if dvr.Nsite > 1:
@@ -249,35 +287,49 @@ def optimization(dvr: Wannier, E, W, parity):
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
-    A = solution.conj().T @ (
-        E[:, None] * solution
-    ) * dvr.V0_SI / dvr.kHz_2p  # TB parameter matrix, in unit of kHz
-    return A, solution
+    U = lattice_order(dvr, solution)
+
+    A = U.conj().T @ (
+        E[:, None] *
+        U) * dvr.V0_SI / dvr.kHz_2p  # TB parameter matrix, in unit of kHz
+    return A, U
+
+
+def lattice_order(dvr: Wannier, solution):
+    # Order Wannier functions by lattice site label
+    return U
 
 
 def tight_binding(dvr: Wannier):
     E, W, parity = eigen_basis(dvr)
-    A = optimization(dvr, E, W, parity)
+    A, w = optimization(dvr, E, W, parity)
     mu = np.diag(A)  # Diagonals are mu_i
     t = -(A - np.diag(mu))  # Off-diagonals are t_ij
     return np.real(mu), abs(t)
 
 
 def interaction(dvr: Wannier, U, W, parity: np.ndarray):
-    p = np.pad(parity, pad_width=((0, 0), (0, 1)), constant_values=1)
-    p[:, 2] = -1
+    # Interaction between i band and j band
+    for i in range(dvr.bands):
+        for j in range(dvr.bands):
+            singleband_interaction(dvr, U[i], U[j], W[i], W[j], parity[i],
+                                   parity[j])
+
+
+def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
+                           pj: np.ndarray):
     u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
     # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
-    intgrl_mat(dvr, W, p, integrl)  # np.ndarray is global variable
+    intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
     # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
-    Uint = contract('ia,jb,kc,ld,ijkl->abcd', U.conj(), U.conj(), U, U,
+    Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
                     integrl)
     Uint_onsite = np.zeros(dvr.Nsite)
     for i in range(dvr.Nsite):
         if dvr.model == 'sho':
             print(
-                'Test with analytic calculation',
+                'Test with analytic calculation on {}-th site'.format(i + 1),
                 np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
                 np.prod(dvr.hl))
         Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
@@ -292,21 +344,26 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
         else:
             x.append(np.array([0]))
             dx.append(0)
+    Vi = wannier_func(dvr, Wi, Ui, pi, x)
+    Vj = wannier_func(dvr, Wj, Uj, pj, x)
+    wannier = abs(Vi)**2 * abs(Vj)**2
+    Uint_onsite = intgrl3d(dx, wannier)
+    if dvr.model == 'sho':
+        print(
+            'Test with analytic calculation on {}-th site'.format(i + 1),
+            np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim *
+            np.prod(dvr.hl))
+    return u * Uint_onsite
+
+
+def wannier_func(dvr, W, U, p, x):
     V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
     for i in range(p.shape[0]):
         V = np.append(V,
                       psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., None],
                       axis=dim)
         print('{}-th Wannier function finished.'.format(i))
-    wannier = abs(V @ U)**4
-    Uint_onsite = intgrl3d(dx, wannier)
-    if dvr.model == 'sho':
-        print(
-            'Test with analytic calculation',
-            np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim *
-            np.prod(dvr.hl))
-    # print(np.real(Uint_onsite))
-    return u * Uint_onsite
+    return V @ U
 
 
 def intgrl3d(dx, integrand):
@@ -318,20 +375,21 @@ def intgrl3d(dx, integrand):
     return integrand
 
 
-def intgrl_mat(dvr, W, p, integrl):
+def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
     # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     for i in range(dvr.Nsite):
-        Wi = W[i].conj()
+        Wii = Wi[i].conj()
         for j in range(dvr.Nsite):
-            Wj = W[j].conj()
+            Wjj = Wj[j].conj()
             for k in range(dvr.Nsite):
-                Wk = W[k]
+                Wjk = Wj[k]
                 for l in range(dvr.Nsite):
-                    Wl = W[l]
+                    Wil = Wi[l]
                     if dvr.symmetry:
-                        p_ijkl = np.concatenate((p[i, :][None], p[j, :][None],
-                                                 p[k, :][None], p[l, :][None]),
-                                                axis=0)
+                        p_ijkl = np.concatenate(
+                            (pi[i, :][None], pj[j, :][None], pj[k, :][None],
+                             pi[l, :][None]),
+                            axis=0)
                         pqrs = np.prod(p_ijkl, axis=0)
                         # Cancel n = 0 column for any p = -1 in one direction
                         nlen = dvr.n.copy()
@@ -345,36 +403,26 @@ def intgrl_mat(dvr, W, p, integrl):
                         pref = (1 + pqrs) / 4 * pref0
                         for d in range(dim):
                             if dvr.nd[d]:
-                                f = pref[d] * np.ones(Wl.shape[d])
-                                if Wl.shape[d] > dvr.n[d]:
+                                f = pref[d] * np.ones(Wil.shape[d])
+                                if Wil.shape[d] > dvr.n[d]:
                                     f[0] = pref0[d]
                                 idx = np.ones(dim, dtype=int)
                                 idx[d] = len(f)
                                 f = f.reshape(idx)
-                                Wl = f * Wl
+                                Wil = f * Wil
                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
-                                                       pick(Wi, nlen),
-                                                       pick(Wj, nlen),
-                                                       pick(Wk, nlen),
-                                                       pick(Wl, nlen))
+                                                       pick(Wii, nlen),
+                                                       pick(Wjj, nlen),
+                                                       pick(Wjk, nlen),
+                                                       pick(Wil, nlen))
                     else:
-                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wi,
-                                                       Wj, Wk, Wl)
+                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wii,
+                                                       Wjj, Wjk, Wil)
 
 
 def pick(W, nlen):
     # Truncate matrix to only n>0 columns
     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
-
-
-def wannier_func(x, y, z, dvr: Wannier, W, U, parity):
-    V = np.array([]).reshape(len(x), len(y), len(z), 0)
-    for i in range(parity.shape[0]):
-        p = np.concatenate((parity[i], np.array([1])))
-        V = np.append(V,
-                      psi(dvr.n, dvr.dx, W[i], x, y, z, p)[..., None],
-                      axis=dim)
-    return V @ U
 
 
 def parity_transfm(n: int):
