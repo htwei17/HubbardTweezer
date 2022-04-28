@@ -310,10 +310,12 @@ def tight_binding(dvr: Wannier):
 
 def interaction(dvr: Wannier, U, W, parity: np.ndarray):
     # Interaction between i band and j band
+    Uint = np.zeros((dvr.bands, dvr.bands, dvr.Nsite))
     for i in range(dvr.bands):
         for j in range(dvr.bands):
-            singleband_interaction(dvr, U[i], U[j], W[i], W[j], parity[i],
-                                   parity[j])
+            Uint[i, j, :] = singleband_interaction(dvr, U[i], U[j], W[i], W[j],
+                                                   parity[i], parity[j])
+    return Uint
 
 
 def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
