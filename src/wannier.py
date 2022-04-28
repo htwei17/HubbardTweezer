@@ -32,8 +32,8 @@ class Wannier(DVR):
         dx[self.nd] = self.R0[self.nd] / self.n[self.nd]
         lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
-        print('lattice: Full lattice sizes: {}'.format(lattice))
-        print('lattice: lattice constants: {}w'.format(lc))
+        print(f'lattice: Full lattice sizes: {lattice}')
+        print(f'lattice: lattice constants: {lc}w')
         # Let there be R0's wide outside the edge trap center
         R0 = (lattice - 1) * lc / 2 + self.R0
         R0 *= self.nd
@@ -71,7 +71,7 @@ class Wannier(DVR):
 
     def Vfun(self, x, y, z):
         V = 0
-        # TODO: euqlize trap depths for n>3 traps?
+        # TODO: euqlize trap depths for n>=3 traps
         # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
         if self.model == 'sho' and self.Nsite == 2:
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
@@ -132,7 +132,7 @@ def eigen_basis(dvr: Wannier):
         p_list = sector(dvr)
         E_sb = np.array([])
         W_sb = []
-        p_sb = np.array([], dtype=int).reshape(0, 2)
+        p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
             E_sb, W_sb, p_sb = add_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
@@ -146,13 +146,11 @@ def eigen_basis(dvr: Wannier):
         W_sb = [W_sb[:, i] for i in range(k)]
         p_sb = np.zeros((k, 2))
 
-    E = []
-    W = []
-    parity = []
-    for b in range(dvr.bands):
-        E.append(E_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite])
-        W.append(W_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite])
-        parity.append(p_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite, :])
+    E = [E_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite] for b in range(dvr.bands)]
+    W = [W_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite] for b in range(dvr.bands)]
+    parity = [
+        p_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite, :] for b in range(dvr.bands)
+    ]
 
     return E, W, parity
 
@@ -287,7 +285,7 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
-    U = lattice_order(dvr, solution)
+    U = lattice_order(dvr, W, solution, parity)
 
     A = U.conj().T @ (
         E[:, None] *
@@ -295,9 +293,22 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
     return A, U
 
 
-def lattice_order(dvr: Wannier, solution):
+def lattice_order(dvr: Wannier, W, U, p):
     # Order Wannier functions by lattice site label
-    return U
+    shift = np.zeros((dvr.Nsite, dim))
+    for i in range(dvr.Nsite):
+        shift[i, :2] = dvr.graph[i] * dvr.lc
+        # Slight offset to avoid zero values on z=0 in odd sector
+        shift[i, 2] = 0.25
+    x = [[[shift[i, d]] for d in range(dim)] for i in range(dvr.Nsite)]
+    center_val = np.zeros((dvr.Nsite, dvr.Nsite))
+    for i in range(dvr.Nsite):
+        center_val[i, :] = abs(wannier_func(dvr, W, U, p, x[i]))
+    # print(center_val)
+    order = np.argmax(center_val, axis=0)
+    print('Trap site position of Wannier functions:', order)
+    print('Order of Wannier function is set to match trap site.')
+    return U[:, order]
 
 
 def tight_binding(dvr: Wannier):
@@ -331,7 +342,7 @@ def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
     for i in range(dvr.Nsite):
         if dvr.model == 'sho':
             print(
-                'Test with analytic calculation on {}-th site'.format(i + 1),
+                f'Test with analytic calculation on {i + 1}-th site',
                 np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
                 np.prod(dvr.hl))
         Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
@@ -352,19 +363,19 @@ def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
     Uint_onsite = intgrl3d(dx, wannier)
     if dvr.model == 'sho':
         print(
-            'Test with analytic calculation on {}-th site'.format(i + 1),
+            f'Test with analytic calculation on {i + 1}-th site',
             np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim *
             np.prod(dvr.hl))
     return u * Uint_onsite
 
 
-def wannier_func(dvr, W, U, p, x):
+def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
     V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
     for i in range(p.shape[0]):
         V = np.append(V,
                       psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., None],
                       axis=dim)
-        print('{}-th Wannier function finished.'.format(i))
+        print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
