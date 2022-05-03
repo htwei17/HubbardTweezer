@@ -14,7 +14,7 @@ from time import time
 # from einops import rearrange, reduce, repeat
 
 # Fundamental constants
-a0 = 5.29E-11  # Bohr radius, in unit of meter
+a0 = 5.29177E-11  # Bohr radius, in unit of meter
 Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
 amu = 1822.89  # atomic mass, in unit of electron mass
 hb = 1  # Reduced Planck const

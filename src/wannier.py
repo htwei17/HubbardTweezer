@@ -4,6 +4,7 @@ from opt_einsum import contract
 from pyrsistent import get_in
 from positify import positify
 from scipy.integrate import romb
+from scipy.optimize import minimize
 import itertools
 import sparse
 import torch
@@ -51,6 +52,7 @@ class Wannier(DVR):
             ascatt=560,  # Scattering length, in unit of Bohr radius
             avg=1,
             band=1,  # Number of bands
+            homogenize=False,  # Homogenize trap or not
             dim: int = 3,
             model='Gaussian',
             trap=(104.52, 1000),
@@ -69,17 +71,47 @@ class Wannier(DVR):
                          absorber, ab_param, sparse)
         self.update_lattice(lattice, lc)
 
+        # Set offset to homogenize traps
+        self.Voff = np.ones(self.Nsite)
+        if homogenize:
+            self.homogenize()
+
     def Vfun(self, x, y, z):
         V = 0
         # TODO: euqlize trap depths for n>=3 traps
-        # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
+
         if self.model == 'sho' and self.Nsite == 2:
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
         else:
-            for coord in self.graph:
-                shift = coord * self.lc
-                V += super().Vfun(x - shift[0], y - shift[1], z)
+            # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
+            for i in range(self.Nsite):
+                shift = self.graph[i] * self.lc
+                V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
+
+    def trap_mat(self):
+        tc = np.zeros((self.Nsite, dim))
+        fij = np.ones((self.Nsite, self.Nsite))
+        for i in range(self.Nsite):
+            tc[i, :2] = self.graph[i] * self.lc
+            tc[i, 2] = 0
+            for j in range(i):
+                # print(*(tc[i] - tc[j]))
+                fij[i, j] = -super().Vfun(*(tc[i] - tc[j]))
+                fij[j, i] = fij[i, j]  # Potential is symmetric in distance
+        return fij
+
+    def homogenize(self):
+        fij = self.trap_mat()
+
+        def cost_func(V):
+            return la.norm(fij @ V - 1)
+
+        v0 = np.ones(self.Nsite)
+        res = minimize(cost_func, v0)
+        print('Trap homogenized.')
+        self.Voff = res.x
+        # return offset
 
 
 def lattice_graph(size: np.ndarray):
@@ -267,14 +299,14 @@ def optimization(dvr: Wannier, E, W, parity):
 
 
 def singleband_optimization(dvr: Wannier, E, W, parity):
-    # Singleband Wannier optimization
+    # Singleband Wannier function optimization
     R = multiTensor(cost_matrix(dvr, W, parity))
 
     if dvr.Nsite > 1:
         manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
 
         @pymanopt.function.pytorch(manifold)
-        def cost(point: torch.Tensor):
+        def cost(point: torch.Tensor) -> float:
             return cost_func(point, R)
 
         problem = pymanopt.Problem(manifold=manifold, cost=cost)
@@ -305,7 +337,8 @@ def lattice_order(dvr: Wannier, W, U, p):
     for i in range(dvr.Nsite):
         center_val[i, :] = abs(wannier_func(dvr, W, U, p, x[i]))
     # print(center_val)
-    order = np.argmax(center_val, axis=0)
+    # Find at which trap max of Wannier func is
+    order = np.argmax(center_val, axis=1)
     print('Trap site position of Wannier functions:', order)
     print('Order of Wannier function is set to match trap site.')
     return U[:, order]
@@ -331,7 +364,8 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
 
 def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
-    u = 4 * np.pi * hb**2 * dvr.scatt_len / dvr.m
+    u = 4 * np.pi * hb**2 * dvr.scatt_len * Eha/ (
+        dvr.m * dvr.kHz_2p * hb * dvr.w**dvr.dim)  # Unit to kHz
     # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
@@ -375,7 +409,7 @@ def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
         V = np.append(V,
                       psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., None],
                       axis=dim)
-        print(f'{i+1}-th Wannier function finished.')
+        # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
@@ -438,14 +472,14 @@ def pick(W, nlen):
     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
 
 
-def parity_transfm(n: int):
-    # Parity basis transformation matrix: 1D version
+# def parity_transfm(n: int):
+#     # Parity basis transformation matrix: 1D version
 
-    Up = np.zeros((n + 1, 2 * n + 1))
-    Up[0, n] = 1  # n=d
-    Up[1:, :n] = np.eye(n)  # Negative half-axis
-    Up[1:, (n + 1):] = np.eye(n)  # Positive half-axis
-    Um = np.zeros((n, 2 * n + 1))
-    Um[:, n:] = -1 * np.eye(n)  # Negative half-axis
-    Um[:, :n] = np.eye(n)  # Positive half-axis
-    return Up, Um
+#     Up = np.zeros((n + 1, 2 * n + 1))
+#     Up[0, n] = 1  # n=d
+#     Up[1:, :n] = np.eye(n)  # Negative half-axis
+#     Up[1:, (n + 1):] = np.eye(n)  # Positive half-axis
+#     Um = np.zeros((n, 2 * n + 1))
+#     Um[:, n:] = -1 * np.eye(n)  # Negative half-axis
+#     Um[:, :n] = np.eye(n)  # Positive half-axis
+#     return Up, Um
