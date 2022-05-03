@@ -22,7 +22,7 @@ class dynamics(DVR):
                  avg=1,
                  dim=3,
                  model='Gaussian',
-                 trap=(1.0452E2, 1000),
+                 trap=(104.52, 1000),
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
@@ -55,7 +55,7 @@ class dynamics(DVR):
         self.freq_list_len = len(freq_list)
         self.step_no = time[0]
         self.stop_time_list = get_stop_time(freq_list, time[1],
-                                            self.V0_SI)  # Time in SI unit
+                                            self.V0)  # Time in SI unit
         self.freq_list = np.array(freq_list)
         self.dim = dim
         self.mem_eff = mem_eff
@@ -76,7 +76,7 @@ class dynamics(DVR):
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
         print('init_state: initial state of T+%.1fV is calculated.' % self.avg)
-        ab = copy.deepcopy(self.absorber)
+        ab = copy.copy(self.absorber)
         self.absorber = False
         __, W = H_solver(self)
         psi = W[:, 0]
@@ -93,9 +93,9 @@ class dynamics(DVR):
         # ax = fig.add_subplot(1, len_freq_list, fi + 1)
 
         # time period of free system, in unit of s
-        self.t1 = 1 / (2 * 1E3 * self.freq)
+        self.t1 = 1 / (2 * self.kHz * self.freq)
         # time period of stroboscopic potential system, in unit of s
-        self.t2 = 1 / (2 * 1E3 * self.freq)
+        self.t2 = 1 / (2 * self.kHz * self.freq)
         self.T = self.t1 + self.t2
 
         # axs[1].plot(N_list, final_val)
@@ -132,7 +132,7 @@ class dynamics(DVR):
         sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
         filename = '{} {} {:g} {:g} {:g} {:.2g} {:.2g} '.format(
-            self.n[:self.dim], self.dx[:self.dim], self.V0_SI / self.kHz_2p,
+            self.n[self.nd], self.dx[self.nd], self.V0 / self.kHz_2p,
             self.w, self.freq, self.stop_time, t_step)
         for str in (self.model, rt_str, sym_str, ab_str, sm_str):
             filename += str
@@ -151,14 +151,14 @@ def add_str(flag, label, param=None):
     return str
 
 
-def get_stop_time(freq_list: np.ndarray, t=0, V0_SI=0) -> np.ndarray:
+def get_stop_time(freq_list: np.ndarray, t=0, V0=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
         st = 4E-5 * np.exp(freq_list * 0.085)  # More accurate scaling
         # st = 2.5E-5 * np.exp(
         #     freq_list * 0.0954747)  # Legacy scaling to access 3D data
         # st[np.nonzero(freq_list < 39.4)] = 1E-3
-        # if V0_SI > 1.5E5 * 2 * np.pi:
+        # if V0 > 1.5E5 * 2 * np.pi:
         #     st *= 2
     else:
         if not isinstance(t, Iterable):
@@ -180,17 +180,12 @@ def copy_to_list(n, copy_time):
 
 def int_evo_ops(dvr: dynamics, E, W, t2, Winv=None):
     # interacting dynamics, calculate U by given eigensolution E, W of Hamiltonian
-    # NOTE: here energy is in unit of V0, ie. time is in unit of 1/V0, we need to multiply V0 to match unit of E
+    # NOTE: here energy is in unit of angular frequency, we need to multiply V0
     if t2 > 0:
         if dvr.absorber:
-            U1 = W @ (np.exp(-1j * E * dvr.V0_SI * t2 / hb)[:, None] * Winv)
-            # Pade approx., DEPRECATED as is much slower
-            # U1 = la.expm(-1j * W * t2 / hb)  # E left unused
-            # np.set_printoptions(threshold=sys.maxsize)
-            # print(-1j * W * t2 / hb)
+            U1 = W @ (np.exp(-1j * E * dvr.V0 * t2)[:, None] * Winv)
         else:
-            U1 = W @ (np.exp(-1j * E * dvr.V0_SI * t2 / hb)[:, None] *
-                      W.conj().T)
+            U1 = W @ (np.exp(-1j * E * dvr.V0 * t2)[:, None] * W.conj().T)
     else:
         N = W.shape[0]
         U1 = np.eye(N)
@@ -297,19 +292,9 @@ def one_period_evo_smooth(dvr: dynamics):
     U = np.eye(N)
     for i in range(dvr.Nslice):
         H = H_mat_w_f(dvr, ft[i])
-        # E, W = la.eig(H)
-        # U @= W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
 
-        U = la.expm(-1j * dt * H * dvr.V0_SI / hb) @ U
-        # for j in range(i):
-        #     H += dt * dvr.V0_SI / 2 * (-1j * dt / hb) * commutator(
-        #         H_mat_w_f(dvr, ft[i]), H_mat_w_f(dvr, ft[j]))
-    # if __debug__:
-    #     print('norm H =', la.norm(H))
-    #     print('norm H0 =', la.norm(H0))
-    # H += H0
-    # E, W = la.eig(H)
-    # U = W @ (np.exp(-1j * E * dvr.V0_SI / hb)[:, None] * la.inv(W))
+        # H in unit of V0, ie. angular frequency
+        U = la.expm(-1j * dt * H * dvr.V0) @ U
     return U
 
 

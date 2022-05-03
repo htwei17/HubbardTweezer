@@ -15,9 +15,9 @@ from time import time
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
-Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
-amu = 1822.89  # atomic mass, in unit of electron mass
-hb = 1  # Reduced Planck const
+# Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
+amu = 1.66053907E-27  # atomic mass, in unit of kg
+h = 6.62607015E-34  # Planck constant
 # l = 780E-9 / a0  # 780nm, light wavelength
 
 dim = 3  # space dimension
@@ -63,7 +63,8 @@ class DVR:
             #     print(a[0])
             #     print(np.rint(self.LI / self.dx[self.nd]).astype(int))
             self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
-            print('DVR: n is set to {} by adding absorber.'.format(self.n))
+            print('DVR: n is set to {} by adding absorber.'.format(
+                self.n[self.nd]))
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
             print('DVR: R={}w is set.'.format(self.R[self.nd]))
 
@@ -115,17 +116,17 @@ class DVR:
 
         if model == 'Gaussian':
             # Experiment parameters in atomic units
+            self.hb = h / (2 * np.pi)  # Reduced Planck constant
             self.m = atom * amu  # Atom mass, in unit of electron mass
-            self.l = laser * 1E-9 / a0  # Laser wavelength, in unit of Bohr radius
-            self.kHz_2p = 2 * np.pi * 1E3  # Make in the frequency unit of 2 * pi * kHz
-            self.V0_SI = trap[
-                0] * self.kHz_2p * hb  # Input V0 is frequency in unit of kHz, convert to energy in unit of Joule
+            self.l = laser * 1E-9  # Laser wavelength, in unit of Bohr radius
+            self.kHz = 1E3  # Make in the frequency unit of kHz
+            self.kHz_2p = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
+            self.V0 = trap[
+                0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
             self.w = trap[
-                1] * 1E-9 / a0  # Input in unit of nm, converted to Bohr radius
+                1] * 1E-9  # Input in unit of nm, converted to Bohr radius
 
-            self.V0 = self.V0_SI / Eha  # potential depth in unit of Hartree energy
-            # TO GET A REASONABLE ENERGY SCALE, WE SET v=1 AS THE ENERGY UNIT HEREAFTER
-
+            # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
             if len(trap) < 3:
                 self.zR = np.pi * self.w / self.l  # ~4000nm, Rayleigh range, in unit of waist
@@ -133,27 +134,29 @@ class DVR:
                 self.zR = trap[2] / trap[1]  # Rayleigh range input by hand
 
             # self.Nmax = np.array([20, 20, 20])  # Max number of grid points
-            self.omega = np.sqrt(self.V0_SI / self.m) * np.array(
+            self.omega = np.sqrt(self.V0 / self.m) * np.array(
                 [np.sqrt(2) / self.w,
                  np.sqrt(2) / self.w, 1 / self.zR])  # Trap frequencies
-            self.hl = np.sqrt(hb /
+            self.hl = np.sqrt(self.hb /
                               (self.m * self.omega))  # Trap harmonic lengths
 
-            print("param_set: trap parameter V0={}kHz w={}m".format(
+            print("param_set: trap parameter V0={}kHz w={}nm".format(
                 trap[0], trap[1]))
         elif model == 'sho':
             # Harmonic parameters
+            self.hb = 1  # Reduced Planck constant
             self.omega = np.ones(dim)  # Harmonic frequencies
             self.m = 1.0
             self.w = 1.0
             self.mtV0 = self.m
-            self.V0_SI = 1.0
+            self.V0 = 1.0
             self.kHz = 1.0
             self.kHz_2p = 1.0
-            self.hl = np.sqrt(hb / (self.m * self.omega))  # Harmonic lengths
+            self.hl = np.sqrt(self.hb /
+                              (self.m * self.omega))  # Harmonic lengths
 
             print("param_set: trap parameter V0={} w={}".format(
-                self.V0_SI, self.w))
+                self.V0, self.w))
 
         self.R0 *= self.nd
         self.R *= self.nd
@@ -163,7 +166,8 @@ class DVR:
 
         ## Abosorbers
         if absorber:
-            self.VI *= self.kHz_2p / self.V0_SI  # Absorption potential strength in unit of V0
+            self.VI *= self.kHz_2p  # Absorption potential strength in unit of angular kHz frequency
+            self.VIdV0 = self.VI / self.V0  # Energy in unit of V0
 
     def Vfun(self, x, y, z):
         # Potential function
@@ -189,7 +193,7 @@ class DVR:
         #     print(L)
         Vi = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
-            V = -1j * self.VI * Vi
+            V = -1j * self.VIdV0 * Vi  # Energy in unit of V0
         return V
 
 
@@ -222,7 +226,8 @@ def Vmat(dvr: DVR):
     return V, no
 
 
-def psi(n, dx, W, x, y, z, p=np.zeros(dim, dtype=int)) -> np.ndarray:
+def psi(n, dx, W: np.ndarray, x, y, z, p=np.zeros(dim,
+                                                  dtype=int)) -> np.ndarray:
     init = get_init(n, p)
     # V = np.sum(
     #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
@@ -232,7 +237,11 @@ def psi(n, dx, W, x, y, z, p=np.zeros(dim, dtype=int)) -> np.ndarray:
     deltax[nd] = 1
     xn = [np.arange(init[i], n[i] + 1) for i in range(dim)]
     V = delta(p, [x / deltax[0], y / deltax[1], z / deltax[2]], xn)
-    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmn', *V, W)
+    # if W.ndim < 4:
+    #     W = W[..., *[None for i in range(4-W.ndim)]]
+    if W.ndim == 3:
+        W = W[..., None]
+    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmnp', *V, W)
     return psi
 
 
@@ -257,8 +266,11 @@ def kinetic_offdiag(T):
     return T
 
 
-def Tmat_1d(n, dx, mtV0, p=0):
+def Tmat_1d(dvr: DVR, i: int):
     # Kinetic energy matrix for 1-dim
+    n = dvr.n[i]
+    dx = dvr.dx[i] * dvr.w
+    p = dvr.p[i]
 
     init = get_init(np.array([n]), p)[0]
 
@@ -274,8 +286,8 @@ def Tmat_1d(n, dx, mtV0, p=0):
             T[:, 0] /= np.sqrt(2)
             T[0, :] /= np.sqrt(2)
             T[0, 0] = np.pi**2 / 3
-    # get kinetic energy in unit of V0, mtV0 = m * V0
-    T *= hb**2 / (2 * dx**2 * mtV0)
+    # get kinetic energy in unit of V0, hb is cancelled as V0 is in unit of angular freq, mtV0 = m * V0
+    T *= dvr.hb / (2 * dx**2 * dvr.mtV0)
     return T
 
 
@@ -288,8 +300,7 @@ def Tmat(dvr: DVR) -> np.ndarray:
     for i in range(dim):
         delta.append(np.eye(dvr.n[i] + 1 - dvr.init[i]))  # eg. delta_xx'
         if dvr.n[i]:
-            T0.append(Tmat_1d(dvr.n[i], dvr.dx[i] * dvr.w, dvr.mtV0,
-                              dvr.p[i]))  # append p-sector
+            T0.append(Tmat_1d(dvr, i))  # append p-sector
         # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
         else:
             T0.append(None)

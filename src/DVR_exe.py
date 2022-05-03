@@ -28,7 +28,7 @@ def eigen_list(dvr: dynamics):
     W_list = [W1, W2]
     print(
         'n={}, dx={}, p={}, model={}, t={} stroboscopic states preparation finished.'
-        .format(dvr.n[:dvr.dim], dvr.dx[:dvr.dim], dvr.p[:dvr.dim], dvr.model,
+        .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
                 dvr.stop_time_list))
     print("eigen_list: eigenstates memory usage: {:.2f} MiB.".format(
         asizeof(W_list) / 2**20))
@@ -36,6 +36,7 @@ def eigen_list(dvr: dynamics):
 
 
 class Output:
+
     def __init__(self,
                  t=None,
                  gs=None,
@@ -99,12 +100,12 @@ def DVR_exe(dvr: dynamics) -> None:
 
     np.set_printoptions(precision=2, suppress=True)
     print("{}D N={} R0={}w\nfreq={}kHz\n{} potential starts.".format(
-        dvr.dim, dvr.N, dvr.R0[:dvr.dim], dvr.freq_list, dvr.model))
+        dvr.dim, dvr.N, dvr.R0[dvr.nd], dvr.freq_list, dvr.model))
 
     time0 = time()
 
     print("n={}, dx={}w, p={}, model={},\nt={},\nt_step={}\nstarts.".format(
-        dvr.n[:dvr.dim], dvr.dx[:dvr.dim], dvr.p[:dvr.dim], dvr.model,
+        dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
         dvr.stop_time_list, dvr.t_step_list))
     mem_est(dvr.n, dvr.p)
 
@@ -113,6 +114,7 @@ def DVR_exe(dvr: dynamics) -> None:
 
     dvr.avg = 1 / 2
     psi0 = dvr.init_state()
+    dvr.avg = 1
 
     time2 = time()
     print('Initial state preparation finished. Time spent: {:.2f}s.\n'.format(
@@ -137,7 +139,7 @@ def DVR_exe(dvr: dynamics) -> None:
     if dvr.absorber:
         print(
             'Absorption potential is enabled. Paramter: L={:.2f}w V_OI={:.2f}kHz\n'
-            .format(dvr.LI, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+            .format(dvr.LI, dvr.VI / dvr.kHz_2p))
 
     for fi in range(dvr.freq_list_len):  # frequency unit, V0 ~ 104.52kHz
         time4 = time()
@@ -185,8 +187,9 @@ def DVR_exe(dvr: dynamics) -> None:
             else:
                 U = one_period_evo(E_list, W_list, dvr.t1, dvr.t2, dvr,
                                    Winv_list)
+                # Delete when last frequency is calculated
                 if fi == dvr.freq_list_len - 1:
-                    del E_list, W_list, Winv_list  # Only enabled when one frequency is calculated
+                    del E_list, W_list, Winv_list
 
             print(cond_str + "time evolution operator prepared.")
             mem_check(limit=6)
@@ -244,9 +247,9 @@ def mem_check(limit=6):
     display_top(snapshot, limit=limit)
 
 
-def dynamics_period(dynamics: dynamics, t_step, cond_str, psi1, psi, time6, fn,
-                    W, n_period, E_power_n):
-    for t in np.arange(t_step, dynamics.stop_time + t_step, t_step):
+def dynamics_period(dvr: dynamics, t_step, cond_str, psi1, psi, time6, fn, W,
+                    n_period, E_power_n):
+    for t in np.arange(t_step, dvr.stop_time + t_step, t_step):
         psi = dynamics_by_period(n_period,
                                  E_power_n,
                                  W,
@@ -254,7 +257,7 @@ def dynamics_period(dynamics: dynamics, t_step, cond_str, psi1, psi, time6, fn,
                                  fixed_period=True)
 
         rho_gs = abs(psi1 @ psi)**2
-        if dynamics.wavefunc:
+        if dvr.wavefunc:
             psi_w = W @ psi
             rho_trap = la.norm(
                 psi_w
@@ -262,30 +265,29 @@ def dynamics_period(dynamics: dynamics, t_step, cond_str, psi1, psi, time6, fn,
         else:
             rho_trap, psi_w = None, None
 
-        io = Output(t, rho_gs, dynamics.wavefunc, (rho_trap, psi_w))
+        io = Output(t, rho_gs, dvr.wavefunc, (rho_trap, psi_w))
         io.write_to_file(fn)
 
-        dynamics.step_count += 1
+        dvr.step_count += 1
 
-        print_progress(cond_str, dynamics.step_count, time6)
+        print_progress(cond_str, dvr.step_count, time6)
 
 
-def dynamics_realtime(dynamics: dynamics, t_step, cond_str, psi, psi1, time6,
-                      fn, U0, U1):
-    for t_count in np.arange(t_step, dynamics.stop_time + t_step, t_step):
-        dynamics.step_count += 1
-        psi = wavepocket_dynamics(psi, U0, U1, dynamics.step_count,
-                                  dynamics.step_no)
+def dynamics_realtime(dvr: dynamics, t_step, cond_str, psi, psi1, time6, fn,
+                      U0, U1):
+    for t_count in np.arange(t_step, dvr.stop_time + t_step, t_step):
+        dvr.step_count += 1
+        psi = wavepocket_dynamics(psi, U0, U1, dvr.step_count, dvr.step_no)
 
-        t = t_count * dynamics.t_unit
+        t = t_count * dvr.t_unit
         rho_gs = abs(psi1 @ psi)**2
         rho_trap = la.norm(
             psi
         )**2  # Roughly estimate state proportion remaining within DVR space
-        io = Output(t, rho_gs, dynamics.wavefunc, (rho_trap, psi))
+        io = Output(t, rho_gs, dvr.wavefunc, (rho_trap, psi))
         io.write_to_file(fn)
 
-        print_progress(cond_str, dynamics.step_count, time6)
+        print_progress(cond_str, dvr.step_count, time6)
 
 
 def print_progress(cond_str, step_count, time6):

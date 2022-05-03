@@ -24,7 +24,7 @@ class Wannier(DVR):
         self.lattice = lattice.copy()
         self.graph, self.links = lattice_graph(lattice)
         if self.model == 'Gaussian':
-            self.lc = np.array(lc) * 1E-9 / (a0 * self.w)  # In unit of w
+            self.lc = np.array(lc) * 1E-9 / self.w  # In unit of w
         elif self.model == 'sho':
             self.lc = np.array(lc)
         self.Nsite = np.prod(self.lattice)
@@ -62,7 +62,7 @@ class Wannier(DVR):
             sparse: bool = True) -> None:
 
         self.N = N
-        self.scatt_len = ascatt
+        self.scatt_len = ascatt * a0
         self.dim = dim
         self.bands = band
         n = np.zeros(3, dtype=int)
@@ -321,7 +321,7 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
 
     A = U.conj().T @ (
         E[:, None] *
-        U) * dvr.V0_SI / dvr.kHz_2p  # TB parameter matrix, in unit of kHz
+        U) * dvr.V0 / dvr.kHz_2p  # TB parameter matrix, in unit of kHz
     return A, U
 
 
@@ -330,7 +330,7 @@ def lattice_order(dvr: Wannier, W, U, p):
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
         shift[i, :2] = dvr.graph[i] * dvr.lc
-        # Slight offset to avoid zero values on z=0 in odd sector
+        # Small offset to avoid zero values on z=0 in odd sector
         shift[i, 2] = 0.25
     x = [[[shift[i, d]] for d in range(dim)] for i in range(dvr.Nsite)]
     center_val = np.zeros((dvr.Nsite, dvr.Nsite))
@@ -364,23 +364,23 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
 
 def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
-    u = 4 * np.pi * hb**2 * dvr.scatt_len * Eha/ (
-        dvr.m * dvr.kHz_2p * hb * dvr.w**dvr.dim)  # Unit to kHz
-    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
-    integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
-    intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
-    # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
-    Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
-                    integrl)
-    Uint_onsite = np.zeros(dvr.Nsite)
-    for i in range(dvr.Nsite):
-        if dvr.model == 'sho':
-            print(
-                f'Test with analytic calculation on {i + 1}-th site',
-                np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
-                np.prod(dvr.hl))
-        Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
-    return Uint_onsite
+    u = 4 * np.pi * dvr.hb * dvr.scatt_len / (
+        dvr.m * dvr.kHz_2p * dvr.w**dvr.dim)  # Unit to kHz
+    # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
+    # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
+    # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
+    # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    # Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
+    #                 integrl)
+    # Uint_onsite = np.zeros(dvr.Nsite)
+    # for i in range(dvr.Nsite):
+    #     if dvr.model == 'sho':
+    #         print(
+    #             f'Test with analytic calculation on {i + 1}-th site',
+    #             np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
+    #             np.prod(dvr.hl))
+    #     Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
+    # return Uint_onsite
 
     x = []
     dx = []
@@ -407,7 +407,7 @@ def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
     V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
     for i in range(p.shape[0]):
         V = np.append(V,
-                      psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., None],
+                      psi(dvr.n, dvr.dx, W[i], *x, p[i, :]),
                       axis=dim)
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U

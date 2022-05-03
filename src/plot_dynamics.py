@@ -39,7 +39,7 @@ class plot(dynamics):
                  dim=3,
                  smooth=(-1, 10),
                  model='Gaussian',
-                 trap=(1.0452E2, 1E-6),
+                 trap=(104.52, 1000),
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
@@ -140,7 +140,8 @@ def plot_dynamics(N_list,
         fig = plt.figure(figsize=[6 * figno, 5 * dvr.freq_list_len])
         first_fig = True
         if dvr.freq_list_len == 1:
-            ax_list = [fig.subplots(dvr.freq_list_len, figno, sharey=True)]
+            ax_list = np.array(
+                [fig.subplots(dvr.freq_list_len, figno, sharey=True)])
         else:
             ax_list = fig.subplots(dvr.freq_list_len, figno, sharey=True)
     else:
@@ -235,7 +236,7 @@ def plot_dynamics(N_list,
             axs[2].legend()
             axs[2].set_xlabel(dvr.xlabel)
             axs[2].set_title(dvr.title2)
-        ax_list.append(axs)
+        ax_list = np.append(ax_list, axs)
     plt.savefig('{}d_{}.pdf'.format(dvr.dim, dvr.quantity))
     return fig
 
@@ -291,30 +292,27 @@ def plot_lifetime(N0_list,
         t_step = dvr.set_each_freq(fi)
 
         # NORMAL WAIST
-        dvr.VI *= dvr.V0_SI / dvr.kHz_2p
-        dvr.V0_SI = 104.52 * dvr.kHz_2p * hb  # 104.52kHz * h, potential depth, in SI unit, since hbar is set to 1 this should be multiplied by 2pi
-        dvr.w = 1E-6 / a0  # ~1000nm, waist length, in unit of Bohr radius
-        dvr.VI *= dvr.kHz_2p / dvr.V0_SI
+        dvr.V0 = 104.52 * dvr.kHz_2p  # 104.52kHz * 2 * pi, potential depth, in unit of angular freq
+        dvr.w = 1E-6  # ~1000nm, waist length, in unit of Bohr radius
+        dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
-        # TODO: CHECK IF R AND L VARYING WITH W CAUSES THE DIFFERENCE ON THE LIFETIME
+        # TODO: CHECK IF R AND L VARYING WITH W CAUSES THE DIFFERENCE\ ON THE LIFETIME
         lt_vs_freq = tau_from_waist(N0_list, R0_list, dvr, t_step, avg_no, tau,
                                     length, no_file, lt_vs_freq)
 
         if err:
             # TIGHTEST WAIST
-            dvr.VI *= dvr.V0_SI / dvr.kHz_2p
-            dvr.V0_SI = 76 * dvr.kHz_2p * hb  # trap depth for tightest waist
-            dvr.w = 8.61E-7 / a0  # tightest waist length
-            dvr.VI *= dvr.kHz_2p / dvr.V0_SI
+            dvr.V0 = 76 * dvr.kHz_2p  # trap depth for tightest waist
+            dvr.w = 8.61E-7  # tightest waist length
+            dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
             lt_err[0] = tau_from_waist(N0_list, R0_list, dvr, t_step, avg_no,
                                        tau, length, no_file, lt_err[0])
 
             # FATTEST WAIST
-            dvr.VI *= dvr.V0_SI / dvr.kHz_2p
-            dvr.V0_SI = 156 * dvr.kHz_2p * hb  # trap depth for fattest waist
-            dvr.w = 1.18E-6 / a0  # fattest waist length
-            dvr.VI *= dvr.kHz_2p / dvr.V0_SI
+            dvr.V0 = 156 * dvr.kHz_2p  # trap depth for fattest waist
+            dvr.w = 1.18E-6  # fattest waist length
+            dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
             lt_err[1] = tau_from_waist(N0_list, R0_list, dvr, t_step, avg_no,
                                        tau, length, no_file, lt_err[1])
@@ -370,13 +368,12 @@ def plot_lifetime(N0_list,
             #     ax2.set_title('FSS f=%dkHz w/ ' % sav[i, 0] + dvr.cvg_str)
             #     f2.savefig('{}d_{}_{}_fss.jpg'.format(dvr.dim, dvr.cvg,
             #                                            sav[i, 0]))
-        ax.errorbar(
-            sav[:, 0],
-            ext_lt[:, 0],
-            yerr=ext_lt[:, 1],
-            label='{}D {} with err'.format(dvr.dim, dvr.quantity)
-            # + ' $\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI / dvr.kHz_2p)
-        )
+        ax.errorbar(sav[:, 0],
+                    ext_lt[:, 0],
+                    yerr=ext_lt[:, 1],
+                    label='{}D {} with err'.format(dvr.dim, dvr.quantity)
+                    # + ' $\Gamma$={:.2g}kHz'.format(dvr.VI / dvr.kHz_2p)
+                    )
     for ni in range(len(N0_list)):
         dvr.update_N(N0_list[ni], N0_list[ni] * dvr.dx)
         if dvr.cvg == 'N':
@@ -400,7 +397,7 @@ def plot_lifetime(N0_list,
                 ax_label += 'sqr smooth'
             elif dvr.smooth_mode == 1:
                 ax_label += 'cos smooth'
-        # ax_label += '$\Gamma$={:.2g}kHz'.format(dvr.VI * dvr.V0_SI /
+        # ax_label += '$\Gamma$={:.2g}kHz'.format(dvr.VI /
         #                                         dvr.kHz_2p)
         # ax_label += ' '
         # ax_label += 'L={:.2g}w'.format(dvr.L)
@@ -670,8 +667,7 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
             ax.axvline(x=-1, color='w')
             ax.axvline(x=1, color='w')
             gs = sf[1].subplots()
-            ab_str = '$\Gamma$={:.2f}kHz'.format(dvr.VI * dvr.V0_SI /
-                                                 dvr.kHz_2p)
+            ab_str = '$\Gamma$={:.2f}kHz'.format(dvr.VI / dvr.kHz_2p)
             final_str = 'f={:.3f}kHz '.format(
                 dvr.freq) + dvr.cvg_str + ' ' + ab_str
             ax.set_title('{}D {} GS probability @ \n\
@@ -689,4 +685,4 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
             gs.set_title('{}D {} probabilities @ '.format(dvr.dim, dvr.model) +
                          dvr.cvg_str + ' ' + ab_str)
         plt.savefig('{}d_wavefunc_{:.2f}_{:.2f}.jpg'.format(
-            dvr.dim, dvr.freq, dvr.VI * dvr.V0_SI / dvr.kHz_2p))
+            dvr.dim, dvr.freq, dvr.VI / dvr.kHz_2p))
