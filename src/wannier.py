@@ -49,13 +49,13 @@ class Wannier(DVR):
             lc=(1520, 1690),  # Lattice constant, in unit of nm
             atom=6.015122,  # Atom mass, in amu
             laser=780,  # 780nm, laser wavelength
-            ascatt=560,  # Scattering length, in unit of Bohr radius
+            ascatt=1600,  # Scattering length, in unit of Bohr radius
             avg=1,
             band=1,  # Number of bands
             homogenize=False,  # Homogenize trap or not
             dim: int = 3,
             model='Gaussian',
-            trap=(104.52, 1000),
+            trap=(104.52, 1000, 1000),
             symmetry: bool = False,
             absorber: bool = False,
             ab_param=(57.04, 1),
