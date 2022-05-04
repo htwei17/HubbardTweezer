@@ -301,7 +301,7 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
             return cost_func(point, R)
 
         problem = pymanopt.Problem(manifold=manifold, cost=cost)
-        solver = pymanopt.solvers.SteepestDescent(maxiter=2000)
+        solver = pymanopt.solvers.SteepestDescent(maxiter=3000)
         solution = solver.solve(problem, reuselinesearch=True)
 
         solution = positify(solution)
