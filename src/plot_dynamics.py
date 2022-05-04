@@ -28,27 +28,8 @@ mpl.rcParams.update(params)
 
 class plot(dynamics):
 
-    def __init__(self,
-                 cvg='N',
-                 quantity='gs',
-                 N=10,
-                 R0: np.ndarray = 3 * np.array([1, 1, 2.4]),
-                 freq_list: np.ndarray = np.arange(20, 200, 20),
-                 time=(1000.0, 0),
-                 avg=1,
-                 dim=3,
-                 smooth=(-1, 10),
-                 model='Gaussian',
-                 trap=(104.52, 1000),
-                 mem_eff=False,
-                 wavefunc=False,
-                 realtime=False,
-                 symmetry=False,
-                 absorber=False,
-                 ab_param=(57.04, 1)) -> None:
-        super().__init__(N, R0, freq_list, time, avg, dim, model, trap,
-                         mem_eff, wavefunc, realtime, smooth, symmetry,
-                         absorber, ab_param)
+    def __init__(self, cvg='N', quantity='gs', *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
         self.cvg = cvg
         self.set_quantity(quantity)
 

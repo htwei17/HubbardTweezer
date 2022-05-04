@@ -16,20 +16,16 @@ class dynamics(DVR):
 
     def __init__(self,
                  N: int = 10,
-                 R0: np.ndarray = 3 * np.array([1, 1, 2.4]),
                  freq_list: np.ndarray = np.arange(20, 200, 20),
                  time=(1000.0, 0),
-                 avg=1,
                  dim=3,
                  model='Gaussian',
-                 trap=(104.52, 1000),
                  mem_eff=False,
                  wavefunc=False,
                  realtime=False,
                  smooth=(-1, 10),
-                 symmetry: bool = False,
-                 absorber: bool = False,
-                 ab_param=(57.04, 1)) -> None:
+                 *args,
+                 **kwargs) -> None:
         # self.R0 = R0.copy()
         # if __debug__:
         #     print(R0)
@@ -44,14 +40,7 @@ class dynamics(DVR):
         n = np.zeros(3, dtype=int)
         n[:dim] = N
 
-        super().__init__(n,
-                         R0,
-                         avg,
-                         model,
-                         trap,
-                         symmetry=symmetry,
-                         absorber=absorber,
-                         ab_param=ab_param)
+        super().__init__(n, model=model, *args, **kwargs)
         self.freq_list_len = len(freq_list)
         self.step_no = time[0]
         self.stop_time_list = get_stop_time(freq_list, time[1],
@@ -132,8 +121,8 @@ class dynamics(DVR):
         sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
         filename = '{} {} {:g} {:g} {:g} {:.2g} {:.2g} '.format(
-            self.n[self.nd], self.dx[self.nd], self.V0 / self.kHz_2p,
-            self.w, self.freq, self.stop_time, t_step)
+            self.n[self.nd], self.dx[self.nd], self.V0 / self.kHz_2p, self.w,
+            self.freq, self.stop_time, t_step)
         for str in (self.model, rt_str, sym_str, ab_str, sm_str):
             filename += str
         filename += '.h5'

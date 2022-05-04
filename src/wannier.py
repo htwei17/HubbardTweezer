@@ -43,23 +43,15 @@ class Wannier(DVR):
     def __init__(
             self,
             N: int,
-            R0: np.ndarray,
             lattice: np.ndarray = np.array(
                 [2], dtype=int),  # Square lattice dimensions
             lc=(1520, 1690),  # Lattice constant, in unit of nm
-            atom=6.015122,  # Atom mass, in amu
-            laser=780,  # 780nm, laser wavelength
             ascatt=1600,  # Scattering length, in unit of Bohr radius
-            avg=1,
             band=1,  # Number of bands
             homogenize=False,  # Homogenize trap or not
             dim: int = 3,
-            model='Gaussian',
-            trap=(104.52, 1000, 1000),
-            symmetry: bool = False,
-            absorber: bool = False,
-            ab_param=(57.04, 1),
-            sparse: bool = True) -> None:
+            *args,
+            **kwargs) -> None:
 
         self.N = N
         self.scatt_len = ascatt * a0
@@ -67,8 +59,7 @@ class Wannier(DVR):
         self.bands = band
         n = np.zeros(3, dtype=int)
         n[:dim] = N
-        super().__init__(n, R0, avg, model, trap, atom, laser, symmetry,
-                         absorber, ab_param, sparse)
+        super().__init__(n, *args, **kwargs)
         self.update_lattice(lattice, lc)
 
         # Set offset to homogenize traps
@@ -310,8 +301,8 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
             return cost_func(point, R)
 
         problem = pymanopt.Problem(manifold=manifold, cost=cost)
-        solver = pymanopt.solvers.SteepestDescent()
-        solution = solver.solve(problem)
+        solver = pymanopt.solvers.SteepestDescent(maxiter=2000)
+        solution = solver.solve(problem, reuselinesearch=True)
 
         solution = positify(solution)
     elif dvr.Nsite == 1:
@@ -406,9 +397,7 @@ def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
 def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
     V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
     for i in range(p.shape[0]):
-        V = np.append(V,
-                      psi(dvr.n, dvr.dx, W[i], *x, p[i, :]),
-                      axis=dim)
+        V = np.append(V, psi(dvr.n, dvr.dx, W[i], *x, p[i, :]), axis=dim)
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
