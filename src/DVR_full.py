@@ -1,4 +1,3 @@
-from typing import Iterable
 import numpy as np
 import sys
 from mimetypes import init
@@ -12,8 +11,6 @@ from scipy.sparse.linalg import LinearOperator
 import sparse
 from opt_einsum import contract
 from time import time
-
-from torch import NumberType
 # from einops import rearrange, reduce, repeat
 
 # Fundamental constants
@@ -84,7 +81,6 @@ class DVR:
             trap=(104.52, 1000),
             atom=6.015122,  # Atom mass, in amu. Default Lithium-6
             laser=780,  # 780nm, laser wavelength
-            zR=None,  # Rayleigh range
             symmetry: bool = False,
             absorber: bool = False,
             ab_param=(57.04, 1),
@@ -127,24 +123,20 @@ class DVR:
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
             self.V0 = trap[
                 0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
-            # Input in unit of nm, converted to m
-            if isinstance(self.w, Iterable):  # Convert to np.array
-                self.w = np.array(trap[1]) * 1E-9
-            else:  # Pure number converted to np.array
-                self.w = trap[1] * np.ones(2) * 1E-9
+            self.w = trap[
+                1] * 1E-9  # Input in unit of nm, converted to Bohr radius
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
-            # Rayleigh, a vector of (zRx, zRy)
-            self.zR = np.pi * self.w / self.l  # ~4000nm, Rayleigh range, in unit of waist
-            if isinstance(zR, NumberType):
-                self.zR = zR / self.w  # Rayleigh range input by hand
+            if len(trap) < 3:
+                self.zR = np.pi * self.w / self.l  # ~4000nm, Rayleigh range, in unit of waist
+            else:
+                self.zR = trap[2] / trap[1]  # Rayleigh range input by hand
 
-            self.zR0 = np.prod(self.zR) / la.norm(
-                self.zR)  # Reduced Rayleigh range
-            self.omega = np.sqrt(avg * self.hb * self.V0 / self.m) * np.array([
-                2 / self.w[0], 2 / self.w[1], 1 / self.zR0
-            ])  # Trap frequencies
+            # self.Nmax = np.array([20, 20, 20])  # Max number of grid points
+            self.omega = np.sqrt(self.V0 / self.m) * np.array(
+                [np.sqrt(2) / self.w,
+                 np.sqrt(2) / self.w, 1 / self.zR])  # Trap frequencies
             self.hl = np.sqrt(self.hb /
                               (self.m * self.omega))  # Trap harmonic lengths
 
@@ -181,11 +173,8 @@ class DVR:
         # Potential function
         if self.model == 'Gaussian':
             # Tweezer potential funciton, Eq. 2 in PRA
-            # TODO: make x, y dimensions to be in units of wx, wy, respectively
-            d0 = 1 + (z / (2 * self.zR0))**2
-            dx = x**2 / (1 + (z / self.zR[0])**2)
-            dy = y**2 / (1 + (z / self.zR[1])**2)
-            V = -1 / d0 * np.exp(-2 * (dx + dy))
+            den = 1 + (z / self.zR)**2
+            V = -1 / den * np.exp(-2 * (x**2 + y**2) / den)
         elif self.model == 'sho':
             # Harmonic potential function
             V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)
