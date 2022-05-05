@@ -24,7 +24,7 @@ class Wannier(DVR):
         self.lattice = lattice.copy()
         self.graph, self.links = lattice_graph(lattice)
         if self.model == 'Gaussian':
-            self.lc = np.array(lc) * 1E-9 / self.w  # In unit of w
+            self.lc = np.array(lc) * 1E-9 / self.w  # In unit of wx
         elif self.model == 'sho':
             self.lc = np.array(lc)
         self.Nsite = np.prod(self.lattice)
