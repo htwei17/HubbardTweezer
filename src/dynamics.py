@@ -133,7 +133,7 @@ class dynamics(DVR):
         np.set_printoptions(precision=2, suppress=True)
         filename = '{} {} {:g} {:g} {:g} {:.2g} {:.2g} '.format(
             self.n[self.nd], self.dx[self.nd], self.V0 / self.kHz_2p,
-            self.w, self.freq, self.stop_time, t_step)
+            self.w * self.wy, self.freq, self.stop_time, t_step)
         for str in (self.model, rt_str, sym_str, ab_str, sm_str):
             filename += str
         filename += '.h5'

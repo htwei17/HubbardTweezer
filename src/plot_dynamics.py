@@ -294,6 +294,7 @@ def plot_lifetime(N0_list,
         # NORMAL WAIST
         dvr.V0 = 104.52 * dvr.kHz_2p  # 104.52kHz * 2 * pi, potential depth, in unit of angular freq
         dvr.w = 1E-6  # ~1000nm, waist length, in unit of Bohr radius
+        dvr.wy = np.ones(2)
         dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
         # TODO: CHECK IF R AND L VARYING WITH W CAUSES THE DIFFERENCE\ ON THE LIFETIME
@@ -304,6 +305,7 @@ def plot_lifetime(N0_list,
             # TIGHTEST WAIST
             dvr.V0 = 76 * dvr.kHz_2p  # trap depth for tightest waist
             dvr.w = 8.61E-7  # tightest waist length
+            dvr.wy = np.ones(2)
             dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
             lt_err[0] = tau_from_waist(N0_list, R0_list, dvr, t_step, avg_no,
@@ -312,6 +314,7 @@ def plot_lifetime(N0_list,
             # FATTEST WAIST
             dvr.V0 = 156 * dvr.kHz_2p  # trap depth for fattest waist
             dvr.w = 1.18E-6  # fattest waist length
+            dvr.wy = np.ones(2)
             dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
 
             lt_err[1] = tau_from_waist(N0_list, R0_list, dvr, t_step, avg_no,
