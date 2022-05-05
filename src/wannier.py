@@ -93,16 +93,32 @@ class Wannier(DVR):
         return fij
 
     def homogenize(self):
-        fij = self.trap_mat()
+        # fij = self.trap_mat()
 
-        def cost_func(V):
-            return la.norm(fij @ V - 1)
+        # def cost_func(V):
+        #     return la.norm(fij @ V - 1)
+
+        band_bak = self.bands
+        Voff_bak = self.Voff
+        self.bands = 1
+        A = self.tunnel_func()
+        target = np.mean(np.diag(A[0]))
+
+        def cost_func(offset):
+            self.Voff = offset
+            A = self.tunnel_func()
+            return la.norm(np.diag(A[0]) - target)
 
         v0 = np.ones(self.Nsite)
         res = minimize(cost_func, v0)
         print('Trap homogenized.')
         self.Voff = res.x
-        # return offset
+        self.bands = band_bak
+        return self.Voff
+
+    def tunnel_func(self):
+        A, __ = optimization(self, *eigen_basis(self))
+        return A
 
 
 def lattice_graph(size: np.ndarray):
@@ -343,7 +359,7 @@ def tight_binding(dvr: Wannier):
     return np.real(mu), abs(t)
 
 
-def interaction(dvr: Wannier, U, W, parity: np.ndarray):
+def interaction(dvr: Wannier, U: Iterable, W: Iterable, parity: Iterable):
     # Interaction between i band and j band
     Uint = np.zeros((dvr.bands, dvr.bands, dvr.Nsite))
     for i in range(dvr.bands):
@@ -356,7 +372,7 @@ def interaction(dvr: Wannier, U, W, parity: np.ndarray):
 def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
     u = 4 * np.pi * dvr.hb * dvr.scatt_len / (
-        dvr.m * dvr.kHz_2p * dvr.w**dvr.dim)  # Unit to kHz
+        dvr.m * dvr.kHz_2p * dvr.w**dim)  # Unit to kHz
     # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable

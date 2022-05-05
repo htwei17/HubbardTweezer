@@ -269,6 +269,8 @@ def kinetic_offdiag(T):
 def Tmat_1d(dvr: DVR, i: int):
     # Kinetic energy matrix for 1-dim
     n = dvr.n[i]
+    # dx is dimensionless by dividing w,
+    # to restore unit we need to multiply w
     dx = dvr.dx[i] * dvr.w
     p = dvr.p[i]
 
