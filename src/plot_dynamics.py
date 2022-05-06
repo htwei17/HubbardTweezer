@@ -549,22 +549,23 @@ def expt_data(ax: plt.Axes):
 
 def fgr(ax: plt.Axes, dim: int = 3, factor=1) -> plt.Axes:
     w = 1E-6
-    zR = 4E-6
+    zR = 4 * w
     m = 6.015122 * 1.66E-27
-    h = 6.626E-34
+    # h = 6.626E-34
     hb = h / (2 * np.pi)
     V = 104.52E3 * 2 * np.pi  # The perturbed V is V
+    avg = 1 / 2
     # The time-avged potential is V/2
-    f = np.sqrt(hb * V / m) * np.array(
-        [np.sqrt(2) / w, np.sqrt(2) / w, 1 / zR])[:dim]
+    f = np.sqrt(avg * hb * V / m) * np.array([2 / w, 2 / w, 1 / zR])[:dim]
     l = np.sqrt(hb / (m * f))
-    Eg = np.sum(f) / 2 - V / 2
+    Eg = np.sum(f) / 2 - avg * V
     # print('V=', V * 1E-3)
     # print('f=', *(f * 1E-3))
     print('Eg=', Eg * 1E-3 / (2 * np.pi))
 
     if dim == 3:
-        w0 = 2 / (f * np.sqrt(2)) * np.sqrt(hb * V / m)
+        # Recover effective Gaussian waist from harmonic trap approx.
+        w0 = np.array([w, w, np.sqrt(2) * zR])
         print('w0=', *w0)
         leff2 = 1 / (4 / w0**2 + 1 / l**2)
         print('leff=', *np.sqrt(leff2))
