@@ -1,4 +1,5 @@
 from typing import Iterable
+from torch import NumberType
 import numpy as np
 import sys
 from mimetypes import init
@@ -12,6 +13,7 @@ from scipy.sparse.linalg import LinearOperator
 import sparse
 from opt_einsum import contract
 from time import time
+
 # from einops import rearrange, reduce, repeat
 
 # Fundamental constants
@@ -90,6 +92,7 @@ class DVR:
                   1000),  # 2nd entry in array is (wx, wy), in number is (w, w)
             atom=6.015122,  # Atom mass, in amu. Default Lithium-6
             laser=780,  # 780nm, laser wavelength
+            zR=None,  # Rayleigh range input by hand
             symmetry: bool = False,
             absorber: bool = False,
             ab_param=(57.04, 1),
@@ -137,7 +140,9 @@ class DVR:
             if isinstance(trap[1], Iterable):  # Convert to np.array
                 self.w = np.array(trap[1][0]) * 1E-9
                 self.wy = np.array(trap[1]) / trap[1][0]  # wi/wx
-            elif isinstance(trap[1], NumberType):  # Number convert to np.array
+            elif isinstance(
+                    trap[1],
+                (int, float, complex)):  # Number convert to np.array
                 self.w = trap[1] * 1E-9
                 self.wy = np.ones(2)
 
@@ -146,7 +151,7 @@ class DVR:
             # Rayleigh range, a vector of (zRx, zRy), in unit of wx
             self.zR = np.pi * self.w * self.wy**2 / self.l
             # Rayleigh range input by hand, in unit of wx
-            if isinstance(zR, NumberType):
+            if isinstance(zR, (int, float, complex)):
                 self.zR = zR * np.ones(2) / self.w
             elif isinstance(zR, Iterable):
                 self.zR = zR / self.w
