@@ -1,17 +1,28 @@
+from typing import Iterable
+from numbers import Number
 import numpy as np
 
-def positify(psi: np.ndarray):
-    if psi.ndim == 1:
-        psimax = np.amax(abs(psi))
-        m = np.where(abs(psi) > psimax * 0.9)[0][0]
-        eta = np.conj(psi[m]) / abs(psi[m])
 
-        if np.abs(psimax) < 0.001:
-            print("Warning: small phase factor")
-        return psi * eta
+def positify(psi: np.ndarray) -> np.ndarray:
+    if isinstance(psi, Iterable):
+        psi = np.array(psi)
+    elif isinstance(psi, Number):
+        psi = abs(np.array([psi]))
+        
+    if psi.shape[0] > 0:
+        if psi.ndim == 1:
+            m = np.argmax(abs(psi))
+            eta = np.conj(psi[m]) / abs(psi[m])
+
+            if abs(psi[m]) < 0.001:
+                print("Positify warning: small maodule!")
+            return psi * eta
+        else:
+            nalpha = psi.shape[1]
+            psi1 = psi.copy()
+            for alpha in range(nalpha):
+                psi1[:, alpha] = positify(psi[:, alpha])
+            return psi1
     else:
-        nalpha = psi.shape[1]
-        psi1 = psi.copy()
-        for alpha in range(nalpha):
-            psi1[:, alpha] = positify(psi[:, alpha])
-        return psi1
+        print("Positify warning: empty array input!")
+    return psi

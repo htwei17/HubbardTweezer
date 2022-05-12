@@ -1,5 +1,5 @@
+from numbers import Number
 from typing import Iterable
-from torch import NumberType
 import numpy as np
 import sys
 from mimetypes import init
@@ -140,9 +140,7 @@ class DVR:
             if isinstance(trap[1], Iterable):  # Convert to np.array
                 self.w = np.array(trap[1][0]) * 1E-9
                 self.wy = np.array(trap[1]) / trap[1][0]  # wi/wx
-            elif isinstance(
-                    trap[1],
-                (int, float, complex)):  # Number convert to np.array
+            elif isinstance(trap[1], Number):  # Number convert to np.array
                 self.w = trap[1] * 1E-9
                 self.wy = np.ones(2)
 
@@ -151,7 +149,7 @@ class DVR:
             # Rayleigh range, a vector of (zRx, zRy), in unit of wx
             self.zR = np.pi * self.w * self.wy**2 / self.l
             # Rayleigh range input by hand, in unit of wx
-            if isinstance(zR, (int, float, complex)):
+            if isinstance(zR, Number):
                 self.zR = zR * np.ones(2) / self.w
             elif isinstance(zR, Iterable):
                 self.zR = zR / self.w
@@ -285,7 +283,7 @@ def delta(p, x, xn):
     return W
 
 
-def kinetic_offdiag(T):
+def kinetic_offdiag(T: np.ndarray):
     # Kinetic energy matrix off-diagonal elements
     non0 = T != 0  # To avoid warning on 0-divide-0
     T[non0] = 2 * np.power(-1., T[non0]) / T[non0]**2
@@ -319,7 +317,7 @@ def Tmat_1d(dvr: DVR, i: int):
     return T
 
 
-def Tmat(dvr: DVR) -> np.ndarray:
+def Tmat(dvr: DVR):
     # Kinetic energy tensor, index order [x y z x' y' z']
     # NOTE: 1. here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
     #       2. p=0, d=-1 means no symmetry applied
@@ -350,7 +348,7 @@ def Tmat(dvr: DVR) -> np.ndarray:
         return T
 
 
-def H_op(dvr: DVR, T, V, no, psi0):
+def H_op(dvr: DVR, T: list, V, no, psi0: np.ndarray):
     # Define Hamiltonian operator for sparse solver
 
     dvr.p *= dvr.n != 0

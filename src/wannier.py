@@ -1,5 +1,6 @@
+from cmath import nan
 from typing import Iterable
-from numpy import double, dtype
+# from numpy import double, dtype
 from opt_einsum import contract
 from pyrsistent import get_in
 from positify import positify
@@ -7,8 +8,9 @@ from scipy.integrate import romb
 from scipy.optimize import minimize
 import itertools
 import sparse
+
 import torch
-import autograd
+# import autograd
 import pymanopt
 import pymanopt.manifolds
 import pymanopt.solvers
@@ -19,24 +21,50 @@ import numpy.linalg as la
 
 class Wannier(DVR):
 
-    def update_lattice(self, lattice: np.ndarray, lc=(1520, 1690)):
+    def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690)):
         # graph : each line represents coordinate (x, y) of one lattice site
-        self.lattice = lattice.copy()
-        self.graph, self.links = lattice_graph(lattice)
+
+        self.Nsite = np.prod(lattice)
+
+        # Rule out geometry=[n, 1] case, convert such to [n]
+        if self.Nsite == 1:
+            self.lattice = np.ones(1)
+        elif self.Nsite > 1:
+            self.lattice = lattice[lattice > 1]
+        self.lattice_dim = self.lattice.size
+
+        self.graph, self.links, self.reflection = lattice_graph(lattice)
+        self.Nindep = self.reflection.shape[
+            0]  # Independent trap number under reflection symmetry
         if self.model == 'Gaussian':
             self.lc = np.array(lc) * 1E-9 / self.w  # In unit of wx
         elif self.model == 'sho':
             self.lc = np.array(lc)
-        self.Nsite = np.prod(self.lattice)
 
-        dx = np.zeros(self.n.shape)
-        dx[self.nd] = self.R0[self.nd] / self.n[self.nd]
+        dx = self.dx.copy()
         lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
+        print(f'lattice: dx is fixed at: {dx}w')
         print(f'lattice: Full lattice sizes: {lattice}')
         print(f'lattice: lattice constants: {lc}w')
         # Let there be R0's wide outside the edge trap center
-        R0 = (lattice - 1) * lc / 2 + self.R0
+        R0 = (lattice - 1) * lc / 2 + self.R00
+        R0 *= self.nd
+        self.update_R0(R0, dx)
+
+    def update_lattice(self, graph: np.ndarray):
+        # Update DVR grids when self.graph is updated
+
+        self.graph = graph.copy()
+        dx = self.dx.copy()
+        lattice = np.resize(np.pad(self.lattice, (0, 2), constant_values=1),
+                            dim)
+        lc = np.resize(self.lc, dim)
+        print(f'lattice: dx is fixed at: {dx}w')
+        print(f'lattice: Full lattice sizes updated to: {lattice}')
+        print(f'lattice: lattice constants updated to: {lc}w')
+        # Let there be R0's wide outside the edge trap center
+        R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
 
@@ -60,16 +88,18 @@ class Wannier(DVR):
         n = np.zeros(3, dtype=int)
         n[:dim] = N
         super().__init__(n, *args, **kwargs)
-        self.update_lattice(lattice, lc)
+        # Backup of distance from edge trap center to DVR grid boundaries
+        self.R00 = self.R0.copy()
+        self.create_lattice(lattice, lc)
 
         # Set offset to homogenize traps
         self.Voff = np.ones(self.Nsite)
+        # TODO: set lattice spacing offset to equalize tunneling
         if homogenize:
             self.homogenize()
 
     def Vfun(self, x, y, z):
         V = 0
-        # TODO: euqlize trap depths for n>=3 traps
 
         if self.model == 'sho' and self.Nsite == 2:
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
@@ -80,17 +110,17 @@ class Wannier(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def trap_mat(self):
-        tc = np.zeros((self.Nsite, dim))
-        fij = np.ones((self.Nsite, self.Nsite))
-        for i in range(self.Nsite):
-            tc[i, :2] = self.graph[i] * self.lc
-            tc[i, 2] = 0
-            for j in range(i):
-                # print(*(tc[i] - tc[j]))
-                fij[i, j] = -super().Vfun(*(tc[i] - tc[j]))
-                fij[j, i] = fij[i, j]  # Potential is symmetric in distance
-        return fij
+    # def trap_mat(self):
+    #     tc = np.zeros((self.Nsite, dim))
+    #     fij = np.ones((self.Nsite, self.Nsite))
+    #     for i in range(self.Nsite):
+    #         tc[i, :2] = self.graph[i] * self.lc
+    #         tc[i, 2] = 0
+    #         for j in range(i):
+    #             # print(*(tc[i] - tc[j]))
+    #             fij[i, j] = -super().Vfun(*(tc[i] - tc[j]))
+    #             fij[j, i] = fij[i, j]  # Potential is symmetric in distance
+    #     return fij
 
     def homogenize(self):
         # fij = self.trap_mat()
@@ -99,29 +129,106 @@ class Wannier(DVR):
         #     return la.norm(fij @ V - 1)
 
         band_bak = self.bands
-        Voff_bak = self.Voff
         self.bands = 1
-        A = self.tunnel_func()
-        target = np.mean(np.diag(A[0]))
-
-        def cost_func(offset):
-            self.Voff = offset
-            A = self.tunnel_func()
-            return la.norm(np.diag(A[0]) - target)
-
-        v0 = np.ones(self.Nsite)
-        res = minimize(cost_func, v0)
-        print('Trap homogenized.')
-        self.Voff = res.x
+        self.Voff = self.onsite_equalize()
+        print('Trap depeth homogenized.\n')
+        self.graph = self.tunneling_equalize()
+        print('Tunneling homogenized.\n')
         self.bands = band_bak
-        return self.Voff
 
-    def tunnel_func(self):
+        return self.Voff, self.graph
+
+    def tunneling_mat(self):
         A, __ = optimization(self, *eigen_basis(self))
         return A
 
+    def nntunneling(self, A: np.ndarray):
+        if self.Nsite == 1:
+            nnt = np.zeros(1)
+        elif self.lattice_dim == 1:
+            nnt = np.diag(A, k=1)
+        else:
+            nnt = A[self.links[:, 0], self.links[:, 1]]
+        return nnt
 
-def lattice_graph(size: np.ndarray):
+    def onsite_equalize(self):
+        # Equalize onsite chemical potential
+        Voff_bak = self.Voff
+
+        A = self.tunneling_mat()
+        target = np.mean(np.diag(A[0]))
+
+        def cost_func(offset: np.ndarray):
+            print("\nCurrent offset:", offset)
+            self.symmetrize(self.Voff, offset)
+            A = self.tunneling_mat()
+            c = la.norm(np.diag(A[0]) - target)
+            print("Current cost:", c, "\n")
+            return c
+
+        v0 = np.ones(self.Nindep)
+        # Bound trap depth variation
+        bonds = tuple((0.9, 1.1) for i in range(self.Nindep))
+        res = minimize(cost_func, v0, bounds=bonds)
+        self.symmetrize(self.Voff, res.x)
+        return self.Voff
+
+    def symmetrize(self, target, offset, graph=False):
+        parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
+        for row in range(self.reflection.shape[0]):
+            if graph:  # Symmetrize graph node coordinates
+                target[self.reflection[row, :]] = parity * offset[row][None]
+            else:  # Symmetrize trap depth
+                target[self.reflection[row, :]] = offset[row]
+
+    def tunneling_equalize(self) -> np.ndarray:
+        # Equalize tunneling
+        ls_bak = self.graph
+
+        A = self.tunneling_mat()
+        nnt = self.nntunneling(A[0])
+        xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
+        ylinks = np.logical_not(xlinks)
+        nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
+        nnty = None
+        if any(ylinks ==
+               True):  # Find y direction links, if lattice is 1D this is nan
+            nnty = np.mean(abs(nnt[ylinks]))
+
+        def cost_func(offset: np.ndarray):
+            print("\nCurrent offset:", offset)
+            offset = offset.reshape(self.Nindep, 2)
+            self.symmetrize(self.graph, offset, graph=True)
+            self.update_lattice(self.graph)
+            A = self.tunneling_mat()
+            nnt = self.nntunneling(A[0])
+            cost = abs(nnt[xlinks]) - nntx
+            if nnty != None:
+                cost = np.concatenate((cost, abs(nnt[ylinks]) - nnty))
+            c = la.norm(cost)
+            print("Current cost:", c, "\n")
+            return c
+
+        v0 = self.graph[self.reflection[:, 0]]
+        print('v0', v0)
+        # Bound lattice spacing variation
+        xbonds = tuple(
+            (v0[i, 0] - 0.05, v0[i, 0] + 0.05) for i in range(self.Nindep))
+        if self.lattice_dim == 1:
+            ybonds = tuple((0, 0) for i in range(self.Nindep))
+        else:
+            ybonds = tuple(
+                (v0[i, 1] - 0.05, v0[i, 1] + 0.05) for i in range(self.Nindep))
+        nested = tuple((xbonds[i], ybonds[i]) for i in range(self.Nindep))
+        bonds = tuple(item for sublist in nested for item in sublist)
+        print('bounds', bonds)
+        res = minimize(cost_func, v0.reshape(-1), bounds=bonds)
+        self.symmetrize(self.graph, res.x.reshape(self.Nindep, 2), graph=True)
+        self.update_lattice(self.graph)
+        return self.graph
+
+
+def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     # Square lattice graph builder
     # graph: each ndarray object in graph is a coordinate pair (x, y)
     #        indicating the posistion of node (trap center)
@@ -132,31 +239,50 @@ def lattice_graph(size: np.ndarray):
         size = np.array(size)
 
     edge = []
-    links = []
+    links = np.array([], dtype=int)
+    graph = np.array([], dtype=int)
     for i in range(size.size):
         edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
     if size.size == 1:
-        graph = [np.array([i, 0]) for i in edge[0]]
-        links = [np.array([i, i + 1]) for i in range(size[0] - 1)]
+        graph = np.array([[i, 0] for i in edge[0]])
+        links = np.array([[i, i + 1] for i in range(size[0] - 1)], dtype=int)
     elif size.size == 2:
-        graph = []
-        links = np.array([]).reshape(0, 2)
+        graph = np.array([]).reshape(0, 2)
+        links = np.array([], dtype=int).reshape(0, 2)
         node_idx = 0  # Linear index is column (y) prefered
         for i in range(len(edge[0])):
             for j in range(len(edge[1])):
-                graph.append(np.array([edge[0][i], edge[1][j]]))
+                graph = np.append(graph, [[edge[0][i], edge[1][j]]], axis=0)
                 if i > 0:
-                    links = np.append(links,
-                                      np.array([node_idx - size[1],
-                                                node_idx])[None],
+                    links = np.append(links, [[node_idx - size[1], node_idx]],
                                       axis=0)  # Row link
                 if j > 0:
-                    links = np.append(links,
-                                      np.array([node_idx - 1, node_idx])[None],
+                    links = np.append(links, [[node_idx - 1, node_idx]],
                                       axis=0)  # Column linke
                 node_idx += 1
 
-    return graph, links
+    reflection = build_reflection(graph)
+
+    return graph, links, reflection
+
+
+def build_reflection(graph):
+    # Build correspondence of 4 reflection sectors in 1D & 2D lattice
+    reflection = np.array([], dtype=int).reshape(0, 4)
+    for i in range(graph.shape[0]):
+        if all(graph[i, :] <= 0):
+            pp = i  # [1 1] sector
+            mp = np.nonzero(
+                np.prod(np.array([[-1, 1]]) * graph == graph[i, :],
+                        axis=1))[0][0]  # [-1 1] sector
+            pm = np.nonzero(
+                np.prod(np.array([[1, -1]]) * graph == graph[i, :],
+                        axis=1))[0][0]  # [1 -1] sector
+            mm = np.nonzero(
+                np.prod(np.array([[-1, -1]]) * graph == graph[i, :],
+                        axis=1))[0][0]  # [-1 -1] sector
+            reflection = np.append(reflection, [[pp, mp, pm, mm]], axis=0)
+    return reflection
 
 
 def eigen_basis(dvr: Wannier):
@@ -194,18 +320,19 @@ def eigen_basis(dvr: Wannier):
     return E, W, parity
 
 
-def sector(dvr):
+def sector(dvr: Wannier):
     # BUild all sectors
-    # x direction
+    # Single site case
     if dvr.Nsite == 1:
         p_tuple = [[1]]
     else:
+        # x direction
         p_tuple = [[1, -1]]
-    # y direction. Rule out geometry=[n, 1] case
-    if dvr.lattice.size > 1 and not any(dvr.lattice == 1):
-        p_tuple.append([1, -1])
-    else:
-        p_tuple.append([1])
+        # y direction.
+        if dvr.lattice_dim == 2:
+            p_tuple.append([1, -1])
+        else:
+            p_tuple.append([1])
         # For a general omega_z << omega_x,y case,
         # the lowest several bands are in
         # z=1, z=-1, z=1 sector, etc... alternatively
@@ -220,7 +347,7 @@ def sector(dvr):
     return p_list
 
 
-def add_sector(sector: np.ndarray, dvr: Wannier, k, E, W, parity):
+def add_sector(sector: np.ndarray, dvr: Wannier, k: int, E, W, parity):
     p = dvr.p.copy()
     p[:len(sector)] = sector
     dvr.update_p(p)
@@ -316,7 +443,7 @@ def singleband_optimization(dvr: Wannier, E, W, parity):
         def cost(point: torch.Tensor) -> float:
             return cost_func(point, R)
 
-        problem = pymanopt.Problem(manifold=manifold, cost=cost)
+        problem = pymanopt.Problem(manifold=manifold, cost=cost, verbosity=1)
         solver = pymanopt.solvers.SteepestDescent(maxiter=3000)
         solution = solver.solve(problem, reuselinesearch=True)
 
@@ -371,8 +498,8 @@ def interaction(dvr: Wannier, U: Iterable, W: Iterable, parity: Iterable):
 
 def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
-    u = 4 * np.pi * dvr.hb * dvr.scatt_len / (
-        dvr.m * dvr.kHz_2p * dvr.w**dim)  # Unit to kHz
+    u = 4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim
+                                              )  # Unit to kHz
     # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
