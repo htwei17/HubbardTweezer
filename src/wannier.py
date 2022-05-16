@@ -26,14 +26,20 @@ class Wannier(DVR):
 
         self.Nsite = np.prod(lattice)
 
-        # Rule out geometry=[n, 1] case, convert such to [n]
+        # Convert [n] to [n, 1]
         if self.Nsite == 1:
             self.lattice = np.ones(1)
-        elif self.Nsite > 1:
-            self.lattice = lattice[lattice > 1]
-        self.lattice_dim = self.lattice.size
+            self.lattice_dim = 1
+        elif self.Nsite > 1 and lattice.size == 1:
+            self.lattice = np.resize(
+                np.pad(lattice, pad_width=(0, 1), constant_values=1), 2)
+            self.lattice_dim = 1
+        else:
+            self.lattice = lattice.copy()
+            self.lattice_dim = lattice[lattice > 1].size
 
-        self.graph, self.links, self.reflection = lattice_graph(lattice)
+        self.trap_centers, self.links, self.reflection = lattice_graph(
+            self.lattice)
         self.Nindep = self.reflection.shape[
             0]  # Independent trap number under reflection symmetry
         if self.model == 'Gaussian':
@@ -52,10 +58,10 @@ class Wannier(DVR):
         R0 *= self.nd
         self.update_R0(R0, dx)
 
-    def update_lattice(self, graph: np.ndarray):
+    def update_lattice(self, tc: np.ndarray):
         # Update DVR grids when self.graph is updated
 
-        self.graph = graph.copy()
+        self.trap_centers = tc.copy()
         dx = self.dx.copy()
         lattice = np.resize(np.pad(self.lattice, (0, 2), constant_values=1),
                             dim)
@@ -106,7 +112,7 @@ class Wannier(DVR):
         else:
             # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
-                shift = self.graph[i] * self.lc
+                shift = self.trap_centers[i] * self.lc
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
@@ -132,15 +138,15 @@ class Wannier(DVR):
         self.bands = 1
         self.Voff = self.onsite_equalize()
         print('Trap depeth homogenized.\n')
-        self.graph = self.tunneling_equalize()
+        self.trap_centers = self.tunneling_equalize()
         print('Tunneling homogenized.\n')
         self.bands = band_bak
 
-        return self.Voff, self.graph
+        return self.Voff, self.trap_centers
 
     def tunneling_mat(self):
-        A, __ = optimization(self, *eigen_basis(self))
-        return A
+        self.A, __ = optimization(self, *eigen_basis(self))
+        return self.A
 
     def nntunneling(self, A: np.ndarray):
         if self.Nsite == 1:
@@ -183,7 +189,7 @@ class Wannier(DVR):
 
     def tunneling_equalize(self) -> np.ndarray:
         # Equalize tunneling
-        ls_bak = self.graph
+        ls_bak = self.trap_centers
 
         A = self.tunneling_mat()
         nnt = self.nntunneling(A[0])
@@ -198,8 +204,8 @@ class Wannier(DVR):
         def cost_func(offset: np.ndarray):
             print("\nCurrent offset:", offset)
             offset = offset.reshape(self.Nindep, 2)
-            self.symmetrize(self.graph, offset, graph=True)
-            self.update_lattice(self.graph)
+            self.symmetrize(self.trap_centers, offset, graph=True)
+            self.update_lattice(self.trap_centers)
             A = self.tunneling_mat()
             nnt = self.nntunneling(A[0])
             cost = abs(nnt[xlinks]) - nntx
@@ -209,7 +215,7 @@ class Wannier(DVR):
             print("Current cost:", c, "\n")
             return c
 
-        v0 = self.graph[self.reflection[:, 0]]
+        v0 = self.trap_centers[self.reflection[:, 0]]
         print('v0', v0)
         # Bound lattice spacing variation
         xbonds = tuple(
@@ -223,9 +229,11 @@ class Wannier(DVR):
         bonds = tuple(item for sublist in nested for item in sublist)
         print('bounds', bonds)
         res = minimize(cost_func, v0.reshape(-1), bounds=bonds)
-        self.symmetrize(self.graph, res.x.reshape(self.Nindep, 2), graph=True)
-        self.update_lattice(self.graph)
-        return self.graph
+        self.symmetrize(self.trap_centers,
+                        res.x.reshape(self.Nindep, 2),
+                        graph=True)
+        self.update_lattice(self.trap_centers)
+        return self.trap_centers
 
 
 def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -239,35 +247,43 @@ def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         size = np.array(size)
 
     edge = []
-    links = np.array([], dtype=int)
-    graph = np.array([], dtype=int)
     for i in range(size.size):
         edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
-    if size.size == 1:
-        graph = np.array([[i, 0] for i in edge[0]])
-        links = np.array([[i, i + 1] for i in range(size[0] - 1)], dtype=int)
-    elif size.size == 2:
-        graph = np.array([]).reshape(0, 2)
-        links = np.array([], dtype=int).reshape(0, 2)
-        node_idx = 0  # Linear index is column (y) prefered
-        for i in range(len(edge[0])):
-            for j in range(len(edge[1])):
-                graph = np.append(graph, [[edge[0][i], edge[1][j]]], axis=0)
-                if i > 0:
-                    links = np.append(links, [[node_idx - size[1], node_idx]],
-                                      axis=0)  # Row link
-                if j > 0:
-                    links = np.append(links, [[node_idx - 1, node_idx]],
-                                      axis=0)  # Column linke
-                node_idx += 1
 
-    reflection = build_reflection(graph)
+    # links = np.array([], dtype=int)
+    # nodes = np.array([], dtype=int)
+    # if size.size == 1:
+    #     nodes = np.array([[i, 0] for i in edge[0]])
+    #     links = np.array([[i, i + 1] for i in range(size[0] - 1)], dtype=int)
+    # elif size.size == 2:
+    nodes = np.array([]).reshape(0, 2)
+    links = np.array([], dtype=int).reshape(0, 2)
+    node_idx = 0  # Linear index is column (y) prefered
+    for i in range(len(edge[0])):
+        for j in range(len(edge[1])):
+            nodes = np.append(nodes, [[edge[0][i], edge[1][j]]], axis=0)
+            if i > 0:
+                links = np.append(links, [[node_idx - size[1], node_idx]],
+                                  axis=0)  # Row link
+            if j > 0:
+                links = np.append(links, [[node_idx - 1, node_idx]],
+                                  axis=0)  # Column linke
+            node_idx += 1
 
-    return graph, links, reflection
+    reflection = build_reflection(nodes)
+
+    return nodes, links, reflection
 
 
 def build_reflection(graph):
     # Build correspondence of 4 reflection sectors in 1D & 2D lattice
+    # Eg. : p=1, m=-1
+    #     [pp mp pm mm] equiv pts 1
+    #     [pp mp pm mm] equiv pts 2
+    #     [pp mp pm mm] equiv pts 3
+    #     [pp mp pm mm] equiv pts 4
+    #     ...
+
     reflection = np.array([], dtype=int).reshape(0, 4)
     for i in range(graph.shape[0]):
         if all(graph[i, :] <= 0):
@@ -463,7 +479,7 @@ def lattice_order(dvr: Wannier, W, U, p):
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
-        shift[i, :2] = dvr.graph[i] * dvr.lc
+        shift[i, :2] = dvr.trap_centers[i] * dvr.lc
         # Small offset to avoid zero values on z=0 in odd sector
         shift[i, 2] = 0.25
     x = [[[shift[i, d]] for d in range(dim)] for i in range(dvr.Nsite)]
