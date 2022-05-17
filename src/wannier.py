@@ -134,19 +134,28 @@ class Wannier(DVR):
         # def cost_func(V):
         #     return la.norm(fij @ V - 1)
 
-        band_bak = self.bands
-        self.bands = 1
         self.Voff = self.onsite_equalize()
         print('Trap depeth homogenized.\n')
         self.trap_centers = self.tunneling_equalize()
         print('Tunneling homogenized.\n')
-        self.bands = band_bak
 
         return self.Voff, self.trap_centers
 
-    def tunneling_mat(self):
-        self.A, __ = optimization(self, *eigen_basis(self))
-        return self.A
+    def singleband_matrix(self, u=False):
+        band_bak = self.bands
+        self.bands = 1
+        E, W, p = eigen_basis(self)
+        A, U = optimization(self, E, W, p)
+        self.A = A[0]
+        if u:
+            V = interaction(self, U, W, p)
+            self.U = V[0, 0]
+            self.bands = band_bak
+            return self.A, self.U
+        else:
+            self.bands = band_bak
+            self.U = None
+            return self.A
 
     def nntunneling(self, A: np.ndarray):
         if self.Nsite == 1:
@@ -161,14 +170,14 @@ class Wannier(DVR):
         # Equalize onsite chemical potential
         Voff_bak = self.Voff
 
-        A = self.tunneling_mat()
-        target = np.mean(np.diag(A[0]))
+        A = self.singleband_matrix()
+        target = np.mean(np.diag(A))
 
         def cost_func(offset: np.ndarray):
             print("\nCurrent offset:", offset)
             self.symmetrize(self.Voff, offset)
-            A = self.tunneling_mat()
-            c = la.norm(np.diag(A[0]) - target)
+            A = self.singleband_matrix()
+            c = la.norm(np.diag(A) - target)
             print("Current cost:", c, "\n")
             return c
 
@@ -191,8 +200,8 @@ class Wannier(DVR):
         # Equalize tunneling
         ls_bak = self.trap_centers
 
-        A = self.tunneling_mat()
-        nnt = self.nntunneling(A[0])
+        A = self.singleband_matrix()
+        nnt = self.nntunneling(A)
         xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         ylinks = np.logical_not(xlinks)
         nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
@@ -206,8 +215,8 @@ class Wannier(DVR):
             offset = offset.reshape(self.Nindep, 2)
             self.symmetrize(self.trap_centers, offset, graph=True)
             self.update_lattice(self.trap_centers)
-            A = self.tunneling_mat()
-            nnt = self.nntunneling(A[0])
+            A = self.singleband_matrix()
+            nnt = self.nntunneling(A)
             cost = abs(nnt[xlinks]) - nntx
             if nnty != None:
                 cost = np.concatenate((cost, abs(nnt[ylinks]) - nnty))

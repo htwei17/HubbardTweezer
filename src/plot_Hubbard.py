@@ -25,46 +25,126 @@ class Graph(Wannier):
         self.edges = [tuple(row) for row in self.links]
         self.graph = nx.Graph(self.edges, name='Lattice')
         self.pos = dict(
-            (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-            for n in self.graph.nodes())
+            # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
+            (n, self.trap_centers[n]) for n in self.graph.nodes())
 
-    def update_edge_weight(self):
-        for link in self.links:
-            # # Label bond length
-            # length = la.norm(np.diff(self.trap_centers[link], axis=0))
-            # Label bond tunneling
-            length = abs(self.A[link[0], link[1]])
+    def update_edge_weight(self, label='param'):
+        for link in self.graph.edges:
+            if label == 'param':
+                # Label bond tunneling
+                length = abs(self.A[link[0], link[1]])
+            elif label == 'adjust':
+                # Label bond length
+                length = la.norm(np.diff(self.trap_centers[link], axis=0))
             self.graph[link[0]][link[1]]['weight'] = length
         self.edge_label = dict(
             (edge, f'{self.graph[edge[0]][edge[1]]["weight"]:.3g}')
-            for edge in self.edges)
+            for edge in self.graph.edges)
+        max_len = max(dict(self.graph.edges).items(),
+                      key=lambda x: x[1]["weight"])[-1]["weight"]
+        self.edge_alpha = [
+            self.graph[edge[0]][edge[1]]["weight"] / max_len
+            for edge in self.graph.edges
+        ]
 
-    def update_node_weight(self):
-        # # Label trap offset
-        # self.node_label = dict(
-        #     (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes())
-        # Label onsite chemical potential
-        depth = np.real(np.diag(self.A))
-        self.node_label = dict(
-            (n, f'{depth[n]:.3g}') for n in self.graph.nodes())
+    def update_node_weight(self, label='param'):
+        if label == 'param':
+            # Label onsite chemical potential
+            depth = np.real(np.diag(self.A))
+            self.node_label = dict(
+                (n, f'{depth[n]:.3g}') for n in self.graph.nodes)
+        elif label == 'adjust':
+            # Label trap offset
+            self.node_label = dict(
+                (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
         self.node_size = [i**10 * 600 for i in self.Voff]
 
-    def draw_graph(self):
-        nx.draw(self.graph,
-                pos=self.pos,
-                edge_color='#606060',
-                with_labels=False,
-                width=3,
-                node_color='#99CCFF',
-                node_size=self.node_size)
+    def add_nnn(self, center=0, limit=3):
+        # Add higher neighbor bonds
+        # NOTE: explicit square lattice geometry somewhat assumed
+        if limit + 2 > self.Nsite:
+            limit = self.Nsite - 2
+        if center >= self.Nsite:
+            center = 0
+        if self.lattice_dim == 1:
+            for i in range(limit):
+                self.graph.add_edge(center, i + 2)
+        elif self.lattice_dim == 2:
+            for i in range(2 * limit):
+                self.graph.add_edge(center, i + 2)
+
+    def singleband_params(self, label='param'):
+        if label == 'param':
+            self.singleband_matrix(u=True)
+        elif label == 'adjust':
+            self.singleband_matrix(u=False)
+
+    def draw_graph(self, label='param', nnn=False):
+        self.singleband_params(label)
+        if nnn:
+            self.add_nnn()
+        self.update_edge_weight(label)
+        self.update_node_weight(label)
+
+        nx.draw_networkx_nodes(self.graph,
+                               pos=self.pos,
+                               node_color='#99CCFF',
+                               node_size=self.node_size)
         nx.draw_networkx_labels(self.graph,
                                 pos=self.pos,
-                                font_color='#00994C',
+                                font_color='#000066',
                                 font_size=8,
                                 labels=self.node_label)
+        link_list = list(self.graph.edges)
+        for i in range(len(link_list)):
+            el = [link_list[i]]
+            # TODO: curve nnn edges
+            nx.draw_networkx_edges(self.graph,
+                                   self.pos,
+                                   edgelist=el,
+                                   edge_color='#606060',
+                                   alpha=np.sqrt(self.edge_alpha[i]),
+                                   width=3)
         nx.draw_networkx_edge_labels(self.graph,
                                      self.pos,
+                                     font_size=10,
                                      edge_labels=self.edge_label,
                                      font_color=[0.256, 0.439, 0.588])
-        plt.axis('off')
-        plt.savefig('Graph.pdf')
+        if label == 'param':
+            self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
+        # plt.axis('off')
+        plt.savefig(f'{self.lattice} graph {label}.pdf')
+
+    def draw_node_overhead_labels(
+            self,
+            font_size=12,
+            font_color="k",
+            font_family="sans-serif",
+            font_weight="normal",
+            alpha=None,
+            bbox=None,
+            #  bbox=dict(facecolor='red', alpha=0.5)
+            horizontalalignment="center",
+            verticalalignment="center",
+            ax=None):
+        if ax is None:
+            ax = plt.gca()
+        if self.lattice_dim == 1:
+            offset = (0, 0.006)
+        elif self.lattice_dim == 2:
+            offset = (-0.08, 0.08)
+
+        for i in range(self.Nsite):
+            x, y = self.pos[i]
+            ax.text(x + offset[0],
+                    y + offset[1],
+                    s=f'{self.U[i]:.3g}',
+                    size=font_size,
+                    color=font_color,
+                    family=font_family,
+                    weight=font_weight,
+                    alpha=alpha,
+                    horizontalalignment=horizontalalignment,
+                    verticalalignment=verticalalignment,
+                    bbox=bbox,
+                    transform=ax.transData)
