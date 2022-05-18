@@ -23,7 +23,7 @@ class Graph(Wannier):
         # self.lattice = np.resize(
         #     np.pad(self.lattice, pad_width=(0, 1), constant_values=1), 2)
         self.edges = [tuple(row) for row in self.links]
-        self.graph = nx.Graph(self.edges, name='Lattice')
+        self.graph = nx.DiGraph(self.edges, name='Lattice')
         self.pos = dict(
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
             (n, self.trap_centers[n]) for n in self.graph.nodes())
@@ -35,7 +35,7 @@ class Graph(Wannier):
                 length = abs(self.A[link[0], link[1]])
             elif label == 'adjust':
                 # Label bond length
-                length = la.norm(np.diff(self.trap_centers[link], axis=0))
+                length = la.norm(np.diff(self.trap_centers[link, :], axis=0))
             self.graph[link[0]][link[1]]['weight'] = length
         self.edge_label = dict(
             (edge, f'{self.graph[edge[0]][edge[1]]["weight"]:.3g}')
@@ -81,11 +81,16 @@ class Graph(Wannier):
 
     def draw_graph(self, label='param', nnn=False):
         self.singleband_params(label)
-        if nnn:
+        if label == 'param' and nnn:
             self.add_nnn()
         self.update_edge_weight(label)
         self.update_node_weight(label)
 
+        if self.lattice_dim == 1:
+            fs = (self.lattice[0] * 2, self.lattice[1] * 6)
+        elif self.lattice_dim == 2:
+            fs = tuple(2 * i for i in self.lattice)
+        f = plt.figure(figsize=fs)
         nx.draw_networkx_nodes(self.graph,
                                pos=self.pos,
                                node_color='#99CCFF',
@@ -97,12 +102,19 @@ class Graph(Wannier):
                                 labels=self.node_label)
         link_list = list(self.graph.edges)
         for i in range(len(link_list)):
-            el = [link_list[i]]
-            # TODO: curve nnn edges
+            el = link_list[i]
+            cs = "arc3"
+            if self.lattice_dim == 1 and not any(
+                (el == self.links).all(axis=1)):
+                cs = "arc3,rad=0.2"
             nx.draw_networkx_edges(self.graph,
                                    self.pos,
-                                   edgelist=el,
+                                   arrows=True,
+                                   arrowstyle='-',
+                                   edgelist=[el],
                                    edge_color='#606060',
+                                   connectionstyle=cs,
+                                   label=self.edge_label[link_list[i]],
                                    alpha=np.sqrt(self.edge_alpha[i]),
                                    width=3)
         nx.draw_networkx_edge_labels(self.graph,
@@ -112,8 +124,8 @@ class Graph(Wannier):
                                      font_color=[0.256, 0.439, 0.588])
         if label == 'param':
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
-        # plt.axis('off')
-        plt.savefig(f'{self.lattice} graph {label}.pdf')
+        plt.axis('off')
+        plt.savefig(f'{self.lattice} graph {label} {self.equalize}.pdf')
 
     def draw_node_overhead_labels(
             self,
@@ -130,9 +142,9 @@ class Graph(Wannier):
         if ax is None:
             ax = plt.gca()
         if self.lattice_dim == 1:
-            offset = (0, 0.006)
+            offset = (0, 0.001)
         elif self.lattice_dim == 2:
-            offset = (-0.08, 0.08)
+            offset = (-0.1, 0.1)
 
         for i in range(self.Nsite):
             x, y = self.pos[i]

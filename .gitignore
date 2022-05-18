@@ -2,6 +2,7 @@
 *.pdf
 *.xlsx
 *.pptx
+*.svg
 
 # Temp files
 .DS_Store
@@ -14,4 +15,3 @@ output
 *.h5
 
 # Executables
-

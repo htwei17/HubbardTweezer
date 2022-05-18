@@ -82,7 +82,7 @@ class Wannier(DVR):
             lc=(1520, 1690),  # Lattice constant, in unit of nm
             ascatt=1600,  # Scattering length, in unit of Bohr radius
             band=1,  # Number of bands
-            homogenize=False,  # Homogenize trap or not
+            equalize=False,  # Homogenize trap or not
             dim: int = 3,
             *args,
             **kwargs) -> None:
@@ -100,8 +100,9 @@ class Wannier(DVR):
 
         # Set offset to homogenize traps
         self.Voff = np.ones(self.Nsite)
-        # TODO: set lattice spacing offset to equalize tunneling
-        if homogenize:
+        self.equalize = 'neq'
+        if equalize:
+            self.equalize = 'eq'
             self.homogenize()
 
     def Vfun(self, x, y, z):
