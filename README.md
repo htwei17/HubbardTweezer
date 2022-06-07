@@ -13,3 +13,4 @@ Functioning scripts:
 * `dynamics_exe.py`: execute script of DVR dynamics on command line
 * `wannier.py` : `Wannier` class to construct Wannier funcitons
 * `plot_Hubbard.py` : `Graph` class to plot Hubbard parameters on lattice graphs
+* `*.ipynb` are for test use. Most are self-explained by their title cells.
