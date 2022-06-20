@@ -86,6 +86,7 @@ class Graph(Wannier):
         self.update_edge_weight(label)
         self.update_node_weight(label)
 
+        print('\nStart to plot graph...')
         if self.lattice_dim == 1:
             fs = (self.lattice[0] * 2, self.lattice[1] * 6)
         elif self.lattice_dim == 2:
@@ -125,7 +126,7 @@ class Graph(Wannier):
         if label == 'param':
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
         plt.axis('off')
-        plt.savefig(f'{self.lattice} graph {label} {self.equalize}.pdf')
+        plt.savefig(f'{self.lattice} graph {label} {self.eq_label}.pdf')
 
     def draw_node_overhead_labels(
             self,
@@ -142,7 +143,7 @@ class Graph(Wannier):
         if ax is None:
             ax = plt.gca()
         if self.lattice_dim == 1:
-            offset = (0, 0.001)
+            offset = (0, 0)
         elif self.lattice_dim == 2:
             offset = (-0.1, 0.1)
 

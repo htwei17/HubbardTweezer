@@ -100,9 +100,9 @@ class Wannier(DVR):
 
         # Set offset to homogenize traps
         self.Voff = np.ones(self.Nsite)
-        self.equalize = 'neq'
+        self.eq_label = 'neq'
         if equalize:
-            self.equalize = 'eq'
+            self.eq_label = 'eq'
             self.homogenize()
 
     def Vfun(self, x, y, z):
@@ -167,62 +167,84 @@ class Wannier(DVR):
             nnt = A[self.links[:, 0], self.links[:, 1]]
         return nnt
 
+    def onsite_cost_func(self, offset: np.ndarray, target: float):
+        self.symm_unfold(self.Voff, offset)
+        A = self.singleband_matrix()
+        c = la.norm(np.diag(A) - target)
+        return c
+
     def onsite_equalize(self):
         # Equalize onsite chemical potential
         Voff_bak = self.Voff
 
         A = self.singleband_matrix()
-        target = np.mean(np.diag(A))
+        onsite = np.mean(np.diag(A))
 
         def cost_func(offset: np.ndarray):
-            print("\nCurrent offset:", offset)
-            self.symmetrize(self.Voff, offset)
-            A = self.singleband_matrix()
-            c = la.norm(np.diag(A) - target)
-            print("Current cost:", c, "\n")
+            print("\nCurrent trap depths:", offset)
+            c = self.onsite_cost_func(offset, onsite)
+            print("Current total cost:", c, "\n")
             return c
 
         v0 = np.ones(self.Nindep)
         # Bound trap depth variation
         bonds = tuple((0.9, 1.1) for i in range(self.Nindep))
         res = minimize(cost_func, v0, bounds=bonds)
-        self.symmetrize(self.Voff, res.x)
+        self.symm_unfold(self.Voff, res.x)
         return self.Voff
 
-    def symmetrize(self, target, offset, graph=False):
+    def symm_unfold(self, target: Iterable, info, graph=False):
+        # Unfold information to all symmetry sectors
+        # No need to output as target is Iterable
         parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
         for row in range(self.reflection.shape[0]):
             if graph:  # Symmetrize graph node coordinates
-                target[self.reflection[row, :]] = parity * offset[row][None]
+                target[self.reflection[row, :]] = parity * info[row][None]
             else:  # Symmetrize trap depth
-                target[self.reflection[row, :]] = offset[row]
+                target[self.reflection[row, :]] = info[row]
 
-    def tunneling_equalize(self) -> np.ndarray:
+    def symm_fold(self, info):
+        # Extract information into symmetrized first sector
+        target = info[self.reflection[:, 0]]
+        return target
+
+    def tunneling_cost_func(self, offset, links: tuple, target: tuple):
+        xlinks, ylinks = links
+        nntx, nnty = target
+        offset = offset.reshape(self.Nindep, 2)
+        self.symm_unfold(self.trap_centers, offset, graph=True)
+        self.update_lattice(self.trap_centers)
+        A = self.singleband_matrix()
+        nnt = self.nntunneling(A)
+        cost = abs(nnt[xlinks]) - nntx
+        if nnty != None:
+            cost = np.concatenate((cost, abs(nnt[ylinks]) - nnty))
+        c = la.norm(cost)
+        return c
+
+    def tunneling_equalize(self, a: float = 0) -> np.ndarray:
         # Equalize tunneling
         ls_bak = self.trap_centers
 
         A = self.singleband_matrix()
         nnt = self.nntunneling(A)
-        xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
-        ylinks = np.logical_not(xlinks)
-        nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
-        nnty = None
-        if any(ylinks ==
-               True):  # Find y direction links, if lattice is 1D this is nan
-            nnty = np.mean(abs(nnt[ylinks]))
+        onsite = np.mean(np.diag(A))
+        symm_v = self.symm_fold(self.Voff)
+        xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
         def cost_func(offset: np.ndarray):
-            print("\nCurrent offset:", offset)
-            offset = offset.reshape(self.Nindep, 2)
-            self.symmetrize(self.trap_centers, offset, graph=True)
-            self.update_lattice(self.trap_centers)
-            A = self.singleband_matrix()
-            nnt = self.nntunneling(A)
-            cost = abs(nnt[xlinks]) - nntx
-            if nnty != None:
-                cost = np.concatenate((cost, abs(nnt[ylinks]) - nnty))
-            c = la.norm(cost)
-            print("Current cost:", c, "\n")
+            print("\nCurrent trap centers:", offset)
+            t = self.tunneling_cost_func(offset, (xlinks, ylinks),
+                                         (nntx, nnty))
+            v = 0
+            # a: adjust factor on onsite potential cost function
+            if a != 0:
+                v = self.onsite_cost_func(symm_v, onsite)
+                print(f'Finite scale factor a={a} is included.')
+                print(f'Tunneling cost t={t}')
+                print(f'Onsite potential cost v={v}')
+            c = t + a * v
+            print("Current total cost:", c, "\n")
             return c
 
         v0 = self.trap_centers[self.reflection[:, 0]]
@@ -239,11 +261,22 @@ class Wannier(DVR):
         bonds = tuple(item for sublist in nested for item in sublist)
         print('bounds', bonds)
         res = minimize(cost_func, v0.reshape(-1), bounds=bonds)
-        self.symmetrize(self.trap_centers,
-                        res.x.reshape(self.Nindep, 2),
-                        graph=True)
+        self.symm_unfold(self.trap_centers,
+                         res.x.reshape(self.Nindep, 2),
+                         graph=True)
         self.update_lattice(self.trap_centers)
         return self.trap_centers
+
+    def xy_links(self, nnt):
+        # Distinguish x and y n.n. bonds and target t_x t_y values
+        xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
+        ylinks = np.logical_not(xlinks)
+        nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
+        nnty = None
+        if any(ylinks ==
+               True):  # Find y direction links, if lattice is 1D this is nan
+            nnty = np.mean(abs(nnt[ylinks]))
+        return xlinks, ylinks, nntx, nnty
 
 
 def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
