@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from equalization import *
+from equalizer import *
 import networkx as nx
 import matplotlib as mpl
 

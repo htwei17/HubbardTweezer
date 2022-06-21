@@ -4,6 +4,8 @@
 # Files to not ignore
 !/.gitignore
 !/README.md
+!*.py
+!*.m
 
 # Folder to not ignore
 !/Computations/

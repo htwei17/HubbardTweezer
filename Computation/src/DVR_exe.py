@@ -1,5 +1,5 @@
 from dynamics import *
-from DVR_full import *
+from DVR_core import *
 import h5py
 from time import time
 from pympler.asizeof import asizeof
