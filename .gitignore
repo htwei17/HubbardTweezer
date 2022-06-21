@@ -1,8 +1,13 @@
-# PDFs and others
+# PDFs and other outputs
 *.pdf
 *.xlsx
 *.pptx
 *.svg
+*.jpg
+*.png
+*.jpeg
+*.gif
+*.bmp
 
 # Temp files
 .DS_Store
@@ -15,3 +20,4 @@ output
 *.h5
 
 # Executables
+*.exe
