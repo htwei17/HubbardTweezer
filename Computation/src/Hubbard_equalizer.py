@@ -4,11 +4,11 @@ from pyrsistent import get_in
 from scipy.integrate import romb
 from scipy.optimize import minimize
 import numpy as np
-from wannier import *
+from Hubbard_core import *
 import numpy.linalg as la
 
 
-class Equalizer(Wannier):
+class HubbardParamEqualizer(MLWF):
 
     def __init__(
             self,

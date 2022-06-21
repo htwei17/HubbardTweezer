@@ -1,6 +1,6 @@
 import numpy as np
-from dynamics import *
-from DVR3d_exe import DVR3d_exe
+from DVR_dynamics import *
+from DVR_exe import DVRdynamics_exe
 import argparse
 
 dsp = 'Tweezer stroboscopic dynamics by 3D DVR.'

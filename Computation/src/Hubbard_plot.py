@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from equalizer import *
+from Hubbard_equalizer import *
 import networkx as nx
 import matplotlib as mpl
 
@@ -15,7 +15,7 @@ params = {
 mpl.rcParams.update(params)
 
 
-class Graph(Equalizer):
+class HubbardGraph(HubbardParamEqualizer):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

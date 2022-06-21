@@ -1,5 +1,5 @@
-from dynamics import *
-from DVR3d_exe import DVR3d_exe
+from DVR_dynamics import *
+from DVR_exe import DVRdynamics_exe
 
 # 3D harmonic potential
 print("3D harmonic potential starts.")

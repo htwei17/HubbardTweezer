@@ -13,11 +13,11 @@ import pymanopt
 import pymanopt.manifolds
 import pymanopt.solvers
 
-from DVR_full import *
+from DVR_core import *
 import numpy.linalg as la
 
 
-class Wannier(DVR):
+class MLWF(DVR):
 
     def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690)):
         # graph : each line represents coordinate (x, y) of one lattice site
@@ -205,7 +205,9 @@ def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def build_reflection(graph):
-    # Build correspondence of 4 reflection sectors in 1D & 2D lattice
+    # Build correspondence map of 4 reflection sectors in 1D & 2D lattice
+    # Entries are site labels, each row is a symmetry equiv class
+    # with 4 columns sites from each other
     # Eg. : p=1, m=-1
     #     [pp mp pm mm] equiv pts 1
     #     [pp mp pm mm] equiv pts 2
@@ -230,7 +232,7 @@ def build_reflection(graph):
     return reflection
 
 
-def eigen_basis(dvr: Wannier):
+def eigen_basis(dvr: MLWF):
     # Find eigenbasis of symmetry block diagonalized Hamiltonian
     k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
@@ -266,7 +268,7 @@ def eigen_basis(dvr: Wannier):
     return E, W, parity
 
 
-def sector(dvr: Wannier):
+def sector(dvr: MLWF):
     # Generate all sector information for 1D and 2D lattice
     # Single site case
     if dvr.Nsite == 1:
@@ -293,7 +295,7 @@ def sector(dvr: Wannier):
     return p_list
 
 
-def add_sector(sector: np.ndarray, dvr: Wannier, k: int, E, W, parity):
+def add_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
     p[:len(sector)] = sector
@@ -307,7 +309,7 @@ def add_sector(sector: np.ndarray, dvr: Wannier, k: int, E, W, parity):
     return E, W, parity
 
 
-def cost_mat(dvr: Wannier, W, parity):
+def cost_mat(dvr: MLWF, W, parity):
     R = []
 
     # For calculation keeping only p_z = 1 sector,
@@ -368,7 +370,7 @@ def cost_func(U, R) -> float:
     return np.real(o)
 
 
-def optimize(dvr: Wannier, E, W, parity):
+def optimize(dvr: MLWF, E, W, parity):
     # Multiband optimization
     A = []
     w = []
@@ -379,7 +381,7 @@ def optimize(dvr: Wannier, E, W, parity):
     return A, w
 
 
-def singleband_optimize(dvr: Wannier, E, W, parity):
+def singleband_optimize(dvr: MLWF, E, W, parity):
     # Singleband Wannier function optimization
     R = multi_tensor(cost_mat(dvr, W, parity))
 
@@ -406,7 +408,7 @@ def singleband_optimize(dvr: Wannier, E, W, parity):
     return A, U
 
 
-def lattice_order(dvr: Wannier, W, U, p):
+def lattice_order(dvr: MLWF, W, U, p):
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
@@ -425,7 +427,7 @@ def lattice_order(dvr: Wannier, W, U, p):
     return U[:, order]
 
 
-def tight_binding(dvr: Wannier):
+def tight_binding(dvr: MLWF):
     E, W, parity = eigen_basis(dvr)
     A, w = optimize(dvr, E, W, parity)
     mu = np.diag(A)  # Diagonals are mu_i
@@ -433,7 +435,7 @@ def tight_binding(dvr: Wannier):
     return np.real(mu), abs(t)
 
 
-def interaction(dvr: Wannier, U: Iterable, W: Iterable, parity: Iterable):
+def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
     # Interaction between i band and j band
     Uint = np.zeros((dvr.bands, dvr.bands, dvr.Nsite))
     for i in range(dvr.bands):
@@ -443,7 +445,7 @@ def interaction(dvr: Wannier, U: Iterable, W: Iterable, parity: Iterable):
     return Uint
 
 
-def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
+def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
     u = 4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim
                                               )  # Unit to kHz
@@ -501,55 +503,55 @@ def intgrl3d(dx, integrand):
     return integrand
 
 
-######## DEPRECATED DUE TO WRONG ASSUMPTION OF QUADRATURE ##########
-def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
-    # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
-    for i in range(dvr.Nsite):
-        Wii = Wi[i].conj()
-        for j in range(dvr.Nsite):
-            Wjj = Wj[j].conj()
-            for k in range(dvr.Nsite):
-                Wjk = Wj[k]
-                for l in range(dvr.Nsite):
-                    Wil = Wi[l]
-                    if dvr.symmetry:
-                        p_ijkl = np.concatenate(
-                            (pi[i, :][None], pj[j, :][None], pj[k, :][None],
-                             pi[l, :][None]),
-                            axis=0)
-                        pqrs = np.prod(p_ijkl, axis=0)
-                        # Cancel n = 0 column for any p = -1 in one direction
-                        nlen = dvr.n.copy()
-                        # Mark which dimension has n=0 basis
-                        line0 = np.all(p_ijkl != -1, axis=0)
-                        nlen[line0] += 1
-                        # prefactor of n=0 line
-                        pref0 = np.zeros(dim)
-                        pref0[dvr.nd] = 1 / dvr.dx[dvr.nd]
-                        # prefactor of n>0 lines
-                        pref = (1 + pqrs) / 4 * pref0
-                        for d in range(dim):
-                            if dvr.nd[d]:
-                                f = pref[d] * np.ones(Wil.shape[d])
-                                if Wil.shape[d] > dvr.n[d]:
-                                    f[0] = pref0[d]
-                                idx = np.ones(dim, dtype=int)
-                                idx[d] = len(f)
-                                f = f.reshape(idx)
-                                Wil = f * Wil
-                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
-                                                       pick(Wii, nlen),
-                                                       pick(Wjj, nlen),
-                                                       pick(Wjk, nlen),
-                                                       pick(Wil, nlen))
-                    else:
-                        integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wii,
-                                                       Wjj, Wjk, Wil)
+# ######## DEPRECATED DUE TO WRONG ASSUMPTION OF QUADRATURE ##########
+# def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
+#     # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
+#     for i in range(dvr.Nsite):
+#         Wii = Wi[i].conj()
+#         for j in range(dvr.Nsite):
+#             Wjj = Wj[j].conj()
+#             for k in range(dvr.Nsite):
+#                 Wjk = Wj[k]
+#                 for l in range(dvr.Nsite):
+#                     Wil = Wi[l]
+#                     if dvr.symmetry:
+#                         p_ijkl = np.concatenate(
+#                             (pi[i, :][None], pj[j, :][None], pj[k, :][None],
+#                              pi[l, :][None]),
+#                             axis=0)
+#                         pqrs = np.prod(p_ijkl, axis=0)
+#                         # Cancel n = 0 column for any p = -1 in one direction
+#                         nlen = dvr.n.copy()
+#                         # Mark which dimension has n=0 basis
+#                         line0 = np.all(p_ijkl != -1, axis=0)
+#                         nlen[line0] += 1
+#                         # prefactor of n=0 line
+#                         pref0 = np.zeros(dim)
+#                         pref0[dvr.nd] = 1 / dvr.dx[dvr.nd]
+#                         # prefactor of n>0 lines
+#                         pref = (1 + pqrs) / 4 * pref0
+#                         for d in range(dim):
+#                             if dvr.nd[d]:
+#                                 f = pref[d] * np.ones(Wil.shape[d])
+#                                 if Wil.shape[d] > dvr.n[d]:
+#                                     f[0] = pref0[d]
+#                                 idx = np.ones(dim, dtype=int)
+#                                 idx[d] = len(f)
+#                                 f = f.reshape(idx)
+#                                 Wil = f * Wil
+#                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
+#                                                        pick(Wii, nlen),
+#                                                        pick(Wjj, nlen),
+#                                                        pick(Wjk, nlen),
+#                                                        pick(Wil, nlen))
+#                     else:
+#                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wii,
+#                                                        Wjj, Wjk, Wil)
 
 
-def pick(W: np.ndarray, nlen) -> np.ndarray:
-    # Truncate matrix to only n>0 columns
-    return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
+# def pick(W: np.ndarray, nlen) -> np.ndarray:
+#     # Truncate matrix to only n>0 columns
+#     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
 
 
 # def parity_transfm(n: int):

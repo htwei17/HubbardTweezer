@@ -1,11 +1,9 @@
-from re import M
 from matplotlib.axes import Axes
 import numpy as np
 import matplotlib.pyplot as plt
-from pyparsing import line
-from DVR_exe import *
+from DVR_dynamics import *
+from DVR_output import DVRdynaOutput
 from matplotlib import gridspec
-import h5py
 from scipy.optimize import curve_fit
 from scipy.stats.mstats import gmean
 import matplotlib as mpl
@@ -26,7 +24,7 @@ params = {
 mpl.rcParams.update(params)
 
 
-class plot(dynamics):
+class DVRplot(DVRdynamics):
 
     def __init__(self, cvg='N', quantity='gs', *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -103,7 +101,7 @@ def avg_data(data, avg_no):
 
 def plot_dynamics(N_list,
                   R0_list,
-                  dvr: plot,
+                  dvr: DVRplot,
                   length=1,
                   fig=None,
                   fit=True,
@@ -222,11 +220,11 @@ def plot_dynamics(N_list,
     return fig
 
 
-def get_data(N_list, R0_list, dvr: plot, t_step):
+def get_data(N_list, R0_list, dvr: DVRplot, t_step):
     fn = lambda i: dvr.filename_gen(N_list, R0_list, t_step, i)
     data = []
     for i in range(len(N_list)):
-        io = Output(wavefunc=dvr.wavefunc)
+        io = DVRdynaOutput(wavefunc=dvr.wavefunc)
         io.read_file(fn(i))
         data.append(io)
         if dvr.quantity == 'trap':
@@ -243,7 +241,7 @@ def moving_avg(rho_gs, rho_avg, avg_no):
 
 def plot_lifetime(N0_list,
                   R0_list,
-                  dvr: plot,
+                  dvr: DVRplot,
                   fig=None,
                   file=False,
                   length=1,
@@ -457,7 +455,7 @@ def set_axes(fig):
     return ax
 
 
-def tau_from_waist(N_list, R0_list, dvr: plot, t_step, avg_no, tau, length,
+def tau_from_waist(N_list, R0_list, dvr: DVRplot, t_step, avg_no, tau, length,
                    no_file, lt_vs_freq) -> np.ndarray:
     if avg_no == 0:
         avg_no = 10
@@ -475,7 +473,7 @@ def tau_from_waist(N_list, R0_list, dvr: plot, t_step, avg_no, tau, length,
 
 def get_tau(N_list,
             R0_list,
-            dvr: plot,
+            dvr: DVRplot,
             avg_no,
             tau,
             lt_vs_freq,
@@ -605,7 +603,7 @@ def fgr(ax: plt.Axes, dim: int = 3, factor=1) -> plt.Axes:
     return ax
 
 
-def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
+def plot_wavefunction(N_list, R0_list, dvr: DVRplot, length=1):
 
     N_list = list(N_list)
     dvr.wavefunc = True
@@ -619,7 +617,7 @@ def plot_wavefunction(N_list, R0_list, dvr: plot, length=1):
         fn = lambda i: dvr.filename_gen(N_list, R0_list, i, t_step)
 
         for i in range(len(N_list)):
-            io = Output(wavefunc=dvr.wavefunc)
+            io = DVRdynaOutput(wavefunc=dvr.wavefunc)
             io.read_file(fn(i))
 
             dx = dvr.dx_list[i][0]
