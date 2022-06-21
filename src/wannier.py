@@ -1,11 +1,9 @@
-from cmath import nan
+from cmath import inf, nan
 from typing import Iterable
 # from numpy import double, dtype
 from opt_einsum import contract
-from pyrsistent import get_in
 from positify import positify
 from scipy.integrate import romb
-from scipy.optimize import minimize
 import itertools
 import sparse
 
@@ -82,7 +80,6 @@ class Wannier(DVR):
             lc=(1520, 1690),  # Lattice constant, in unit of nm
             ascatt=1600,  # Scattering length, in unit of Bohr radius
             band=1,  # Number of bands
-            equalize=False,  # Homogenize trap or not
             dim: int = 3,
             *args,
             **kwargs) -> None:
@@ -97,18 +94,14 @@ class Wannier(DVR):
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
         self.create_lattice(lattice, lc)
-
-        # Set offset to homogenize traps
-        self.Voff = np.ones(self.Nsite)
-        self.eq_label = 'neq'
-        if equalize:
-            self.eq_label = 'eq'
-            self.homogenize()
+        self.Voff = np.ones(self.Nsite)  # Set default trap offset
 
     def Vfun(self, x, y, z):
+        # Get V(x, y, z) for the entire lattice
         V = 0
 
         if self.model == 'sho' and self.Nsite == 2:
+            # Two-site SHO case
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
         else:
             # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
@@ -117,38 +110,15 @@ class Wannier(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    # def trap_mat(self):
-    #     tc = np.zeros((self.Nsite, dim))
-    #     fij = np.ones((self.Nsite, self.Nsite))
-    #     for i in range(self.Nsite):
-    #         tc[i, :2] = self.graph[i] * self.lc
-    #         tc[i, 2] = 0
-    #         for j in range(i):
-    #             # print(*(tc[i] - tc[j]))
-    #             fij[i, j] = -super().Vfun(*(tc[i] - tc[j]))
-    #             fij[j, i] = fij[i, j]  # Potential is symmetric in distance
-    #     return fij
-
-    def homogenize(self):
-        # fij = self.trap_mat()
-
-        # def cost_func(V):
-        #     return la.norm(fij @ V - 1)
-
-        self.Voff = self.onsite_equalize()
-        print('Trap depeth homogenized.\n')
-        self.trap_centers = self.tunneling_equalize()
-        print('Tunneling homogenized.\n')
-
-        return self.Voff, self.trap_centers
-
-    def singleband_matrix(self, u=False):
+    def singleband_solution(self, u=False):
+        # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         self.bands = 1
         E, W, p = eigen_basis(self)
-        A, U = optimization(self, E, W, p)
+        A, U = optimize(self, E, W, p)
         self.A = A[0]
         if u:
+            print('Calculate U.')
             V = interaction(self, U, W, p)
             self.U = V[0, 0]
             self.bands = band_bak
@@ -158,7 +128,8 @@ class Wannier(DVR):
             self.U = None
             return self.A
 
-    def nntunneling(self, A: np.ndarray):
+    def nn_tunneling(self, A: np.ndarray):
+        # Pick up nearest neighbor tunnelings
         if self.Nsite == 1:
             nnt = np.zeros(1)
         elif self.lattice_dim == 1:
@@ -166,32 +137,6 @@ class Wannier(DVR):
         else:
             nnt = A[self.links[:, 0], self.links[:, 1]]
         return nnt
-
-    def onsite_cost_func(self, offset: np.ndarray, target: float):
-        self.symm_unfold(self.Voff, offset)
-        A = self.singleband_matrix()
-        c = la.norm(np.diag(A) - target)
-        return c
-
-    def onsite_equalize(self):
-        # Equalize onsite chemical potential
-        Voff_bak = self.Voff
-
-        A = self.singleband_matrix()
-        onsite = np.mean(np.diag(A))
-
-        def cost_func(offset: np.ndarray):
-            print("\nCurrent trap depths:", offset)
-            c = self.onsite_cost_func(offset, onsite)
-            print("Current total cost:", c, "\n")
-            return c
-
-        v0 = np.ones(self.Nindep)
-        # Bound trap depth variation
-        bonds = tuple((0.9, 1.1) for i in range(self.Nindep))
-        res = minimize(cost_func, v0, bounds=bonds)
-        self.symm_unfold(self.Voff, res.x)
-        return self.Voff
 
     def symm_unfold(self, target: Iterable, info, graph=False):
         # Unfold information to all symmetry sectors
@@ -208,73 +153,14 @@ class Wannier(DVR):
         target = info[self.reflection[:, 0]]
         return target
 
-    def tunneling_cost_func(self, offset, links: tuple, target: tuple):
-        xlinks, ylinks = links
-        nntx, nnty = target
-        offset = offset.reshape(self.Nindep, 2)
-        self.symm_unfold(self.trap_centers, offset, graph=True)
-        self.update_lattice(self.trap_centers)
-        A = self.singleband_matrix()
-        nnt = self.nntunneling(A)
-        cost = abs(nnt[xlinks]) - nntx
-        if nnty != None:
-            cost = np.concatenate((cost, abs(nnt[ylinks]) - nnty))
-        c = la.norm(cost)
-        return c
-
-    def tunneling_equalize(self, a: float = 0) -> np.ndarray:
-        # Equalize tunneling
-        ls_bak = self.trap_centers
-
-        A = self.singleband_matrix()
-        nnt = self.nntunneling(A)
-        onsite = np.mean(np.diag(A))
-        symm_v = self.symm_fold(self.Voff)
-        xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-
-        def cost_func(offset: np.ndarray):
-            print("\nCurrent trap centers:", offset)
-            t = self.tunneling_cost_func(offset, (xlinks, ylinks),
-                                         (nntx, nnty))
-            v = 0
-            # a: adjust factor on onsite potential cost function
-            if a != 0:
-                v = self.onsite_cost_func(symm_v, onsite)
-                print(f'Finite scale factor a={a} is included.')
-                print(f'Tunneling cost t={t}')
-                print(f'Onsite potential cost v={v}')
-            c = t + a * v
-            print("Current total cost:", c, "\n")
-            return c
-
-        v0 = self.trap_centers[self.reflection[:, 0]]
-        print('v0', v0)
-        # Bound lattice spacing variation
-        xbonds = tuple(
-            (v0[i, 0] - 0.05, v0[i, 0] + 0.05) for i in range(self.Nindep))
-        if self.lattice_dim == 1:
-            ybonds = tuple((0, 0) for i in range(self.Nindep))
-        else:
-            ybonds = tuple(
-                (v0[i, 1] - 0.05, v0[i, 1] + 0.05) for i in range(self.Nindep))
-        nested = tuple((xbonds[i], ybonds[i]) for i in range(self.Nindep))
-        bonds = tuple(item for sublist in nested for item in sublist)
-        print('bounds', bonds)
-        res = minimize(cost_func, v0.reshape(-1), bounds=bonds)
-        self.symm_unfold(self.trap_centers,
-                         res.x.reshape(self.Nindep, 2),
-                         graph=True)
-        self.update_lattice(self.trap_centers)
-        return self.trap_centers
-
     def xy_links(self, nnt):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         ylinks = np.logical_not(xlinks)
         nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
         nnty = None
-        if any(ylinks ==
-               True):  # Find y direction links, if lattice is 1D this is nan
+        # Find y direction links, if lattice is 1D this is nan
+        if any(ylinks == True):
             nnty = np.mean(abs(nnt[ylinks]))
         return xlinks, ylinks, nntx, nnty
 
@@ -345,6 +231,7 @@ def build_reflection(graph):
 
 
 def eigen_basis(dvr: Wannier):
+    # Find eigenbasis of symmetry block diagonalized Hamiltonian
     k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
         # The code is designed for 1D and 2D lattice, and
@@ -380,7 +267,7 @@ def eigen_basis(dvr: Wannier):
 
 
 def sector(dvr: Wannier):
-    # BUild all sectors
+    # Generate all sector information for 1D and 2D lattice
     # Single site case
     if dvr.Nsite == 1:
         p_tuple = [[1]]
@@ -407,6 +294,7 @@ def sector(dvr: Wannier):
 
 
 def add_sector(sector: np.ndarray, dvr: Wannier, k: int, E, W, parity):
+    # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
     p[:len(sector)] = sector
     dvr.update_p(p)
@@ -419,7 +307,7 @@ def add_sector(sector: np.ndarray, dvr: Wannier, k: int, E, W, parity):
     return E, W, parity
 
 
-def cost_matrix(dvr: Wannier, W, parity):
+def cost_mat(dvr: Wannier, W, parity):
     R = []
 
     # For calculation keeping only p_z = 1 sector,
@@ -462,7 +350,7 @@ def cost_matrix(dvr: Wannier, W, parity):
     return R
 
 
-def multiTensor(R):
+def multi_tensor(R):
     # Convert list of ndarray to list of Tensor
     return [
         torch.complex(torch.from_numpy(Ri),
@@ -471,7 +359,7 @@ def multiTensor(R):
 
 
 def cost_func(U, R) -> float:
-    # Cost function to optimize
+    # Cost function to Wannier optimize
     o = 0
     for i in range(len(R)):
         X = U.conj().T @ R[i] @ U
@@ -480,20 +368,20 @@ def cost_func(U, R) -> float:
     return np.real(o)
 
 
-def optimization(dvr: Wannier, E, W, parity):
+def optimize(dvr: Wannier, E, W, parity):
     # Multiband optimization
     A = []
     w = []
     for b in range(dvr.bands):
-        t_ij, w_mu = singleband_optimization(dvr, E[b], W[b], parity[b])
+        t_ij, w_mu = singleband_optimize(dvr, E[b], W[b], parity[b])
         A.append(t_ij)
         w.append(w_mu)
     return A, w
 
 
-def singleband_optimization(dvr: Wannier, E, W, parity):
+def singleband_optimize(dvr: Wannier, E, W, parity):
     # Singleband Wannier function optimization
-    R = multiTensor(cost_matrix(dvr, W, parity))
+    R = multi_tensor(cost_mat(dvr, W, parity))
 
     if dvr.Nsite > 1:
         manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
@@ -539,7 +427,7 @@ def lattice_order(dvr: Wannier, W, U, p):
 
 def tight_binding(dvr: Wannier):
     E, W, parity = eigen_basis(dvr)
-    A, w = optimization(dvr, E, W, parity)
+    A, w = optimize(dvr, E, W, parity)
     mu = np.diag(A)  # Diagonals are mu_i
     t = -(A - np.diag(mu))  # Off-diagonals are t_ij
     return np.real(mu), abs(t)
@@ -559,7 +447,7 @@ def singleband_interaction(dvr: Wannier, Ui, Uj, Wi, Wj, pi: np.ndarray,
                            pj: np.ndarray):
     u = 4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim
                                               )  # Unit to kHz
-    # # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
+    # # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
     # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
@@ -613,8 +501,9 @@ def intgrl3d(dx, integrand):
     return integrand
 
 
+######## DEPRECATED DUE TO WRONG ASSUMPTION OF QUADRATURE ##########
 def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
-    # Construct integral of 2-body eigenstates, due to basis quadrature it is reduced to sum 'ijk,ijk,ijk,ijk'
+    # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
     for i in range(dvr.Nsite):
         Wii = Wi[i].conj()
         for j in range(dvr.Nsite):
@@ -658,7 +547,7 @@ def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
                                                        Wjj, Wjk, Wil)
 
 
-def pick(W, nlen):
+def pick(W: np.ndarray, nlen) -> np.ndarray:
     # Truncate matrix to only n>0 columns
     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
 

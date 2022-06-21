@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from wannier import *
+from equalization import *
 import networkx as nx
 import matplotlib as mpl
 
@@ -15,7 +15,7 @@ params = {
 mpl.rcParams.update(params)
 
 
-class Graph(Wannier):
+class Graph(Equalizer):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -75,9 +75,9 @@ class Graph(Wannier):
 
     def singleband_params(self, label='param'):
         if label == 'param':
-            self.singleband_matrix(u=True)
+            self.singleband_solution(u=True)
         elif label == 'adjust':
-            self.singleband_matrix(u=False)
+            self.singleband_solution(u=False)
 
     def draw_graph(self, label='param', nnn=False):
         self.singleband_params(label)
