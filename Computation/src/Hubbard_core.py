@@ -110,10 +110,12 @@ class MLWF(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def singleband_solution(self, u=False):
+    def singleband_solution(self, u=False, eig_sol=None):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         self.bands = 1
+        if eig_sol != None:
+            E, W, p = eig_sol
         E, W, p = eigen_basis(self)
         A, U = optimize(self, E, W, p)
         self.A = A[0]
@@ -287,10 +289,11 @@ def sector(dvr: MLWF):
         # A simplest way to build bands is to simply collect
         # Nband * Nsite lowest energy states
         # z direction
-    if dvr.bands == 1:
-        p_tuple.append([1])
-    elif dvr.bands > 1:
+    if dvr.bands > 1 and dvr.dim == 3:
+        # Only for 3D case there are z=-1 bands
         p_tuple.append([1, -1])
+    else:
+        p_tuple.append([1])
     p_list = list(itertools.product(*p_tuple))
     return p_list
 
@@ -548,11 +551,9 @@ def intgrl3d(dx, integrand):
 #                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wii,
 #                                                        Wjj, Wjk, Wil)
 
-
 # def pick(W: np.ndarray, nlen) -> np.ndarray:
 #     # Truncate matrix to only n>0 columns
 #     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
-
 
 # def parity_transfm(n: int):
 #     # Parity basis transformation matrix: 1D version

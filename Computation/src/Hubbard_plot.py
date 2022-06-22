@@ -73,14 +73,14 @@ class HubbardGraph(HubbardParamEqualizer):
             for i in range(2 * limit):
                 self.graph.add_edge(center, i + 2)
 
-    def singleband_params(self, label='param'):
-        if label == 'param':
+    def singleband_params(self, label='param', A=None, U=None):
+        if label == 'param' and (A == None or U == None):
             self.singleband_solution(u=True)
-        elif label == 'adjust':
+        elif label == 'adjust' and A == None:
             self.singleband_solution(u=False)
 
-    def draw_graph(self, label='param', nnn=False):
-        self.singleband_params(label)
+    def draw_graph(self, label='param', nnn=False, A=None, U=None):
+        self.singleband_params(label, A, U)
         if label == 'param' and nnn:
             self.add_nnn()
         self.update_edge_weight(label)
