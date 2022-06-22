@@ -1,5 +1,7 @@
 # DVR
 
+![](https://img.shields.io/gitlab/v/release/Nottforestfc/DVR?color=brightgreen&sort=semver)
+
 DVR repo for DVR full/sparse diagonalizaiton using 3d reflection symmetry
 
 ## Features:
