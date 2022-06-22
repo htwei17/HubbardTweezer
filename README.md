@@ -21,3 +21,7 @@ Note: [`pymanopt`](https://github.com/pymanopt/pymanopt) is needed. However, its
 * `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
 ### Test and executables
 * `*.ipynb` are for test use. Most are self-explained by their title cells.
+
+## TODO:
+1. Add more geometries in 2D
+2. Find protocol to equalzie all the Hubbard parameters
