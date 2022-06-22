@@ -19,10 +19,10 @@ __pycache__
 *.h5
 
 # Folders
-pymanopt
 output
 
 # Executables
+*.ipynb
 *.exe
 Computation/src/python
 Computation/src.zip
