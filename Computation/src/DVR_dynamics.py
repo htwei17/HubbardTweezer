@@ -13,6 +13,7 @@ import copy
 class DVRdynamics(DVR):
 
     def update_N(self, N, R0: np.ndarray):
+        # Update N and then n by fixed R0
         self.N = N
         n = np.zeros(3, dtype=int)
         n[:self.dim] = N
@@ -119,6 +120,7 @@ class DVRdynamics(DVR):
         return t_step
 
     def filename_gen(self, t_step):
+        # Generate filename for output
         rt_str = add_str(self.realtime, 'rt')
         sym_str = add_str(self.symmetry, 'sym')
         ab_str = add_str(self.absorber, 'ab', (self.LI, self.VI))
@@ -134,6 +136,7 @@ class DVRdynamics(DVR):
 
 
 def add_str(flag, label, param=None):
+    # Add property string to filename
     if flag:
         str = ' ' + label
         if isinstance(param, Iterable):
@@ -163,12 +166,13 @@ def get_stop_time(freq_list: np.ndarray, t=0, V0=0) -> np.ndarray:
     return st
 
 
-def copy_to_list(n, copy_time):
-    if isinstance(n, Iterable):
+def copy_to_list(n, copy_time: int) -> np.ndarray:
+    # Copy n to an np.ndarray of length copy_time
+    if not isinstance(n, Iterable):
         n_list = n * np.ones(copy_time)
         return n_list
     else:
-        return n
+        return np.array(n)
 
 
 def int_evo_ops(dvr: DVRdynamics, E, W, t2, Winv=None):
@@ -232,6 +236,7 @@ def one_period_evo(E_list,
                    t2,
                    dvr: DVRdynamics,
                    Winv_list=[None, None]):
+    # Calculate the one period 0-1 strobe time evolution operator
     # interacting part
     U0 = int_evo_ops(dvr, E_list[0], W_list[0], t1, Winv_list[0])
     # free part
@@ -348,6 +353,7 @@ def dynamics_by_period(n_period,
 
 
 def measure_lifetime(freq, psi0, n, dx, t_step):
+    # Measure the lifetime of psi0
     t1 = 1 / (2 * freq)  # time period of free system
     t2 = 1 / (2 * freq)  # time period of stroboscopic potential system
     if t_step < (t1 + t2):
@@ -370,6 +376,7 @@ def measure_lifetime(freq, psi0, n, dx, t_step):
 
 
 def lifetime_vs_frequency(freq_list: np.ndarray, t_step, dvr: DVRdynamics):
+    # Measure the lifetime of psi0 as a function of frequency
     psi0 = dvr.init_state()
     lifetime = np.array([]).reshape(0, 2)
     for freq in freq_list:
@@ -403,10 +410,12 @@ def lifetime_vs_frequency(freq_list: np.ndarray, t_step, dvr: DVRdynamics):
 
 
 def shftdVfun(x, y, z, x0):
+    # Shift the potential Vfun to x0
     return DVR.Vfun(x - x0[0], y - x0[1], z - x0[2])
 
 
 def coherent_state(n, dx, x0):
+    # Generate a coherent state centered at x0
 
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
@@ -549,7 +558,9 @@ def init_save(dvr: DVRdynamics, t_step, psi0):
 
 
 def DVRdynamics_exe(dvr: DVRdynamics) -> None:
+    # DVR dynamics execution
 
+    # Mem tracking
     tracemalloc.start()
 
     np.set_printoptions(precision=2, suppress=True)

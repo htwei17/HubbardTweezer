@@ -43,7 +43,7 @@ class harray(np.ndarray):
 class DVR:
 
     def update_n(self, n: np.ndarray, R0: np.ndarray):
-        # Change n with fixing R0
+        # Change n by fixed R0
         self.n = n.copy()
         self.R0 = R0.copy()
         self.dx = np.zeros(n.shape)
@@ -52,6 +52,7 @@ class DVR:
         self.update_ab()
 
     def update_R0(self, R0: np.ndarray, dx: np.ndarray):
+        # Update R0 by fixed dx
         self.R0 = R0.copy()
         self.dx = dx.copy()
         self.nd = R0 != 0
@@ -61,6 +62,7 @@ class DVR:
         self.update_ab()
 
     def update_ab(self):
+        # Update absorber
         print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
         print('DVR: n={} is set.'.format(self.n[self.nd]))
         print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
@@ -79,6 +81,7 @@ class DVR:
             print('DVR: R={}w is set.'.format(self.R[self.nd]))
 
     def update_p(self, p):
+        # Update parity
         self.p = p
         self.init = get_init(self.n, p)
 
