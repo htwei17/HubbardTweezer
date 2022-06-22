@@ -1,28 +1,5 @@
-# PDFs and other outputs
-*.pdf
-*.xlsx
-*.pptx
-*.svg
-*.jpg
-*.png
-*.jpeg
-*.gif
-*.bmp
-
-# Temp files
-.DS_Store
-*.pyo
-__pycache__
-
-# Temp outputs
-*.csv
-*.h5
+/*
+!*.py
 
 # Folders
-output
-
-# Executables
-*.ipynb
-*.exe
-Computation/src/python
-Computation/src.zip
+__pycache__
