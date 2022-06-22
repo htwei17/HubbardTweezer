@@ -12,4 +12,5 @@ DVR repo for DVR full/sparse diagonalizaiton using 3d reflection symmetry
 * `DVR_exe.py`: execute script of DVR dynamics on command line
 * `Hubbard_core.py` : `MLWF` class to construct maximally localized Wannier funcitons
 * `Hubbard_plot.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs
+* `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
 * `*.ipynb` are for test use. Most are self-explained by their title cells.
