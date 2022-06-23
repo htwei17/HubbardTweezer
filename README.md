@@ -16,7 +16,7 @@ DVR repo for DVR full/sparse diagonalizaiton using 3d reflection symmetry
 * `DVR_exe.py`: execute script of DVR dynamics on command line
 ### Hubbard parameters
 * [`pymanopt`](https://github.com/pymanopt/pymanopt) is needed. However, its current version doesn't support unitary matrix optimization (pending addition into `2.x.x` version). So a self-made modified version based on `v0.26` is attached.
-* The code now supports square/rectangular and Lieb lattices
+* The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices
 * `Hubbard_core.py` : `MLWF` class to construct maximally localized Wannier funcitons
 * `Hubbard_plot.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs
 * `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
@@ -24,6 +24,5 @@ DVR repo for DVR full/sparse diagonalizaiton using 3d reflection symmetry
 * `*.ipynb` are for test use. Most are self-explained by their title cells.
 
 ## TODO:
-1. Add more geometries in 2D
-2. Find protocol to equalzie all the Hubbard parameters
-3. Make able to equalzie Hubbard parameters for all lattice geometries
+1. Find protocol to equalzie all the Hubbard parameters
+2. Make able to equalzie Hubbard parameters for all lattice geometries
