@@ -66,11 +66,11 @@ def lattice_graph(size: np.ndarray,
         nodes, links, node_idx_pair = tri_lattice(size)
         # Remove holes from square lattice to make kagome lattice
         hole = np.logical_and(node_idx_pair[:, 1] % 4 == 1,
-                              node_idx_pair[:, 0] % 2 == 0)
+                              node_idx_pair[:, 0] % 2 == 1)
         hole = np.logical_or(
             hole,
             np.logical_and(node_idx_pair[:, 1] % 4 == 3,
-                           node_idx_pair[:, 0] % 2 == 1))
+                           node_idx_pair[:, 0] % 2 == 0))
         hole_idx = np.nonzero(hole)[0]
         nodes = nodes[~hole, :]
         links = shift_links(links, hole_idx)
