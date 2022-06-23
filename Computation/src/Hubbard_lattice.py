@@ -23,28 +23,57 @@ def lattice_graph(size: np.ndarray,
         nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
         # Build Lieb lattice graph
-        size[size == 1] == 3  # Smallest Lieb lattice plaquette has size 3
+        size[size < 3] == 3  # Smallest Lieb lattice plaquette has size 3
         size[size % 2 == 0] += 1  # Make sure size is odd
         print(f'Lieb lattice size adjust to: {size}')
         nodes, links, node_idx_pair = sqr_lattice(size)
         # Remove holes from square lattice to make Lieb lattice
-        Lieb_hole = np.all(node_idx_pair % 2 == 0, axis=1)
-        Lieb_hole_idx = np.nonzero(Lieb_hole)[0]
-        nodes = nodes[~Lieb_hole, :]
-        links = shift_links(links, Lieb_hole_idx)
+        hole = np.all(node_idx_pair % 2 == 0, axis=1)
+        hole_idx = np.nonzero(hole)[0]
+        nodes = nodes[~hole, :]
+        links = shift_links(links, hole_idx)
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size)
-        # TODO: first triangular lattice, then subtract holes for honeycomb and kagome lattices
     elif shape == 'honeycomb':
-        # Smallest reflection-symmetric triangular lattice plaquette has size 3
-        size[size == 1] == 3
+        # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
+        size[size < 3] == 3
         # Make sure x dimension size is integer multiple of 3
         if size[0] % 3 != 0:
             size[0] += 3 - size[0] % 3
         print(f'Honeycomb lattice size adjust to: {size}')
         nodes, links, node_idx_pair = tri_lattice(size)
+        # Remove holes from square lattice to make honeycomb lattice
+        hole = np.logical_and(node_idx_pair[:, 1] % 2 == 0,
+                              node_idx_pair[:, 0] % 3 == 2)
+        hole = np.logical_or(
+            hole,
+            np.logical_and(node_idx_pair[:, 1] % 2 == 1,
+                           node_idx_pair[:, 0] % 3 == 0))
+        hole_idx = np.nonzero(hole)[0]
+        nodes = nodes[~hole, :]
+        links = shift_links(links, hole_idx)
     elif shape == 'kagome':
-        nodes, links, __ = tri_lattice(size)
+        # Smallest reflection-symmetric kagome lattice plaquette has x size 4,
+        # y size 5 (wchich will be automatically adjusted to be odd)
+        size[size < 4] == 4
+        # Reflection-symmetric kagome lattice always needs y size to be 4n+1
+        if size[1] % 4 != 1:
+            size[1] = 4 * (size[1] // 4) + 1
+        # Make sure x dimension size is even
+        if size[0] % 2 != 0:
+            size[0] += 1
+        print(f'Kagome lattice size adjust to: {size}')
+        nodes, links, node_idx_pair = tri_lattice(size)
+        # Remove holes from square lattice to make kagome lattice
+        hole = np.logical_and(node_idx_pair[:, 1] % 4 == 1,
+                              node_idx_pair[:, 0] % 2 == 0)
+        hole = np.logical_or(
+            hole,
+            np.logical_and(node_idx_pair[:, 1] % 4 == 3,
+                           node_idx_pair[:, 0] % 2 == 1))
+        hole_idx = np.nonzero(hole)[0]
+        nodes = nodes[~hole, :]
+        links = shift_links(links, hole_idx)
 
     reflection = build_reflection(nodes, shape)
     # TODO: consider what we can do with multi-fold rotations
@@ -98,7 +127,7 @@ def tri_lattice(size: np.ndarray):
     #      * * * * *
 
     # Smallest reflection-symmetric triangular lattice plaquette has size 3
-    size[size == 1] == 3
+    size[size < 3] == 3
     # Make sure y dimension size is odd
     if size[1] % 2 == 0:
         size[1] += 1
