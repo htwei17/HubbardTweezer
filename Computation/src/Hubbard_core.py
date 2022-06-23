@@ -41,6 +41,15 @@ class MLWF(DVR):
             self.lattice = lattice.copy()
             self.lattice_dim = lattice[lattice > 1].size
 
+        # Convert lc to (lc, lc) or the other if only one number is given
+        if not isinstance(lc, Iterable):
+            if np.isin(shape, np.array(['triangular', 'honeycomvb', 'kagome'])):
+                # For equilateral triangle
+                lc = (lc, np.sqrt(3) / 2 * lc)
+            else:
+                # For squre
+                lc = (lc, lc)
+
         self.trap_centers, self.links, self.reflection = lattice_graph(
             self.lattice, shape)
         self.Nsite = self.trap_centers.shape[0]

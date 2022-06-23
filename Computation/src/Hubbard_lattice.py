@@ -7,7 +7,7 @@ def lattice_graph(size: np.ndarray,
                   shape: str = 'square') -> tuple[np.ndarray, np.ndarray]:
     # Square lattice graph builder
     # shape: 'square' or 'Lieb'
-    # TODO: add 'triangular', 'hexagonal', 'kagome' lattices, make juse of their more complicated symmetries
+    # TODO: add 'triangular', 'honeycomb', 'kagome' lattices, make juse of their more complicated symmetries
     # TODO: add function to equalize Lieb and other lattices
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
     # nodes: each row is a coordinate (x, y) of one site
@@ -20,18 +20,31 @@ def lattice_graph(size: np.ndarray,
 
     if shape == 'square':
         # Square and rectangular lattice graph
-        nodes, links, __, __ = sqr_lattice(size)
+        nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
         # Build Lieb lattice graph
         size[size == 1] == 3  # Smallest Lieb lattice plaquette has size 3
         size[size % 2 == 0] += 1  # Make sure size is odd
-        print(f'Lieb size adjust to: {size}')
-        nodes, links, node_idx, node_idx_pair = sqr_lattice(size)
+        print(f'Lieb lattice size adjust to: {size}')
+        nodes, links, node_idx_pair = sqr_lattice(size)
         # Remove holes from square lattice to make Lieb lattice
         Lieb_hole = np.all(node_idx_pair % 2 == 0, axis=1)
         Lieb_hole_idx = np.nonzero(Lieb_hole)[0]
         nodes = nodes[~Lieb_hole, :]
         links = shift_links(links, Lieb_hole_idx)
+    elif shape == 'triangular':
+        nodes, links, __ = tri_lattice(size)
+        # TODO: first triangular lattice, then subtract holes for honeycomb and kagome lattices
+    elif shape == 'honeycomb':
+        # Smallest reflection-symmetric triangular lattice plaquette has size 3
+        size[size == 1] == 3
+        # Make sure x dimension size is integer multiple of 3
+        if size[0] % 3 != 0:
+            size[0] += 3 - size[0] % 3
+        print(f'Honeycomb lattice size adjust to: {size}')
+        nodes, links, node_idx_pair = tri_lattice(size)
+    elif shape == 'kagome':
+        nodes, links, __ = tri_lattice(size)
 
     reflection = build_reflection(nodes, shape)
     # TODO: consider what we can do with multi-fold rotations
@@ -39,6 +52,10 @@ def lattice_graph(size: np.ndarray,
 
 
 def sqr_lattice(size: np.ndarray):
+    # Square lattice graph builder
+    # NOTE: In this case, indexing is COLUMN-MAJOR.
+    size[size == 1] == 2  # Smallest Lieb lattice plaquette has size 3
+    print(f'Triangular lattice size adjust to: {size}')
     edge = []
     edge_idx = []
     nodes = np.array([]).reshape(0, 2)
@@ -57,14 +74,84 @@ def sqr_lattice(size: np.ndarray):
             node_idx_pair = np.append(node_idx_pair,
                                       [[edge_idx[0][i], edge_idx[1][j]]],
                                       axis=0)
-            if i > 0:
+            if i > 0:  # Row link
                 links = np.append(links, [[node_idx - size[1], node_idx]],
-                                  axis=0)  # Row link
-            if j > 0:
-                links = np.append(links, [[node_idx - 1, node_idx]],
-                                  axis=0)  # Column linke
+                                  axis=0)
+            if j > 0:  # Column linke
+                links = np.append(links, [[node_idx - 1, node_idx]], axis=0)
             node_idx += 1
-    return nodes, links, node_idx, node_idx_pair
+    return nodes, links, node_idx_pair
+
+
+def tri_lattice(size: np.ndarray):
+    # Triangular lattice graph builder
+    # NOTE: lc = (ax, ay) is given by hand.
+    #       For equilateral triangle,
+    #       x direction unit is ax,
+    #       y direction unit is ay = sqrt(3)/2 * ax.
+    #       Other case is isosceles triangle.
+    #       In this function, length unit is (ax, ay).
+    # NOTE: In this case, indexing is ROW-MAJOR.
+    # NOTE that the triangular lattice is made to he reflection symmetric.
+    # E.g. * * * * *
+    #     * * * * * *
+    #      * * * * *
+
+    # Smallest reflection-symmetric triangular lattice plaquette has size 3
+    size[size == 1] == 3
+    # Make sure y dimension size is odd
+    if size[1] % 2 == 0:
+        size[1] += 1
+
+    edge = []
+    edge_idx = []
+    nodes = np.array([]).reshape(0, 2)
+    node_idx_pair = np.array([]).reshape(0, 2)
+    links = np.array([], dtype=int).reshape(0, 2)
+
+    for i in range(size.size):
+        edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
+        edge_idx.append(np.arange(1, size[i] + 1, dtype=int))
+
+    # Minor rows that have smaller size than major rows
+    edge.append(np.arange(-size[0] / 2 + 1, size[0] / 2))
+    edge_idx.append(np.arange(1, size[0], dtype=int))
+
+    node_idx = 0  # Linear index is row (x) prefered
+    for j in range(len(edge[1])):
+        if j % 2 == 1:
+            edge_i = edge[0]
+            edge_idx_i = edge_idx[0]
+        else:
+            edge_i = edge[-1]
+            edge_idx_i = edge_idx[-1]
+        for i in range(len(edge_i)):
+            nodes = np.append(nodes, [[edge_i[i], edge[1][j]]], axis=0)
+
+            node_idx_pair = np.append(node_idx_pair,
+                                      [[edge_idx_i[i], edge_idx[1][j]]],
+                                      axis=0)
+            if i > 0:  # Row link
+                links = np.append(links, [[node_idx - 1, node_idx]], axis=0)
+            if j > 0:  # Column linke
+                if j % 2 == 1:
+                    if i > 0:
+                        links = np.append(links,
+                                          [[node_idx - size[0], node_idx]],
+                                          axis=0)
+                    if i < len(edge[0]) - 1:
+                        links = np.append(links,
+                                          [[node_idx - size[0] + 1, node_idx]],
+                                          axis=0)
+                else:
+                    links = np.append(links, [[node_idx - size[0], node_idx]],
+                                      axis=0)
+                    links = np.append(links,
+                                      [[node_idx - size[0] + 1, node_idx]],
+                                      axis=0)
+            node_idx += 1
+
+    return nodes, links, node_idx_pair
 
 
 def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
