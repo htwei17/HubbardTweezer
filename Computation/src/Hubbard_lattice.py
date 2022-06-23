@@ -8,6 +8,7 @@ def lattice_graph(size: np.ndarray,
     # Square lattice graph builder
     # shape: 'square' or 'Lieb'
     # TODO: add 'triangular', 'hexagonal', 'kagome' lattices, make juse of their more complicated symmetries
+    # TODO: add function to equalize Lieb and other lattices
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
     # nodes: each row is a coordinate (x, y) of one site
     #        indicating the posistion of node (trap center)
