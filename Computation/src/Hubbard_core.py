@@ -14,15 +14,20 @@ import pymanopt.manifolds
 import pymanopt.solvers
 
 from DVR_core import *
+from Hubbard_lattice import *
 import numpy.linalg as la
 
 
 class MLWF(DVR):
 
-    def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690)):
+    def create_lattice(self,
+                       lattice: np.ndarray,
+                       lc=(1520, 1690),
+                       shape='square'):
         # graph : each line represents coordinate (x, y) of one lattice site
 
         self.Nsite = np.prod(lattice)
+        self.lattice_shape = shape
 
         # Convert [n] to [n, 1]
         if self.Nsite == 1:
@@ -36,10 +41,22 @@ class MLWF(DVR):
             self.lattice = lattice.copy()
             self.lattice_dim = lattice[lattice > 1].size
 
+        # Convert lc to (lc, lc) or the other if only one number is given
+        if not isinstance(lc, Iterable):
+            if np.isin(shape, np.array(['triangular', 'honeycomvb', 'kagome'])):
+                # For equilateral triangle
+                lc = (lc, np.sqrt(3) / 2 * lc)
+            else:
+                # For squre
+                lc = (lc, lc)
+
         self.trap_centers, self.links, self.reflection = lattice_graph(
-            self.lattice)
+            self.lattice, shape)
+        self.Nsite = self.trap_centers.shape[0]
+
         self.Nindep = self.reflection.shape[
             0]  # Independent trap number under reflection symmetry
+
         if self.model == 'Gaussian':
             self.lc = np.array(lc) * 1E-9 / self.w  # In unit of wx
         elif self.model == 'sho':
@@ -49,6 +66,7 @@ class MLWF(DVR):
         lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
         print(f'lattice: dx is fixed at: {dx}w')
+        print(f'lattice: lattice shape is {shape}')
         print(f'lattice: Full lattice sizes: {lattice}')
         print(f'lattice: lattice constants: {lc}w')
         # Let there be R0's wide outside the edge trap center
@@ -79,6 +97,7 @@ class MLWF(DVR):
                 [2], dtype=int),  # Square lattice dimensions
             lc=(1520, 1690),  # Lattice constant, in unit of nm
             ascatt=1600,  # Scattering length, in unit of Bohr radius
+            shape='square',  # Shape of the lattice
             band=1,  # Number of bands
             dim: int = 3,
             *args,
@@ -93,7 +112,7 @@ class MLWF(DVR):
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
-        self.create_lattice(lattice, lc)
+        self.create_lattice(lattice, lc, shape)
         self.Voff = np.ones(self.Nsite)  # Set default trap offset
 
     def Vfun(self, x, y, z):
@@ -165,73 +184,6 @@ class MLWF(DVR):
         if any(ylinks == True):
             nnty = np.mean(abs(nnt[ylinks]))
         return xlinks, ylinks, nntx, nnty
-
-
-def lattice_graph(size: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    # Square lattice graph builder
-    # graph: each ndarray object in graph is a coordinate pair (x, y)
-    #        indicating the posistion of node (trap center)
-    # links: each row in links is a pair of node indices s.t.
-    #        graph[idx1], graph[idx2] are linked by bounds
-
-    if isinstance(size, Iterable):
-        size = np.array(size)
-
-    edge = []
-    for i in range(size.size):
-        edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
-
-    # links = np.array([], dtype=int)
-    # nodes = np.array([], dtype=int)
-    # if size.size == 1:
-    #     nodes = np.array([[i, 0] for i in edge[0]])
-    #     links = np.array([[i, i + 1] for i in range(size[0] - 1)], dtype=int)
-    # elif size.size == 2:
-    nodes = np.array([]).reshape(0, 2)
-    links = np.array([], dtype=int).reshape(0, 2)
-    node_idx = 0  # Linear index is column (y) prefered
-    for i in range(len(edge[0])):
-        for j in range(len(edge[1])):
-            nodes = np.append(nodes, [[edge[0][i], edge[1][j]]], axis=0)
-            if i > 0:
-                links = np.append(links, [[node_idx - size[1], node_idx]],
-                                  axis=0)  # Row link
-            if j > 0:
-                links = np.append(links, [[node_idx - 1, node_idx]],
-                                  axis=0)  # Column linke
-            node_idx += 1
-
-    reflection = build_reflection(nodes)
-
-    return nodes, links, reflection
-
-
-def build_reflection(graph):
-    # Build correspondence map of 4 reflection sectors in 1D & 2D lattice
-    # Entries are site labels, each row is a symmetry equiv class
-    # with 4 columns sites from each other
-    # Eg. : p=1, m=-1
-    #     [pp mp pm mm] equiv pts 1
-    #     [pp mp pm mm] equiv pts 2
-    #     [pp mp pm mm] equiv pts 3
-    #     [pp mp pm mm] equiv pts 4
-    #     ...
-
-    reflection = np.array([], dtype=int).reshape(0, 4)
-    for i in range(graph.shape[0]):
-        if all(graph[i, :] <= 0):
-            pp = i  # [1 1] sector
-            mp = np.nonzero(
-                np.prod(np.array([[-1, 1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [-1 1] sector
-            pm = np.nonzero(
-                np.prod(np.array([[1, -1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [1 -1] sector
-            mm = np.nonzero(
-                np.prod(np.array([[-1, -1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [-1 -1] sector
-            reflection = np.append(reflection, [[pp, mp, pm, mm]], axis=0)
-    return reflection
 
 
 def eigen_basis(dvr: MLWF):
