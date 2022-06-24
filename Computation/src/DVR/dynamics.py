@@ -1,10 +1,10 @@
 import scipy.linalg as la
-from DVR_core import *
-from DVR_output import DVRdynaOutput
+from DVR.core import *
+from DVR.output import DVRdynaOutput
 from time import time
 from pympler.asizeof import asizeof
 import tracemalloc
-from display_top import display_top
+from tools.display_top import display_top
 import numpy as np
 from typing import Iterable
 import copy

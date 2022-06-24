@@ -10,7 +10,7 @@ import scipy.linalg as la
 from opt_einsum import contract
 from time import time
 # from einops import rearrange, reduce, repeat
-from DVR_full import *
+from DVR.core import *
 
 k = 10  # Number of energy levels to track
 

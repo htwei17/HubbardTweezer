@@ -2,7 +2,7 @@ from cmath import inf, nan
 from typing import Iterable
 # from numpy import double, dtype
 from opt_einsum import contract
-from positify import positify
+from tools.positify import positify
 from scipy.integrate import romb
 import itertools
 import sparse
@@ -13,8 +13,8 @@ import pymanopt
 import pymanopt.manifolds
 import pymanopt.solvers
 
-from DVR_core import *
-from Hubbard_lattice import *
+from DVR.core import *
+from Hubbard.lattice import *
 import numpy.linalg as la
 
 

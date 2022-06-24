@@ -1,5 +1,5 @@
-from Hubbard_plot import *
-import reportIO as rep
+from Hubbard.plot import *
+import tools.reportIO as rep
 import sys
 
 inFile = sys.argv[1]

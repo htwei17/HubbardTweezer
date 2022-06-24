@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from Hubbard_equalizer import *
+from Hubbard.equalizer import *
 import networkx as nx
 import matplotlib as mpl
 
