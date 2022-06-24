@@ -9,7 +9,6 @@ def lattice_graph(size: np.ndarray,
     # Square lattice graph builder
     # shape: 'square' or 'Lieb'
     # TODO: add function to equalize other lattices
-    # TODO: for the other lattice adjust appropriate R0's
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
     # nodes: each row is a coordinate (x, y) of one site
     #        indicating the posistion of node (trap center)
