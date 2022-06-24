@@ -2,7 +2,7 @@ from cmath import inf, nan
 from typing import Iterable
 # from numpy import double, dtype
 from opt_einsum import contract
-from positify import positify
+from tools.positify import positify
 from scipy.integrate import romb
 import itertools
 import sparse
@@ -13,8 +13,8 @@ import pymanopt
 import pymanopt.manifolds
 import pymanopt.solvers
 
-from DVR_core import *
-from Hubbard_lattice import *
+from DVR.core import *
+from Hubbard.lattice import *
 import numpy.linalg as la
 
 
@@ -43,7 +43,8 @@ class MLWF(DVR):
 
         # Convert lc to (lc, lc) or the other if only one number is given
         if not isinstance(lc, Iterable):
-            if np.isin(shape, np.array(['triangular', 'honeycomvb', 'kagome'])):
+            if np.isin(shape, np.array(['triangular', 'honeycomvb',
+                                        'kagome'])):
                 # For equilateral triangle
                 lc = (lc, np.sqrt(3) / 2 * lc)
             else:
@@ -63,14 +64,16 @@ class MLWF(DVR):
             self.lc = np.array(lc)
 
         dx = self.dx.copy()
-        lattice = np.resize(np.pad(lattice, (0, 2), constant_values=1), dim)
+        lattice_range = np.max(abs(self.trap_centers), axis=0)
+        lattice_range = np.resize(
+            np.pad(lattice_range, (0, 2), constant_values=0), dim)
         lc = np.resize(self.lc, dim)
         print(f'lattice: dx is fixed at: {dx}w')
         print(f'lattice: lattice shape is {shape}')
         print(f'lattice: Full lattice sizes: {lattice}')
         print(f'lattice: lattice constants: {lc}w')
         # Let there be R0's wide outside the edge trap center
-        R0 = (lattice - 1) * lc / 2 + self.R00
+        R0 = lattice_range * lc + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
 
