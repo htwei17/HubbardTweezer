@@ -3,7 +3,7 @@ from numbers import Number
 import numpy as np
 
 
-def positify(psi: np.ndarray) -> np.ndarray:
+def fix_phase(psi: np.ndarray) -> np.ndarray:
     if isinstance(psi, Iterable):
         psi = np.array(psi)
     elif isinstance(psi, Number):
@@ -21,7 +21,7 @@ def positify(psi: np.ndarray) -> np.ndarray:
             nalpha = psi.shape[1]
             psi1 = psi.copy()
             for alpha in range(nalpha):
-                psi1[:, alpha] = positify(psi[:, alpha])
+                psi1[:, alpha] = fix_phase(psi[:, alpha])
             return psi1
     else:
         print("Positify warning: empty array input!")

@@ -2,7 +2,7 @@ from cmath import inf, nan
 from typing import Iterable
 # from numpy import double, dtype
 from opt_einsum import contract
-from tools.positify import positify
+from tools.fix_phase import fix_phase
 from scipy.integrate import romb
 import itertools
 import sparse
@@ -354,7 +354,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity):
         solver = pymanopt.solvers.SteepestDescent(maxiter=3000)
         solution = solver.solve(problem, reuselinesearch=True)
 
-        solution = positify(solution)
+        solution = fix_phase(solution)
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
