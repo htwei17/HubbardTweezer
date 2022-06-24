@@ -1,14 +1,15 @@
 from os import link
 from typing import Iterable
 import numpy as np
+import itertools
 
 
 def lattice_graph(size: np.ndarray,
                   shape: str = 'square') -> tuple[np.ndarray, np.ndarray]:
     # Square lattice graph builder
     # shape: 'square' or 'Lieb'
-    # TODO: add 'triangular', 'honeycomb', 'kagome' lattices, make juse of their more complicated symmetries
-    # TODO: add function to equalize Lieb and other lattices
+    # TODO: add function to equalize other lattices
+    # TODO: for the other lattice adjust appropriate R0's
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
     # nodes: each row is a coordinate (x, y) of one site
     #        indicating the posistion of node (trap center)
@@ -18,7 +19,9 @@ def lattice_graph(size: np.ndarray,
     if isinstance(size, Iterable):
         size = np.array(size)
 
-    if shape == 'square':
+    if shape == 'ring':
+        nodes, links = ring_coord(size[0])
+    elif shape == 'square':
         # Square and rectangular lattice graph
         nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
@@ -78,6 +81,43 @@ def lattice_graph(size: np.ndarray,
     reflection = build_reflection(nodes, shape)
     # TODO: consider what we can do with multi-fold rotations
     return nodes, links, reflection
+
+
+def ring_coord(size: int) -> np.ndarray:
+    # Generate coordinates of 4n points on a ring,
+    # with each pair of sites separated by 1
+
+    # Construct (x>0, y>0), then reflect to the other quadrant
+    # Indexing is COUNTER-CLOCKWISE
+    # Adjust size to 4n
+    n = size // 4
+    size = 4 * n
+    print(f'Ring size adjust to: {size}')
+    theta = np.pi / size
+    radius = 0.5 / np.sin(theta)
+    nodes = np.array([]).reshape(0, 2)
+    links = np.array([], dtype=int).reshape(0, 2)
+
+    sectors = [
+        np.array([1, 1]),
+        np.array([-1, 1]),
+        np.array([-1, -1]),
+        np.array([1, -1])
+    ]
+    for idx in range(len(sectors)):
+        nodes = quadrant_ring(n, theta, radius, idx, sectors, nodes)
+    links = np.array([[i, (i + 1) % size] for i in range(size)])
+    return nodes, links
+
+
+def quadrant_ring(n, theta, radius, idx, sectors, nodes):
+    sec = sectors[idx]
+    for i in range(n):
+        coord = radius * sec * np.array(
+            [np.sin(theta * (2 * i + 1)),
+             np.cos(theta * (2 * i + 1))])
+        nodes = np.append(nodes, coord[None], axis=0)
+    return nodes
 
 
 def sqr_lattice(size: np.ndarray):
