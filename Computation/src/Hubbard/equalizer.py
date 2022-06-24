@@ -1,6 +1,5 @@
 from typing import Iterable
 from opt_einsum import contract
-from pyrsistent import get_in
 from scipy.integrate import romb
 from scipy.optimize import minimize
 import numpy as np

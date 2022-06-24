@@ -2,9 +2,6 @@ from numbers import Number
 from typing import Iterable
 import numpy as np
 import sys
-from mimetypes import init
-from statistics import mode
-from tkinter import N
 import numpy as np
 import scipy.linalg as la
 import scipy.sparse.linalg as sla
@@ -13,8 +10,6 @@ from scipy.sparse.linalg import LinearOperator
 import sparse
 from opt_einsum import contract
 from time import time
-
-# from einops import rearrange, reduce, repeat
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
@@ -25,16 +20,6 @@ h = 6.62607015E-34  # Planck constant
 
 dim = 3  # space dimension
 
-
-class harray(np.ndarray):
-
-    @property
-    def H(self):
-        return self.conj().T
-
-
-# TODO: Write code for elliptic tweezer, ie. wx!=wy.
-#       Effecitvely this means I add a scaling factor to y direction.
 # NOTE: 1. Harmonic length propto sqrt(w)
 #       2. All length units are in wx, wy are rep by a factor wy/wx.
 #          z direction zRx, zRy are also in unit of wx.

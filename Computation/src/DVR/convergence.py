@@ -8,7 +8,6 @@ import scipy.linalg as la
 # from scipy.sparse.linalg import LinearOperator
 # import sparse
 from opt_einsum import contract
-from time import time
 # from einops import rearrange, reduce, repeat
 from DVR.core import *
 
