@@ -15,7 +15,7 @@ from DVR.core import *
 k = 10  # Number of energy levels to track
 
 
-def N_convergence(N, R, avg=1, dim=3, level=1):
+def N_convergence(N: int, R, avg=1, dim=3, level=1):
     # Convergence of energy vs N, to reproduce Fig. 5a in PRA paper
     E = np.array([]).reshape(0, k)
     dim_factor = np.zeros(3, dtype=int)
@@ -44,7 +44,7 @@ def N_convergence(N, R, avg=1, dim=3, level=1):
     return np.array(N), dE, E, x / R[0], p
 
 
-def R_convergence(N, dx):
+def R_convergence(N: int, dx):
     # Convergence of energy vs R, to reproduce Fig. 5b in PRA paper
     E = np.array([]).reshape(0, k)
 
