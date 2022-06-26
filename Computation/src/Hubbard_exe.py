@@ -1,4 +1,5 @@
-from Hubbard.plot import *
+import numpy as np
+from Hubbard.plot import (HubbardGraph, eigen_basis, optimize, interaction)
 import tools.reportIO as rep
 import sys
 
