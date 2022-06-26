@@ -1,7 +1,5 @@
-from os import link
 from typing import Iterable
 import numpy as np
-import itertools
 
 
 def lattice_graph(size: np.ndarray,

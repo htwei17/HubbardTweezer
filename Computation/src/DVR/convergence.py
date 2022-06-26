@@ -5,12 +5,10 @@ import numpy as np
 import scipy.linalg as la
 # import scipy.sparse.linalg as sla
 # import scipy.sparse as sp
-# from scipy.sparse.linalg import LinearOperator
 # import sparse
 from opt_einsum import contract
-from time import time
-# from einops import rearrange, reduce, repeat
-from DVR.core import *
+
+from .core import *
 
 k = 10  # Number of energy levels to track
 

@@ -1,11 +1,11 @@
-from cmath import inf, nan
+import numpy as np
 from typing import Iterable
-# from numpy import double, dtype
 from opt_einsum import contract
 from tools.fix_phase import fix_phase
 from scipy.integrate import romb
 import itertools
 import sparse
+import numpy.linalg as la
 
 import torch
 # import autograd
@@ -14,8 +14,7 @@ import pymanopt.manifolds
 import pymanopt.solvers
 
 from DVR.core import *
-from Hubbard.lattice import *
-import numpy.linalg as la
+from .lattice import *
 
 
 class MLWF(DVR):
