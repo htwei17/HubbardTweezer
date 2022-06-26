@@ -1,5 +1,5 @@
 import numpy as np
-from DVR.dynamics import *
+from DVR.dynamics import (DVRdynamics, DVRdynamics_exe, get_stop_time)
 import argparse
 
 dsp = 'Tweezer stroboscopic dynamics by 3D DVR.'

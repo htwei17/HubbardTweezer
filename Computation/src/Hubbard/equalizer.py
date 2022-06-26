@@ -1,11 +1,12 @@
+import numpy as np
+import numpy.linalg as la
 from typing import Callable, Iterable
 from opt_einsum import contract
 from pyparsing import Char
 from scipy.integrate import romb
 from scipy.optimize import minimize
-import numpy as np
-from Hubbard.core import *
-import numpy.linalg as la
+
+from .core import *
 
 
 class HubbardParamEqualizer(MLWF):

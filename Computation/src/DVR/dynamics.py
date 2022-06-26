@@ -1,6 +1,4 @@
 import scipy.linalg as la
-from DVR.core import *
-from DVR.output import DVRdynaOutput
 from time import time
 from pympler.asizeof import asizeof
 import tracemalloc
@@ -8,6 +6,9 @@ from tools.display_top import display_top
 import numpy as np
 from typing import Iterable
 import copy
+
+from .core import *
+from .output import DVRdynaOutput
 
 
 class DVRdynamics(DVR):

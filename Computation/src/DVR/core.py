@@ -7,7 +7,6 @@ import scipy.linalg as la
 import scipy.sparse.linalg as sla
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
-import sparse
 from opt_einsum import contract
 from time import time
 

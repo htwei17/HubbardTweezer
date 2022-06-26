@@ -1,7 +1,9 @@
+import numpy as np
 import matplotlib.pyplot as plt
-from Hubbard.equalizer import *
 import networkx as nx
 import matplotlib as mpl
+
+from .equalizer import *
 
 params = {
     'figure.dpi': 300,
