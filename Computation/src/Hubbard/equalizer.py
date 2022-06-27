@@ -27,24 +27,8 @@ class HubbardParamEqualizer(MLWF):
             self.eq_label = 'eq'
             self.homogenize(eqtarget, fixed)
 
-    # def trap_mat(self):
-    #     tc = np.zeros((self.Nsite, dim))
-    #     fij = np.ones((self.Nsite, self.Nsite))
-    #     for i in range(self.Nsite):
-    #         tc[i, :2] = self.graph[i] * self.lc
-    #         tc[i, 2] = 0
-    #         for j in range(i):
-    #             # print(*(tc[i] - tc[j]))
-    #             fij[i, j] = -super().Vfun(*(tc[i] - tc[j]))
-    #             fij[j, i] = fij[i, j]  # Potential is symmetric in distance
-    #     return fij
 
     def homogenize(self, target: str = 'vt', fixed=False):
-        # fij = self.trap_mat()
-
-        # def cost_func(V):
-        #     return la.norm(fij @ V - 1)
-
         # Force target to be 2-character string
         if len(target) == 1:
             if target == 't' or target == 'T':
