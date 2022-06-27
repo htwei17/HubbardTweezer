@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/gitlab/v/release/Nottforestfc/DVR?color=brightgreen&sort=semver)
 
-DVR repo for DVR full/sparse diagonalizaiton using 3d reflection symmetry
+Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 
 ## Features:
 * dynamics of on-off strobe potential
