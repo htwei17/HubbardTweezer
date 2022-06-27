@@ -27,7 +27,6 @@ class HubbardParamEqualizer(MLWF):
             self.eq_label = 'eq'
             self.homogenize(eqtarget, fixed)
 
-
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
         if len(target) == 1:
@@ -102,20 +101,18 @@ class HubbardParamEqualizer(MLWF):
             Vtarget = target
         if not isinstance(Vtarget, (float, int)):
             Vtarget = np.mean(np.real(np.diag(A)))
-        c = la.norm(np.real(np.diag(A)) - Vtarget)
+        c = la.norm(np.real(np.diag(A)) - Vtarget) / abs(Vtarget)
         print(f'Onsite potential target={Vtarget}')
-        print(f'Onsite potential distance v={c}')
+        print(f'Onsite potential normalized distance v={c}')
         if u:
             if not isinstance(Utarget, (float, int)):
                 Utarget = np.mean(U)
             else:
                 print(f'Onsite interaction target fixed to {Utarget}')
-            a = abs(Vtarget / Utarget)
-            cu = la.norm(U - Utarget)
-            print(f'Scale factor a={a} is applied.')
+            cu = la.norm(U - Utarget) / abs(Utarget)
             print(f'Onsite interaction target={Utarget}')
-            print(f'Onsite interaction distance u={cu}')
-            c += a * cu
+            print(f'Onsite interaction normalized distance u={cu}')
+            c += cu
 
         print("Current total cost:", c, "\n")
         return c
@@ -156,9 +153,9 @@ class HubbardParamEqualizer(MLWF):
         target = None
         if not isinstance(target, (float, int)):
             target = np.mean(U)
-        c = la.norm(U - target)
+        c = la.norm(U - target) / abs(target)
         print(f'Onsite interaction target={target}')
-        print(f'Onsite interaction distance u={c}')
+        print(f'Onsite interaction normalized distance u={c}')
         print("Current total cost:", c, "\n")
         return c
 
@@ -206,12 +203,13 @@ class HubbardParamEqualizer(MLWF):
 
         A = self.singleband_solution()
         nnt = self.nn_tunneling(A)
-        dist = abs(nnt[xlinks]) - nntx
+        dist = (abs(nnt[xlinks]) - nntx) / abs(nntx)
         if any(ylinks == True):
-            dist = np.concatenate((dist, abs(nnt[ylinks]) - nnty))
+            dist = np.concatenate(
+                (dist, (abs(nnt[ylinks]) - nnty) / abs(nntx)))
         c = la.norm(dist)
         print(f'Onsite potential target=({nntx}, {nnty})')
-        print(f'Tunneling distance t={c}')
+        print(f'Tunneling normalized distance t={c}')
         if v:
             V = np.real(np.diag(A))
             if len(target) == 3 and isinstance(target[2], (float, int)):
@@ -219,13 +217,11 @@ class HubbardParamEqualizer(MLWF):
                 Vtarget = target[2]
             else:
                 Vtarget = np.mean(V)
-            cv = la.norm(V - Vtarget)
+            cv = la.norm(V - Vtarget) / abs(Vtarget)
             # adjust factor on onsite potential cost function
-            a = abs(nntx / Vtarget)
-            print(f'Scale factor a={a} is applied.')
             print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential distance v={cv}')
-            c += a * cv
+            print(f'Onsite potential normalized distance v={cv}')
+            c += cv
 
         print("Current total cost:", c, "\n")
         return c
