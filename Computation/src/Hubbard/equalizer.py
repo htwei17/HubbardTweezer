@@ -30,7 +30,7 @@ class HubbardParamEqualizer(MLWF):
             self.equalzie(v=eqV, fixed=fixed)
 
     def equalzie(self, v: bool = False, fixed: bool = False):
-        A, U = self.singleband_solution(True)
+        A, U, V = self.singleband_Hubbard(u=True, output_unitary=True)
 
         Utarget = np.mean(U)
         nnt = self.nn_tunneling(A)
@@ -42,7 +42,23 @@ class HubbardParamEqualizer(MLWF):
 
         Voff_bak = self.Voff
         ls_bak = self.trap_centers
+        v0, bonds = self.init_optimize()
 
+        def cost_func(offset: np.ndarray) -> float:
+            c = self.cbd_cost_func(offset, (xlinks, ylinks),
+                                   (Vtarget, Utarget, nntx, nnty), v, V)
+            return c
+
+        res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead')
+
+        trap_depth = res.x[:self.Nindep]
+        trap_center = res.x[self.Nindep:].reshape(self.Nindep, 2)
+        self.symm_unfold(self.Voff, trap_depth)
+        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+        self.update_lattice(self.trap_centers)
+        return self.Voff, self.trap_centers
+
+    def init_optimize(self):
         v01 = np.ones(self.Nindep)
         v02 = self.trap_centers[self.reflection[:, 0]]
         # Bound trap depth variation
@@ -60,26 +76,13 @@ class HubbardParamEqualizer(MLWF):
 
         v0 = np.concatenate((v01, v02.reshape(-1)))
         bonds = tuple(b1 + b2)
-
-        def cost_func(offset: np.ndarray) -> float:
-            c = self.cbd_cost_func(offset, (xlinks, ylinks),
-                                   (Vtarget, Utarget, nntx, nnty), v)
-            return c
-
-        res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead')
-        
-        trap_depth = res.x[:self.Nindep]
-        trap_center = res.x[self.Nindep:].reshape(self.Nindep, 2)
-        self.symm_unfold(self.Voff, trap_depth)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
-        self.update_lattice(self.trap_centers)
-        return self.Voff, self.trap_centers
+        return v0, bonds
 
     def cbd_cost_func(self,
                       offset: np.ndarray,
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
-                      v: bool = False) -> float:
+                      v: bool = False, unitary=None) -> float:
 
         trap_depth = offset[:self.Nindep]
         trap_center = offset[self.Nindep:].reshape(self.Nindep, 2)
@@ -89,7 +92,7 @@ class HubbardParamEqualizer(MLWF):
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 
-        A, U = self.singleband_solution(True)
+        A, U = self.singleband_Hubbard(u=True, x0=unitary)
 
         xlinks, ylinks = links
         Vtarget = None
@@ -111,7 +114,7 @@ class HubbardParamEqualizer(MLWF):
         print(f"Current total distance: {c}")
         return c
 
-    def v_cost_func(self, A, Vtarget):
+    def v_cost_func(self, A, Vtarget) -> float:
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
         print(f'Onsite potential target={Vtarget}')
@@ -137,7 +140,7 @@ class HubbardParamEqualizer(MLWF):
         print(f'Tunneling normalized distance t={ct}')
         return ct
 
-    def u_cost_func(self, U, Utarget):
+    def u_cost_func(self, U, Utarget) -> float:
         if Utarget is None:
             Utarget = np.mean(U)
         print(f'Onsite interaction target fixed to {Utarget}')
@@ -146,7 +149,8 @@ class HubbardParamEqualizer(MLWF):
         return cu
 
 
-# =============================================================================
+# ================================ TO BE DEPRACATED ================================
+
 
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
@@ -195,7 +199,7 @@ class HubbardParamEqualizer(MLWF):
         return cost_func, quantity
 
     def v_equalize(self, u, fixed=False) -> Callable[[np.ndarray], float]:
-        res = self.singleband_solution(u)
+        res = self.singleband_Hubbard(u)
         if u:
             A, U = res
         else:
@@ -218,7 +222,7 @@ class HubbardParamEqualizer(MLWF):
                 self.update_lattice(self.trap_centers)
                 print("\nCurrent trap centers:", offset)
 
-            res = self.singleband_solution(u)
+            res = self.singleband_Hubbard(u)
             if u:
                 A, U = res
             else:
@@ -234,7 +238,7 @@ class HubbardParamEqualizer(MLWF):
 
     def u_equalize(self) -> Callable[[np.ndarray], float]:
         # Equalize onsite chemical potential
-        A, U = self.singleband_solution(u=True)
+        A, U = self.singleband_Hubbard(u=True)
         Utarget = np.mean(U)
 
         def cost_func(offset: np.ndarray, offset_type) -> float:
@@ -247,7 +251,7 @@ class HubbardParamEqualizer(MLWF):
                 self.update_lattice(self.trap_centers)
                 print("\nCurrent trap centers:", offset)
 
-            A, U = self.singleband_solution(u=True)
+            A, U = self.singleband_Hubbard(u=True)
             c = self.u_cost_func(U, Utarget)
             print("Current total cost:", c, "\n")
             return c
@@ -268,7 +272,7 @@ class HubbardParamEqualizer(MLWF):
         return self.Voff
 
     def t_equalize(self, v, fixed=False) -> Callable[[np.ndarray], float]:
-        A = self.singleband_solution()
+        A = self.singleband_Hubbard()
         nnt = self.nn_tunneling(A)
         xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
         Vtarget = None
@@ -285,7 +289,7 @@ class HubbardParamEqualizer(MLWF):
                 self.update_lattice(self.trap_centers)
                 print("\nCurrent trap centers:", offset)
 
-            A = self.singleband_solution()
+            A = self.singleband_Hubbard()
             c = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
             if v:
                 c += self.v_cost_func(A, Vtarget)

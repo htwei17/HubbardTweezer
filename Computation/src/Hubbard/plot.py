@@ -77,9 +77,9 @@ class HubbardGraph(HubbardParamEqualizer):
 
     def singleband_params(self, label='param', A=None, U=None):
         if label == 'param' and (A == None or U == None):
-            self.singleband_solution(u=True)
+            self.singleband_Hubbard(u=True)
         elif label == 'adjust' and A == None:
-            self.singleband_solution(u=False)
+            self.singleband_Hubbard(u=False)
 
     def draw_graph(self, label='param', nnn=False, A=None, U=None):
         self.singleband_params(label, A, U)
