@@ -86,8 +86,9 @@ class HubbardParamEqualizer(MLWF):
 
         trap_depth = offset[:self.Nindep]
         trap_center = offset[self.Nindep:].reshape(self.Nindep, 2)
-        print("\nCurrent trap depths:", trap_depth)
-        print("\nCurrent trap centers:", trap_center)
+        print(f"\nCurrent trap depths: {trap_depth}")
+        print("Current trap centers:")
+        print(trap_center)
         self.symm_unfold(self.Voff, trap_depth)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
@@ -111,7 +112,7 @@ class HubbardParamEqualizer(MLWF):
         cu = self.u_cost_func(U, Utarget)
 
         c = cv + ct + cu
-        print(f"Current total distance: {c}")
+        print(f"Current total distance: {c}\n")
         return c
 
     def v_cost_func(self, A, Vtarget) -> float:

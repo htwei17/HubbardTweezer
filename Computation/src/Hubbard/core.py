@@ -389,11 +389,6 @@ def singleband_diagonalize(dvr: MLWF, E, W, parity):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def multi_tensor(R):
-    # Convert list of ndarray to list of Tensor
-    return [torch.from_numpy(Ri) for Ri in R]
-
-
 def cost_func(U, R) -> float:
     # Cost function to Wannier optimize
     o = 0
@@ -427,24 +422,17 @@ def optimize(dvr: MLWF, E, W, parity):
 def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     # Singleband Wannier function optimization
     # x0 is the initial guess
-    R = multi_tensor(locality_mat(dvr, W, parity))
 
     if dvr.Nsite > 1:
-        # It's proven above that U can be purely real
-        manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
-
-        @pymanopt.function.pytorch(manifold)
-        def cost(point: torch.Tensor) -> float:
-            return cost_func(point, R)
-
-        problem = pymanopt.Problem(manifold=manifold, cost=cost)
-        optimizer = pymanopt.optimizers.ConjugateGradient(
-            max_iterations=3000, verbosity=2)
-        result = optimizer.run(
-            problem, initial_point=x0, reuse_line_searcher=True)
-        solution = result.point
-
-        # solution = fix_phase(solution)
+        R = locality_mat(dvr, W, parity)
+        if dvr.lattice_dim == 1:
+            # If only one R given, the problem is simply diagonalization
+            # In high dimension, numerical error may cause the commutativity problem
+            __, solution = la.eigh(R[0])
+        else:
+            # Convert list of ndarray to list of Tensor
+            R = [torch.from_numpy(Ri) for Ri in R]
+            solution = Riemann_optimize(dvr, x0, R)
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
@@ -454,6 +442,23 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
     )  # TB parameter matrix, in unit of kHz
     return A, U
+
+
+def Riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
+    # It's proven above that U can be purely real
+    manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
+
+    @pymanopt.function.pytorch(manifold)
+    def cost(point: torch.Tensor) -> float:
+        return cost_func(point, R)
+
+    problem = pymanopt.Problem(manifold=manifold, cost=cost)
+    optimizer = pymanopt.optimizers.ConjugateGradient(
+        max_iterations=3000, verbosity=1)
+    result = optimizer.run(
+        problem, initial_point=x0, reuse_line_searcher=True)
+    solution = result.point
+    return solution
 
 # =============================================================================
 
