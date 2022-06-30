@@ -112,6 +112,11 @@ class MLWF(DVR):
         self.bands = band
         n = np.zeros(3, dtype=int)
         n[:dim] = N
+        absorber = kwargs.get('absorber', False)
+        if absorber:
+            TypeError(
+                "Absorber is not supported for Wannier Function construction!")
+
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
