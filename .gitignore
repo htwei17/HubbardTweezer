@@ -2,14 +2,5 @@
 !*.py
 
 # Folders
-<<<<<<< HEAD
 __pycache__
 Computation/src/test
-=======
-output
-
-# Executables
-*.exe
-Computation/src/python
-Computation/src.zip
->>>>>>> main
