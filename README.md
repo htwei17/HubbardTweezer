@@ -15,7 +15,7 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 * `DVR_output.py`: output .h5 file structure definitions
 * `DVR_exe.py`: execute script of DVR dynamics on command line
 ### Hubbard parameters
-* [`pymanopt`](https://github.com/pymanopt/pymanopt) is needed. However, its current version doesn't support unitary matrix optimization (pending addition into `2.x.x` version). So a self-made modified version based on `v0.26` is attached.
+* Prerequisite: [`pymanopt`](https://github.com/pymanopt/pymanopt)
 * The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices
 * `Hubbard_core.py` : `MLWF` class to construct maximally localized Wannier funcitons
 * `Hubbard_plot.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs
