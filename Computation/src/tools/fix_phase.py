@@ -1,3 +1,8 @@
+"""
+Fix the phase of each vector in the array.
+Zhiyuan Wang
+Hao-Tian Wei <weihaotian776@gmail.com?
+"""
 from typing import Iterable
 from numbers import Number
 import numpy as np
@@ -8,7 +13,7 @@ def fix_phase(psi: np.ndarray) -> np.ndarray:
         psi = np.array(psi)
     elif isinstance(psi, Number):
         psi = abs(np.array([psi]))
-        
+
     if psi.shape[0] > 0:
         if psi.ndim == 1:
             m = np.argmax(abs(psi))

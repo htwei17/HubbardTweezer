@@ -25,6 +25,33 @@ dim = 3  # space dimension
 
 
 class DVR:
+    """DVR base class
+
+    Args:
+    ----------
+        n (`np.ndarray[int, int, int]`): DVR grid half-size in each direction.
+            The actual grid size is 2n+1.
+            If i-th dimension is not calculated, n[i]=0
+        R0 (`np.ndarray[float, float]`): Grid halfwidth in each direction
+        model (`str`): Trap potential.
+            'Gaussian' means tweezer potential;
+            'sho' means harmonic potential
+        avg (`float`): Factor a in Humiltonian H = T + aV
+        trap (`tuple[float, float | tuple[float, float]]`): Trap potential parameters.
+            trap[0] is the trap potential strength in unit of kHz
+            trap[1] is the waist in unit of nm;
+            if trap[1] given as a tuple, then it is (wx, wy)
+        atom (`float`): Atom mass in unit of amu
+        laser ('float'): Laser wavelength in unit of nm
+        zR ('float'): Rayleigh length in unit of nm;
+            if not given, zR is calculated by \pi * w^2 / laser
+        sparse (`bool`): Whether to use sparse matrix
+        symmetry (`bool`): Whether to use symmetry in DVR
+        absorber (`bool`): Whether to use absorber
+        ab_param (`tuple[float, float]`): Absorber parameters.
+            ab_param[0] is the strength of linear imaginary potential in unit of kHz
+            ab_param[1] is the width of absorber in unit of wx
+    """
 
     def update_n(self, n: np.ndarray, R0: np.ndarray):
         # Change n by fixed R0

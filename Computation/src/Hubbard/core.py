@@ -17,10 +17,28 @@ import pymanopt.optimizers
 from DVR.core import *
 from .lattice import *
 from tools.simdiag import simdiag
+from tools.jacobi_angles import jacobi_angles
 
 
 class MLWF(DVR):
-    def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690), shape="square"):
+    """Maximally localized Wannier function
+
+    Args:
+    ----------
+        N (`int`): DVR grid size
+        lattice (`np.ndarray[int, int]`): Lattice dimensions
+        shape (`str`): Lattice geometry
+        ascatt (`float`): Scattering length in unit of a0
+        band (`int`): Number of bands
+        dim (`int`): System dimension
+        ...: See `DVR.__init__` for other arguments
+
+    """
+
+    def create_lattice(self,
+                       lattice: np.ndarray,
+                       lc: tuple[float, float] = (1520, 1690),
+                       shape: str = "square"):
         # graph : each line represents coordinate (x, y) of one lattice site
 
         self.Nsite = np.prod(lattice)
@@ -131,7 +149,8 @@ class MLWF(DVR):
             # Two-site SHO case
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
         else:
-            # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
+            # NOTE: DO NOT SET coord DIRECTLY!
+            # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
@@ -335,7 +354,7 @@ def locality_mat(dvr: MLWF, W, parity):
             R.append(Rx)
     return R
 
-# ===================== NEW ALGORITHM =====================================
+# ================ DIAGONALIZATION ALGORITHM: STABILITY ISSUE! ================
 
 
 def diagonalize(dvr: MLWF, E, W, parity):
@@ -355,7 +374,8 @@ def singleband_diagonalize(dvr: MLWF, E, W, parity):
     R = locality_mat(dvr, W, parity)
 
     if dvr.Nsite > 1:
-        solution = simdiag(R, evals=False, safe_mode=False)
+        # solution = simdiag(R, evals=False, safe_mode=False)
+        solution, __, __ = jacobi_angles(*R)
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
@@ -366,7 +386,7 @@ def singleband_diagonalize(dvr: MLWF, E, W, parity):
     )  # TB parameter matrix, in unit of kHz
     return A, U
 
-# ===================== TO BE DEPRECATED =====================================
+# ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
 def multi_tensor(R):
@@ -419,7 +439,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
 
         problem = pymanopt.Problem(manifold=manifold, cost=cost)
         optimizer = pymanopt.optimizers.ConjugateGradient(
-            max_iterations=3000, verbosity=1)
+            max_iterations=3000, verbosity=2)
         result = optimizer.run(
             problem, initial_point=x0, reuse_line_searcher=True)
         solution = result.point
@@ -480,10 +500,12 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
     )  # Unit to kHz
-    # # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
+    # # Construct interaction integral,
+    # # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
-    # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    # # Bands are degenerate, only differed by spin index,
+    # $ so they share the same set of Wannier functions
     # Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
     #                 integrl)
     # Uint_onsite = np.zeros(dvr.Nsite)
@@ -535,9 +557,10 @@ def intgrl3d(dx, integrand):
     return integrand
 
 
-# ######## DEPRECATED DUE TO WRONG ASSUMPTION OF QUADRATURE ##########
+# ============= DEPRECATED DUE TO WRONG ASSUMPTIONS OF QUADRATURE =============
 # def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
-#     # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
+#     # Construct interaction integral,
+#     # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
 #     for i in range(dvr.Nsite):
 #         Wii = Wi[i].conj()
 #         for j in range(dvr.Nsite):
