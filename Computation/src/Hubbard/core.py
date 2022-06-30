@@ -12,10 +12,11 @@ import torch
 # import autograd
 import pymanopt
 import pymanopt.manifolds
-import pymanopt.solvers
+import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
+from tools.simdiag import simdiag
 
 
 class MLWF(DVR):
@@ -188,6 +189,7 @@ class MLWF(DVR):
 
     def xy_links(self, nnt):
         # Distinguish x and y n.n. bonds and target t_x t_y values
+        # Only usable for rectangle latice
         xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         ylinks = np.logical_not(xlinks)
         nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
@@ -213,7 +215,7 @@ def eigen_basis(dvr: MLWF):
         W_sb = []
         p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
-            E_sb, W_sb, p_sb = add_sector(p, dvr, k, E_sb, W_sb, p_sb)
+            E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
         idx = np.argsort(E_sb)[:k]
@@ -261,7 +263,7 @@ def sector(dvr: MLWF):
     return p_list
 
 
-def add_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
+def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
     p[: len(sector)] = sector
@@ -276,6 +278,9 @@ def add_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
 
 
 def locality_mat(dvr: MLWF, W, parity):
+    # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
+    # and position operator x, y, z
+
     R = []
 
     # For calculation keeping only p_z = 1 sector,
@@ -296,6 +301,9 @@ def locality_mat(dvr: MLWF, W, parity):
                 lenx = len(x)
                 idx = np.roll(np.arange(dim, dtype=int), -i)
                 for j in range(dvr.Nsite):
+                    # If no absorber, W is real
+                    # This cconjugate does not change dtype of real W
+                    # It is only used in case of absorber
                     Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
                     for k in range(j + 1, dvr.Nsite):
                         pjk = (
@@ -304,7 +312,10 @@ def locality_mat(dvr: MLWF, W, parity):
                         )
                         if pjk[0] == -1 and pjk[1:] == 1:
                             Wk = np.transpose(W[k], idx)[-lenx:, :, :]
+                            # Unitary transform X from DVR basis to single-body eigenbasis
                             Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
+                            # Rx is also real if no absorber
+                            # So Rx is real-symmetric or hermitian
                             Rx[k, j] = Rx[j, k].conj()
             else:
                 # X = x_i delta_ij for non-symmetrized basis
@@ -319,23 +330,61 @@ def locality_mat(dvr: MLWF, W, parity):
             R.append(Rx)
     return R
 
+# ===================== NEW ALGORITHM =====================================
+
+
+def diagonalize(dvr: MLWF, E, W, parity):
+    # Multiband optimization
+    A = []
+    w = []
+    for b in range(dvr.bands):
+        t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
+        A.append(t_ij)
+        w.append(w_mu)
+    return A, w
+
+
+def singleband_diagonalize(dvr: MLWF, E, W, parity):
+    # Singleband Wannier function optimization
+    # x0 is the initial guess
+    R = locality_mat(dvr, W, parity)
+
+    if dvr.Nsite > 1:
+        solution = simdiag(R, evals=False, safe_mode=False)
+    elif dvr.Nsite == 1:
+        solution = np.ones((1, 1))
+
+    U = site_order(dvr, W, solution, parity)
+
+    A = (
+        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    )  # TB parameter matrix, in unit of kHz
+    return A, U
+
+# ===================== TO BE DEPRECATED =====================================
+
 
 def multi_tensor(R):
     # Convert list of ndarray to list of Tensor
-    return [
-        torch.complex(torch.from_numpy(Ri), torch.zeros(
-            Ri.shape, dtype=torch.float64))
-        for Ri in R
-    ]
+    return [torch.from_numpy(Ri) for Ri in R]
 
 
 def cost_func(U, R) -> float:
     # Cost function to Wannier optimize
     o = 0
     for i in range(len(R)):
+        # R is real-symmetric if no absorber
         X = U.conj().T @ R[i] @ U
         Xp = X - torch.diag(torch.diag(X))
         o += torch.trace(torch.matrix_power(Xp, 2))
+    # X must be hermitian, so is Xp
+    # Xp^2 is then positive and hermitian,
+    # its diagonal is real and positive, o >= 0
+    # Min is found when X diagonal, which means U diagonalize R
+    # SO U can be pure real orthogonal matrix!
+    # Q: Can X, Y, Z be diagonalized simultaneously?
+    # A: Sure thing from elementary QM
+    # TODO: Numerically stable simultaneous diagonalization
     return np.real(o)
 
 
@@ -356,17 +405,21 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     R = multi_tensor(locality_mat(dvr, W, parity))
 
     if dvr.Nsite > 1:
-        manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
+        # It's proven above that U can be purely real
+        manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
         @pymanopt.function.pytorch(manifold)
         def cost(point: torch.Tensor) -> float:
             return cost_func(point, R)
 
-        problem = pymanopt.Problem(manifold=manifold, cost=cost, verbosity=1)
-        solver = pymanopt.solvers.ConjugateGradient(maxiter=3000)
-        solution = solver.solve(problem, x=x0, reuselinesearch=True)
+        problem = pymanopt.Problem(manifold=manifold, cost=cost)
+        optimizer = pymanopt.optimizers.ConjugateGradient(
+            max_iterations=3000, verbosity=1)
+        result = optimizer.run(
+            problem, initial_point=x0, reuse_line_searcher=True)
+        solution = result.point
 
-        solution = fix_phase(solution)
+        # solution = fix_phase(solution)
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
@@ -376,6 +429,8 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
     )  # TB parameter matrix, in unit of kHz
     return A, U
+
+# =============================================================================
 
 
 def site_order(dvr: MLWF, W, U, p):

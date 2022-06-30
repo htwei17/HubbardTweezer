@@ -4,7 +4,7 @@ from typing import Callable, Iterable
 from opt_einsum import contract
 from pyparsing import Char
 from scipy.integrate import romb
-from scipy.optimize import minimize
+from scipy.optimize import minimize, shgo
 
 from .core import *
 
@@ -149,7 +149,7 @@ class HubbardParamEqualizer(MLWF):
         return cu
 
 
-# ================================ TO BE DEPRACATED ================================
+# ===================== TO BE DEPRECATED =====================================
 
 
     def homogenize(self, target: str = 'vt', fixed=False):
