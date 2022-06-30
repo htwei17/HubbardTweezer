@@ -46,7 +46,7 @@ G = HubbardGraph(
     eqtarget=eqt,
     symmetry=symm)
 eig_sol = eigen_basis(G)
-A, U = G.singleband_solution(u=True, eig_sol=eig_sol)
+A, U = G.singleband_Hubbard(u=True, eig_sol=eig_sol)
 # G.draw_graph('adjust', A, U)
 # G.draw_graph(A=A, U=U)
 Vi = np.diag(A)

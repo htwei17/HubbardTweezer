@@ -8,21 +8,19 @@ import sparse
 import numpy.linalg as la
 
 import torch
+
 # import autograd
 import pymanopt
 import pymanopt.manifolds
-import pymanopt.solvers
+import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
+from tools.simdiag import simdiag
 
 
 class MLWF(DVR):
-
-    def create_lattice(self,
-                       lattice: np.ndarray,
-                       lc=(1520, 1690),
-                       shape='square'):
+    def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690), shape="square"):
         # graph : each line represents coordinate (x, y) of one lattice site
 
         self.Nsite = np.prod(lattice)
@@ -34,7 +32,8 @@ class MLWF(DVR):
             self.lattice_dim = 1
         elif self.Nsite > 1 and lattice.size == 1:
             self.lattice = np.resize(
-                np.pad(lattice, pad_width=(0, 1), constant_values=1), 2)
+                np.pad(lattice, pad_width=(0, 1), constant_values=1), 2
+            )
             self.lattice_dim = 1
         else:
             self.lattice = lattice.copy()
@@ -42,8 +41,7 @@ class MLWF(DVR):
 
         # Convert lc to (lc, lc) or the other if only one number is given
         if not isinstance(lc, Iterable):
-            if np.isin(shape, np.array(['triangular', 'honeycomvb',
-                                        'kagome'])):
+            if np.isin(shape, np.array(["triangular", "honeycomvb", "kagome"])):
                 # For equilateral triangle
                 lc = (lc, np.sqrt(3) / 2 * lc)
             else:
@@ -51,15 +49,17 @@ class MLWF(DVR):
                 lc = (lc, lc)
 
         self.trap_centers, self.links, self.reflection = lattice_graph(
-            self.lattice, shape)
+            self.lattice, shape
+        )
         self.Nsite = self.trap_centers.shape[0]
 
         self.Nindep = self.reflection.shape[
-            0]  # Independent trap number under reflection symmetry
+            0
+        ]  # Independent trap number under reflection symmetry
 
-        if self.model == 'Gaussian':
-            self.lc = np.array(lc) * 1E-9 / self.w  # In unit of wx
-        elif self.model == 'sho':
+        if self.model == "Gaussian":
+            self.lc = np.array(lc) * 1e-9 / self.w  # In unit of wx
+        elif self.model == "sho":
             self.lc = np.array(lc)
 
         dx = self.dx.copy()
@@ -67,10 +67,10 @@ class MLWF(DVR):
         lattice_range = np.resize(
             np.pad(lattice_range, (0, 2), constant_values=0), dim)
         lc = np.resize(self.lc, dim)
-        print(f'lattice: dx is fixed at: {dx}w')
-        print(f'lattice: lattice shape is {shape}')
-        print(f'lattice: Full lattice sizes: {lattice}')
-        print(f'lattice: lattice constants: {lc}w')
+        print(f"lattice: dx is fixed at: {dx}w")
+        print(f"lattice: lattice shape is {shape}")
+        print(f"lattice: Full lattice sizes: {lattice}")
+        print(f"lattice: lattice constants: {lc}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range * lc + self.R00
         R0 *= self.nd
@@ -81,29 +81,30 @@ class MLWF(DVR):
 
         self.trap_centers = tc.copy()
         dx = self.dx.copy()
-        lattice = np.resize(np.pad(self.lattice, (0, 2), constant_values=1),
-                            dim)
+        lattice = np.resize(
+            np.pad(self.lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
-        print(f'lattice: dx is fixed at: {dx}w')
-        print(f'lattice: Full lattice sizes updated to: {lattice}')
-        print(f'lattice: lattice constants updated to: {lc}w')
+        print(f"lattice: dx is fixed at: {dx}w")
+        print(f"lattice: Full lattice sizes updated to: {lattice}")
+        print(f"lattice: lattice constants updated to: {lc}w")
         # Let there be R0's wide outside the edge trap center
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
 
     def __init__(
-            self,
-            N: int,
-            lattice: np.ndarray = np.array(
-                [2], dtype=int),  # Square lattice dimensions
-            lc=(1520, 1690),  # Lattice constant, in unit of nm
-            ascatt=1600,  # Scattering length, in unit of Bohr radius
-            shape='square',  # Shape of the lattice
-            band=1,  # Number of bands
-            dim: int = 3,
-            *args,
-            **kwargs) -> None:
+        self,
+        N: int,
+        lattice: np.ndarray = np.array(
+            [2], dtype=int),  # Square lattice dimensions
+        lc=(1520, 1690),  # Lattice constant, in unit of nm
+        ascatt=1600,  # Scattering length, in unit of Bohr radius
+        shape="square",  # Shape of the lattice
+        band=1,  # Number of bands
+        dim: int = 3,
+        *args,
+        **kwargs,
+    ) -> None:
 
         self.N = N
         self.scatt_len = ascatt * a0
@@ -121,7 +122,7 @@ class MLWF(DVR):
         # Get V(x, y, z) for the entire lattice
         V = 0
 
-        if self.model == 'sho' and self.Nsite == 2:
+        if self.model == "sho" and self.Nsite == 2:
             # Two-site SHO case
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
         else:
@@ -131,25 +132,35 @@ class MLWF(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def singleband_solution(self, u=False, eig_sol=None):
+    def singleband_Hubbard(
+        self, u=False, x0=None, output_unitary=False, eig_sol=None
+    ):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         self.bands = 1
         if eig_sol != None:
             E, W, p = eig_sol
-        E, W, p = eigen_basis(self)
-        A, U = optimize(self, E, W, p)
-        self.A = A[0]
+        else:
+            E, W, p = eigen_basis(self)
+        E = E[0]
+        W = W[0]
+        p = p[0]
+        self.A, V = singleband_optimize(self, E, W, p, x0)
         if u:
-            print('Calculate U.')
-            V = interaction(self, U, W, p)
-            self.U = V[0, 0]
+            print("Calculate U.")
+            self.U = singleband_interaction(self, V, V, W, W, p, p)
             self.bands = band_bak
-            return self.A, self.U
+            if output_unitary:
+                return self.A, self.U, V
+            else:
+                return self.A, self.U
         else:
             self.bands = band_bak
             self.U = None
-            return self.A
+            if output_unitary:
+                return self.A, V
+            else:
+                return self.A
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
@@ -178,6 +189,7 @@ class MLWF(DVR):
 
     def xy_links(self, nnt):
         # Distinguish x and y n.n. bonds and target t_x t_y values
+        # Only usable for rectangle latice
         xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         ylinks = np.logical_not(xlinks)
         nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
@@ -203,7 +215,7 @@ def eigen_basis(dvr: MLWF):
         W_sb = []
         p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
-            E_sb, W_sb, p_sb = add_sector(p, dvr, k, E_sb, W_sb, p_sb)
+            E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
         idx = np.argsort(E_sb)[:k]
@@ -215,11 +227,10 @@ def eigen_basis(dvr: MLWF):
         W_sb = [W_sb[:, i] for i in range(k)]
         p_sb = np.zeros((k, 2))
 
-    E = [E_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite] for b in range(dvr.bands)]
-    W = [W_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite] for b in range(dvr.bands)]
-    parity = [
-        p_sb[b * dvr.Nsite:(b + 1) * dvr.Nsite, :] for b in range(dvr.bands)
-    ]
+    E = [E_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite] for b in range(dvr.bands)]
+    W = [W_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite] for b in range(dvr.bands)]
+    parity = [p_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite, :]
+              for b in range(dvr.bands)]
 
     return E, W, parity
 
@@ -252,10 +263,10 @@ def sector(dvr: MLWF):
     return p_list
 
 
-def add_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
+def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
-    p[:len(sector)] = sector
+    p[: len(sector)] = sector
     dvr.update_p(p)
 
     Em, Wm = H_solver(dvr, k)
@@ -266,7 +277,10 @@ def add_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     return E, W, parity
 
 
-def cost_mat(dvr: MLWF, W, parity):
+def locality_mat(dvr: MLWF, W, parity):
+    # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
+    # and position operator x, y, z
+
     R = []
 
     # For calculation keeping only p_z = 1 sector,
@@ -287,43 +301,90 @@ def cost_mat(dvr: MLWF, W, parity):
                 lenx = len(x)
                 idx = np.roll(np.arange(dim, dtype=int), -i)
                 for j in range(dvr.Nsite):
+                    # If no absorber, W is real
+                    # This cconjugate does not change dtype of real W
+                    # It is only used in case of absorber
                     Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
                     for k in range(j + 1, dvr.Nsite):
-                        pjk = parity[j, idx[idx < dim -
-                                            1]] * parity[k, idx[idx < dim - 1]]
+                        pjk = (
+                            parity[j, idx[idx < dim - 1]]
+                            * parity[k, idx[idx < dim - 1]]
+                        )
                         if pjk[0] == -1 and pjk[1:] == 1:
                             Wk = np.transpose(W[k], idx)[-lenx:, :, :]
-                            Rx[j, k] = contract('ijk,i,ijk', Wj, x, Wk)
+                            # Unitary transform X from DVR basis to single-body eigenbasis
+                            Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
+                            # Rx is also real if no absorber
+                            # So Rx is real-symmetric or hermitian
                             Rx[k, j] = Rx[j, k].conj()
             else:
                 # X = x_i delta_ij for non-symmetrized basis
                 x = np.arange(-dvr.n[i], dvr.n[i] + 1) * dvr.dx[i]
                 for j in range(dvr.Nsite):
                     Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
-                    Rx[j, j] = contract('ijk,i,ijk', Wj, x, Wj.conj())
+                    Rx[j, j] = contract("ijk,i,ijk", Wj, x, Wj.conj())
                     for k in range(j + 1, dvr.Nsite):
                         Wk = np.transpose(W[k], idx)[-lenx:, :, :]
-                        Rx[j, k] = contract('ijk,i,ijk', Wj, x, Wk)
+                        Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
                         Rx[k, j] = Rx[j, k].conj()
             R.append(Rx)
     return R
 
+# ===================== NEW ALGORITHM =====================================
+
+
+def diagonalize(dvr: MLWF, E, W, parity):
+    # Multiband optimization
+    A = []
+    w = []
+    for b in range(dvr.bands):
+        t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
+        A.append(t_ij)
+        w.append(w_mu)
+    return A, w
+
+
+def singleband_diagonalize(dvr: MLWF, E, W, parity):
+    # Singleband Wannier function optimization
+    # x0 is the initial guess
+    R = locality_mat(dvr, W, parity)
+
+    if dvr.Nsite > 1:
+        solution = simdiag(R, evals=False, safe_mode=False)
+    elif dvr.Nsite == 1:
+        solution = np.ones((1, 1))
+
+    U = site_order(dvr, W, solution, parity)
+
+    A = (
+        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    )  # TB parameter matrix, in unit of kHz
+    return A, U
+
+# ===================== TO BE DEPRECATED =====================================
+
 
 def multi_tensor(R):
     # Convert list of ndarray to list of Tensor
-    return [
-        torch.complex(torch.from_numpy(Ri),
-                      torch.zeros(Ri.shape, dtype=torch.float64)) for Ri in R
-    ]
+    return [torch.from_numpy(Ri) for Ri in R]
 
 
 def cost_func(U, R) -> float:
     # Cost function to Wannier optimize
     o = 0
     for i in range(len(R)):
+        # R is real-symmetric if no absorber
         X = U.conj().T @ R[i] @ U
         Xp = X - torch.diag(torch.diag(X))
         o += torch.trace(torch.matrix_power(Xp, 2))
+    # X must be hermitian, so is Xp
+    # Xp^2 is then positive and hermitian,
+    # its diagonal is real and positive, o >= 0
+    # Min is found when X diagonal, which means U diagonalize R
+    # SO U can be pure real orthogonal matrix!
+    # Q: Can X, Y, Z be diagonalized simultaneously?
+    # A: Sure thing from elementary QM
+    # TODO: Numerically stable simultaneous diagonalization
     return np.real(o)
 
 
@@ -338,34 +399,41 @@ def optimize(dvr: MLWF, E, W, parity):
     return A, w
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity):
+def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     # Singleband Wannier function optimization
-    R = multi_tensor(cost_mat(dvr, W, parity))
+    # x0 is the initial guess
+    R = multi_tensor(locality_mat(dvr, W, parity))
 
     if dvr.Nsite > 1:
-        manifold = pymanopt.manifolds.Unitaries(dvr.Nsite)
+        # It's proven above that U can be purely real
+        manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
         @pymanopt.function.pytorch(manifold)
         def cost(point: torch.Tensor) -> float:
             return cost_func(point, R)
 
-        problem = pymanopt.Problem(manifold=manifold, cost=cost, verbosity=1)
-        solver = pymanopt.solvers.SteepestDescent(maxiter=3000)
-        solution = solver.solve(problem, reuselinesearch=True)
+        problem = pymanopt.Problem(manifold=manifold, cost=cost)
+        optimizer = pymanopt.optimizers.ConjugateGradient(
+            max_iterations=3000, verbosity=1)
+        result = optimizer.run(
+            problem, initial_point=x0, reuse_line_searcher=True)
+        solution = result.point
 
-        solution = fix_phase(solution)
+        # solution = fix_phase(solution)
     elif dvr.Nsite == 1:
         solution = np.ones((1, 1))
 
-    U = lattice_order(dvr, W, solution, parity)
+    U = site_order(dvr, W, solution, parity)
 
-    A = U.conj().T @ (
-        E[:, None] *
-        U) * dvr.V0 / dvr.kHz_2p  # TB parameter matrix, in unit of kHz
+    A = (
+        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    )  # TB parameter matrix, in unit of kHz
     return A, U
 
+# =============================================================================
 
-def lattice_order(dvr: MLWF, W, U, p):
+
+def site_order(dvr: MLWF, W, U, p):
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
@@ -379,8 +447,8 @@ def lattice_order(dvr: MLWF, W, U, p):
     # print(center_val)
     # Find at which trap max of Wannier func is
     order = np.argmax(center_val, axis=1)
-    print('Trap site position of Wannier functions:', order)
-    print('Order of Wannier function is set to match trap site.')
+    print("Trap site position of Wannier functions:", order)
+    print("Order of Wannier function is set to match trap site.")
     return U[:, order]
 
 
@@ -397,15 +465,16 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
     Uint = np.zeros((dvr.bands, dvr.bands, dvr.Nsite))
     for i in range(dvr.bands):
         for j in range(dvr.bands):
-            Uint[i, j, :] = singleband_interaction(dvr, U[i], U[j], W[i], W[j],
-                                                   parity[i], parity[j])
+            Uint[i, j, :] = singleband_interaction(
+                dvr, U[i], U[j], W[i], W[j], parity[i], parity[j]
+            )
     return Uint
 
 
-def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray,
-                           pj: np.ndarray):
-    u = 4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim
-                                              )  # Unit to kHz
+def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
+    u = (
+        4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
+    )  # Unit to kHz
     # # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
@@ -433,13 +502,14 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray,
             dx.append(0)
     Vi = wannier_func(dvr, Wi, Ui, pi, x)
     Vj = wannier_func(dvr, Wj, Uj, pj, x)
-    wannier = abs(Vi)**2 * abs(Vj)**2
+    wannier = abs(Vi) ** 2 * abs(Vj) ** 2
     Uint_onsite = intgrl3d(dx, wannier)
-    if dvr.model == 'sho':
+    if dvr.model == "sho":
         print(
-            f'Test with analytic calculation on {i + 1}-th site',
-            np.real(Uint_onsite) * (np.sqrt(2 * np.pi))**dvr.dim *
-            np.prod(dvr.hl))
+            f"Test with analytic calculation on {i + 1}-th site",
+            np.real(Uint_onsite) * (np.sqrt(2 * np.pi)
+                                    ) ** dvr.dim * np.prod(dvr.hl),
+        )
     return u * Uint_onsite
 
 

@@ -173,7 +173,7 @@ class DVR:
         # To cancel effect of any h.l. multiplication
         self.hl[np.logical_not(self.nd)] = 1
 
-        ## Abosorbers
+        # Abosorbers
         if absorber:
             self.VI *= self.kHz_2p  # Absorption potential strength in unit of angular kHz frequency
             self.VIdV0 = self.VI / self.V0  # Energy in unit of V0
@@ -424,4 +424,5 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
             format(t1 - t0))
     print("H_solver: eigenstates memory usage: {:.2f} MiB.".format(W.nbytes /
                                                                    2**20))
+    # No absorber, all eigenstates are real
     return E, W
