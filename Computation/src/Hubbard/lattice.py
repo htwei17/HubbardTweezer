@@ -19,7 +19,6 @@ def lattice_graph(size: np.ndarray,
     if shape == 'ring':
         nodes, links = ring_coord(size[0])
     elif shape == 'square':
-        # Square and rectangular lattice graph
         nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
         # Build Lieb lattice graph
@@ -118,10 +117,10 @@ def quadrant_ring(n, theta, radius, idx, sectors, nodes):
 
 
 def sqr_lattice(size: np.ndarray):
-    # Square lattice graph builder
+    # Square and rectangular lattice graph builder
+    # Also including 1D open chain
     # NOTE: In this case, indexing is COLUMN-MAJOR.
-    size[size == 1] == 2  # Smallest Lieb lattice plaquette has size 3
-    print(f'Triangular lattice size adjust to: {size}')
+
     edge = []
     edge_idx = []
     nodes = np.array([]).reshape(0, 2)
@@ -168,6 +167,7 @@ def tri_lattice(size: np.ndarray):
     # Make sure y dimension size is odd
     if size[1] % 2 == 0:
         size[1] += 1
+    print(f'Triangular lattice size adjust to: {size}')
 
     edge = []
     edge_idx = []

@@ -3,6 +3,7 @@ from typing import Iterable
 from opt_einsum import contract
 from tools.fix_phase import fix_phase
 from scipy.integrate import romb
+from time import time
 import itertools
 import sparse
 import numpy.linalg as la
@@ -85,10 +86,12 @@ class MLWF(DVR):
         lattice_range = np.resize(
             np.pad(lattice_range, (0, 2), constant_values=0), dim)
         lc = np.resize(self.lc, dim)
-        print(f"lattice: dx is fixed at: {dx}w")
-        print(f"lattice: lattice shape is {shape}")
-        print(f"lattice: Full lattice sizes: {lattice}")
-        print(f"lattice: lattice constants: {lc}w")
+        if self.verbosity:
+            print(f"lattice: lattice shape is {shape}")
+            print(f"lattice: Full lattice sizes: {lattice}")
+            if self.verbosity > 1:
+                print(f"lattice: lattice constants: {lc}w")
+                print(f"lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range * lc + self.R00
         R0 *= self.nd
@@ -102,10 +105,13 @@ class MLWF(DVR):
         lattice = np.resize(
             np.pad(self.lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
-        print(f"lattice: dx is fixed at: {dx}w")
-        print(f"lattice: Full lattice sizes updated to: {lattice}")
-        print(f"lattice: lattice constants updated to: {lc}w")
-        # Let there be R0's wide outside the edge trap center
+        if self.verbosity:
+            print(
+                f"lattice: Full lattice sizes updated to: {lattice[self.nd]}")
+            if self.verbosity > 1:
+                # Let there be R0's wide outside the edge trap center
+                print(f"lattice: lattice constants updated to: {lc}w")
+                print(f"lattice: dx fixed to: {dx[self.nd]}w")
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
@@ -159,6 +165,7 @@ class MLWF(DVR):
     def singleband_Hubbard(
         self, u=False, x0=None, output_unitary=False, eig_sol=None
     ):
+
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         self.bands = 1
@@ -171,7 +178,8 @@ class MLWF(DVR):
         p = p[0]
         self.A, V = singleband_optimize(self, E, W, p, x0)
         if u:
-            print("Calculate U.")
+            if self.verbosity:
+                print("Calculate U.")
             self.U = singleband_interaction(self, V, V, W, W, p, p)
             self.bands = band_bak
             if output_unitary:
@@ -188,6 +196,7 @@ class MLWF(DVR):
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
+        # Not limited to specific geometry
         if self.Nsite == 1:
             nnt = np.zeros(1)
         elif self.lattice_dim == 1:
@@ -423,28 +432,35 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
+    t0 = time()
+
     if dvr.Nsite > 1:
         R = locality_mat(dvr, W, parity)
         if dvr.lattice_dim == 1:
             # If only one R given, the problem is simply diagonalization
             # In high dimension, numerical error may cause the commutativity problem
-            __, solution = la.eigh(R[0])
+            X, solution = la.eigh(R[0]) # solution is eigenstates of operator X
+            U = solution[:, np.argsort(X)] # Auto sort eigenvectors by X eigenvalues
         else:
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
-            solution = Riemann_optimize(dvr, x0, R)
-    elif dvr.Nsite == 1:
-        solution = np.ones((1, 1))
-
-    U = site_order(dvr, W, solution, parity)
+            solution = riemann_optimize(dvr, x0, R)
+            U = site_order(dvr, W, solution, parity)
+    else:
+        U = np.ones((1, 1))
 
     A = (
         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
     )  # TB parameter matrix, in unit of kHz
+
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band optimization time: {t1 - t0}s.")
+
     return A, U
 
 
-def Riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
+def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
     # It's proven above that U can be purely real
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
@@ -454,7 +470,7 @@ def Riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
 
     problem = pymanopt.Problem(manifold=manifold, cost=cost)
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=3000, verbosity=1)
+        max_iterations=1000, verbosity=dvr.verbosity)
     result = optimizer.run(
         problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point
@@ -477,8 +493,9 @@ def site_order(dvr: MLWF, W, U, p):
     # print(center_val)
     # Find at which trap max of Wannier func is
     order = np.argmax(center_val, axis=1)
-    print("Trap site position of Wannier functions:", order)
-    print("Order of Wannier function is set to match trap site.")
+    if dvr.verbosity > 1:
+        print("Trap site position of Wannier functions:", order)
+        print("Order of Wannier functions is set to match traps.")
     return U[:, order]
 
 
@@ -502,6 +519,9 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
 
 
 def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
+
+    t0 = time()
+
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
     )  # Unit to kHz
@@ -542,6 +562,11 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
             np.real(Uint_onsite) * (np.sqrt(2 * np.pi)
                                     ) ** dvr.dim * np.prod(dvr.hl),
         )
+
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band interaction time: {t1 - t0}s.")
+
     return u * Uint_onsite
 
 

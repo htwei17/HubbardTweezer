@@ -88,7 +88,8 @@ class HubbardGraph(HubbardParamEqualizer):
         self.update_edge_weight(label)
         self.update_node_weight(label)
 
-        print('\nStart to plot graph...')
+        if self.verbosity:
+            print('\nStart to plot graph...')
         if self.lattice_dim == 1:
             fs = (self.lattice[0] * 2, self.lattice[1] * 6)
         elif self.lattice_dim == 2:
@@ -108,7 +109,7 @@ class HubbardGraph(HubbardParamEqualizer):
             el = link_list[i]
             cs = "arc3"
             if self.lattice_dim == 1 and not any(
-                (el == self.links).all(axis=1)):
+                    (el == self.links).all(axis=1)):
                 cs = "arc3,rad=0.2"
             nx.draw_networkx_edges(self.graph,
                                    self.pos,

@@ -1,6 +1,6 @@
 import numpy as np
 import numpy.linalg as la
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 from opt_einsum import contract
 from pyparsing import Char
 from scipy.integrate import romb
@@ -27,9 +27,9 @@ class HubbardParamEqualizer(MLWF):
         if equalize:
             self.eq_label = 'eq'
             # self.homogenize(eqtarget, fixed)
-            self.equalzie(v=eqV, fixed=fixed)
+            self.equalzie(v=eqV, fixed=fixed, callback=True)
 
-    def equalzie(self, v: bool = False, fixed: bool = False):
+    def equalzie(self, v: bool = False, fixed: bool = False, callback: bool = False):
         A, U, V = self.singleband_Hubbard(u=True, output_unitary=True)
 
         Utarget = np.mean(U)
@@ -44,12 +44,27 @@ class HubbardParamEqualizer(MLWF):
         ls_bak = self.trap_centers
         v0, bonds = self.init_optimize()
 
+        # Decide if each step cost function used the last step's unitary matrix
+        # callback can have sometimes very few iteraction steps
+        if callback:
+            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
+            x0 = [V]
+        else:
+            x0 = None
+
         def cost_func(offset: np.ndarray) -> float:
             c = self.cbd_cost_func(offset, (xlinks, ylinks),
-                                   (Vtarget, Utarget, nntx, nnty), v, V)
+                                   (Vtarget, Utarget, nntx, nnty), v, x0)
             return c
 
-        res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead')
+        t0 = time()
+        # res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead', options={
+        #                'disp': True, 'return_all': True, 'adaptive': True})
+        res = minimize(cost_func, v0, bounds=bonds, options={
+            'disp': 999, 'ftol': 1e-9})
+        t1 = time()
+        if self.verbosity:
+            print(f"Equalization took {t1 - t0} seconds.")
 
         trap_depth = res.x[:self.Nindep]
         trap_center = res.x[self.Nindep:].reshape(self.Nindep, 2)
@@ -82,18 +97,29 @@ class HubbardParamEqualizer(MLWF):
                       offset: np.ndarray,
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
-                      v: bool = False, unitary=None) -> float:
+                      v: bool = False, unitary: Union[list, None] = None) -> float:
 
         trap_depth = offset[:self.Nindep]
         trap_center = offset[self.Nindep:].reshape(self.Nindep, 2)
-        print(f"\nCurrent trap depths: {trap_depth}")
-        print("Current trap centers:")
-        print(trap_center)
+        if self.verbosity:
+            print(f"\nCurrent trap depths: {trap_depth}")
+            print("Current trap centers:")
+            print(trap_center)
         self.symm_unfold(self.Voff, trap_depth)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 
-        A, U = self.singleband_Hubbard(u=True, x0=unitary)
+        if unitary != None and self.lattice_dim > 1:
+            x0 = unitary[0]
+        else:
+            x0 = None
+
+        A, U, x0 = self.singleband_Hubbard(
+            u=True, x0=x0, output_unitary=True)
+
+        # By accessing element of a list, x0 is mutable and can be updated
+        if unitary != None and self.lattice_dim > 1:
+            unitary[0] = x0
 
         xlinks, ylinks = links
         Vtarget = None
@@ -102,9 +128,9 @@ class HubbardParamEqualizer(MLWF):
         if isinstance(target, Iterable):
             Vtarget, Utarget, nntx, nnty = target
 
-        if v:
-            cv = self.v_cost_func(A, Vtarget)
-        else:
+        cv = self.v_cost_func(A, Vtarget)
+        if not v:
+            # Force V to have no effect on cost function
             cv = 0
 
         ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
@@ -112,15 +138,18 @@ class HubbardParamEqualizer(MLWF):
         cu = self.u_cost_func(U, Utarget)
 
         c = cv + ct + cu
-        print(f"Current total distance: {c}\n")
+        if self.verbosity:
+            print(f"Current total distance: {c}\n")
         return c
 
     def v_cost_func(self, A, Vtarget) -> float:
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
-        print(f'Onsite potential target={Vtarget}')
         cv = la.norm(np.real(np.diag(A)) - Vtarget) / abs(Vtarget)
-        print(f'Onsite potential normalized distance v={cv}')
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Onsite potential target={Vtarget}')
+            print(f'Onsite potential normalized distance v={cv}')
         return cv
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -132,26 +161,29 @@ class HubbardParamEqualizer(MLWF):
             xlinks, ylinks = links
             nntx, nnty = target
 
-        print(f'Tunneling target=({nntx}, {nnty})')
         dist = (abs(nnt[xlinks]) - nntx) / abs(nntx)
         if any(ylinks == True):
             dist = np.concatenate(
                 (dist, (abs(nnt[ylinks]) - nnty) / abs(nntx)))
         ct = la.norm(dist)
-        print(f'Tunneling normalized distance t={ct}')
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Tunneling target=({nntx}, {nnty})')
+            print(f'Tunneling normalized distance t={ct}')
         return ct
 
     def u_cost_func(self, U, Utarget) -> float:
         if Utarget is None:
             Utarget = np.mean(U)
-        print(f'Onsite interaction target fixed to {Utarget}')
         cu = la.norm(U - Utarget) / abs(Utarget)
-        print(f'Onsite interaction normalized distance u={cu}')
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Onsite interaction target fixed to {Utarget}')
+            print(f'Onsite interaction normalized distance u={cu}')
         return cu
 
 
 # ===================== TO BE DEPRECATED =====================================
-
 
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
