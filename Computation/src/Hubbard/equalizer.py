@@ -15,9 +15,7 @@ class HubbardParamEqualizer(MLWF):
             self,
             N,
             equalize=False,  # Homogenize trap or not
-            eqV=False,  # Equalize V or not
-            eqtarget='vt',  # Equalization target
-            fixed=False,  # Whether to fix target in combined cost function
+            eqtarget='Ut',  # Equalization target
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -27,15 +25,42 @@ class HubbardParamEqualizer(MLWF):
         if equalize:
             self.eq_label = 'eq'
             # self.homogenize(eqtarget, fixed)
-            self.equalzie(v=eqV, fixed=fixed, callback=True)
+            self.equalzie(eqtarget, callback=True)
 
-    def equalzie(self, v: bool = False, fixed: bool = False, callback: bool = False):
-        A, U, V = self.singleband_Hubbard(u=True, output_unitary=True)
+    def equalzie(self, target: str = 'Ut', callback: bool = False):
+        if self.verbosity:
+            print(f"Equalizing {target}.")
+        u, t, v = False, False, False
+        fix_u, fix_v = False, False
+        if 'u' in target or 'U' in target:
+            u = True
+            if 'U' in target:
+                # Whether to fix target in combined cost function
+                fix_u = True
+        if 't' in target:
+            t = True
+        if 'v' in target or 'V' in target:
+            v = True
+            if 'V' in target:
+                fix_v = True
 
-        Utarget = np.mean(U)
-        nnt = self.nn_tunneling(A)
-        xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-        if fixed:
+        res = self.singleband_Hubbard(u=u, output_unitary=True)
+        if u:
+            A, U, V = res
+        else:
+            A, V = res
+            U = None
+
+        if fix_u:
+            Utarget = np.mean(U)
+        else:
+            Utarget = None
+        if t:
+            nnt = self.nn_tunneling(A)
+            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        else:
+            nnt, xlinks, ylinks, nntx, nnty = None, None, None, None, None
+        if fix_v:
             Vtarget = np.mean(np.real(np.diag(A)))
         else:
             Vtarget = None
@@ -52,16 +77,28 @@ class HubbardParamEqualizer(MLWF):
         else:
             x0 = None
 
-        def cost_func(offset: np.ndarray) -> float:
+        def cost_func(offset: np.ndarray, info: dict) -> float:
             c = self.cbd_cost_func(offset, (xlinks, ylinks),
-                                   (Vtarget, Utarget, nntx, nnty), v, x0)
+                                   (Vtarget, Utarget, nntx, nnty), (u, t, v), x0)
+
+            # Keep revcord
+            info['Nfeval'] += 1
+            info['x'] = np.append(info['x'], offset[None], axis=0)
+            info['fval'] = np.append(info['fval'], c)
+            diff = info['fval'][len(info['fval'])//2] - c
+            info['diff'] = np.append(info['diff'], diff)
+            # display information
+            if info['Nfeval'] % 20 == 0:
+                print(f'i={info["Nfeval"]}\tc_i={c}\tc_i//2-c_i={diff}')
             return c
 
+        info = {'Nfeval': 0, 'fval': np.array([]), 'diff': np.array(
+            []), 'x': np.array([]).reshape(0, *v0.shape)}
         t0 = time()
         # res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead', options={
         #                'disp': True, 'return_all': True, 'adaptive': True})
-        res = minimize(cost_func, v0, bounds=bonds, options={
-            'disp': 999, 'ftol': 1e-9})
+        res = minimize(cost_func, v0, args=info, bounds=bonds, options={
+            'disp': 0, 'ftol': 1e-9})
         t1 = time()
         if self.verbosity:
             print(f"Equalization took {t1 - t0} seconds.")
@@ -71,7 +108,7 @@ class HubbardParamEqualizer(MLWF):
         self.symm_unfold(self.Voff, trap_depth)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
-        return self.Voff, self.trap_centers
+        return self.Voff, self.trap_centers, info
 
     def init_optimize(self):
         v01 = np.ones(self.Nindep)
@@ -97,7 +134,8 @@ class HubbardParamEqualizer(MLWF):
                       offset: np.ndarray,
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
-                      v: bool = False, unitary: Union[list, None] = None) -> float:
+                      utv: tuple[bool] = (False, False, False),
+                      unitary: Union[list, None] = None) -> float:
 
         trap_depth = offset[:self.Nindep]
         trap_center = offset[self.Nindep:].reshape(self.Nindep, 2)
@@ -114,8 +152,15 @@ class HubbardParamEqualizer(MLWF):
         else:
             x0 = None
 
-        A, U, x0 = self.singleband_Hubbard(
-            u=True, x0=x0, output_unitary=True)
+        u, t, v = utv
+
+        res = self.singleband_Hubbard(
+            u=u, x0=x0, output_unitary=True)
+        if u:
+            A, U, x0 = res
+        else:
+            A, x0 = res
+            U = None
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
@@ -128,14 +173,20 @@ class HubbardParamEqualizer(MLWF):
         if isinstance(target, Iterable):
             Vtarget, Utarget, nntx, nnty = target
 
+        cu = 0
+        if u:
+            # U is different, as calculating U costs time
+            cu = self.u_cost_func(U, Utarget)
+
+        ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
+        if not t:
+            # Force T to have no effect on cost function
+            ct = 0
+
         cv = self.v_cost_func(A, Vtarget)
         if not v:
             # Force V to have no effect on cost function
             cv = 0
-
-        ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
-
-        cu = self.u_cost_func(U, Utarget)
 
         c = cv + ct + cu
         if self.verbosity:
@@ -157,9 +208,11 @@ class HubbardParamEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         if target is None:
             xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-        else:
+        elif isinstance(target, Iterable):
             xlinks, ylinks = links
             nntx, nnty = target
+            if nntx is None:
+                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
         dist = (abs(nnt[xlinks]) - nntx) / abs(nntx)
         if any(ylinks == True):
@@ -184,6 +237,7 @@ class HubbardParamEqualizer(MLWF):
 
 
 # ===================== TO BE DEPRECATED =====================================
+
 
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
