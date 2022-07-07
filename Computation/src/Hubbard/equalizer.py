@@ -27,7 +27,11 @@ class HubbardParamEqualizer(MLWF):
             # self.homogenize(eqtarget, fixed)
             self.equalzie(eqtarget, callback=True)
 
-    def equalzie(self, target: str = 'Ut', callback: bool = False):
+    def equalzie(self,
+                 target: str = 'Ut',
+                 weight: np.ndarray = np.ones(3),
+                 random: bool = False,
+                 callback: bool = False):
         if self.verbosity:
             print(f"Equalizing {target}.")
         u, t, v = False, False, False
@@ -67,7 +71,7 @@ class HubbardParamEqualizer(MLWF):
 
         Voff_bak = self.Voff
         ls_bak = self.trap_centers
-        v0, bonds = self.init_optimize()
+        v0, bounds = self.init_guess(random=random)
 
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
@@ -77,27 +81,22 @@ class HubbardParamEqualizer(MLWF):
         else:
             x0 = None
 
-        def cost_func(offset: np.ndarray, info: dict) -> float:
-            c = self.cbd_cost_func(offset, (xlinks, ylinks),
-                                   (Vtarget, Utarget, nntx, nnty), (u, t, v), x0)
+        def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
+            c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
+                                   (Vtarget, Utarget, nntx, nnty), (u, t, v), weight, x0)
 
-            # Keep revcord
-            info['Nfeval'] += 1
-            info['x'] = np.append(info['x'], offset[None], axis=0)
-            info['fval'] = np.append(info['fval'], c)
-            diff = info['fval'][len(info['fval'])//2] - c
-            info['diff'] = np.append(info['diff'], diff)
-            # display information
-            if info['Nfeval'] % 20 == 0:
-                print(f'i={info["Nfeval"]}\tc_i={c}\tc_i//2-c_i={diff}')
             return c
 
-        info = {'Nfeval': 0, 'fval': np.array([]), 'diff': np.array(
-            []), 'x': np.array([]).reshape(0, *v0.shape)}
+        info = {'Nfeval': 0,
+                'cost': np.array([]).reshape(0, 3),
+                'ctot': np.array([]),
+                'fval': np.array([]),
+                'diff': np.array([]),
+                'x': np.array([]).reshape(0, *v0.shape)}
         t0 = time()
-        # res = minimize(cost_func, v0, bounds=bonds, method='Nelder-Mead', options={
+        # res = minimize(cost_func, v0, bounds=bounds, method='Nelder-Mead', options={
         #                'disp': True, 'return_all': True, 'adaptive': True})
-        res = minimize(cost_func, v0, args=info, bounds=bonds, options={
+        res = minimize(cost_func, v0, args=info, bounds=bounds, options={
             'disp': 0, 'ftol': 1e-9})
         t1 = time()
         if self.verbosity:
@@ -110,31 +109,44 @@ class HubbardParamEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.trap_centers, info
 
-    def init_optimize(self):
+    def init_guess(self, random=False) -> tuple[np.ndarray, tuple]:
         v01 = np.ones(self.Nindep)
         v02 = self.trap_centers[self.reflection[:, 0]]
         # Bound trap depth variation
         b1 = list((0.9, 1.1) for i in range(self.Nindep))
         # Bound lattice spacing variation
-        xbonds = tuple(
+        xbounds = tuple(
             (v02[i, 0] - 0.05, v02[i, 0] + 0.05) for i in range(self.Nindep))
         if self.lattice_dim == 1:
-            ybonds = tuple((0, 0) for i in range(self.Nindep))
+            ybounds = tuple((0, 0) for i in range(self.Nindep))
         else:
-            ybonds = tuple((v02[i, 1] - 0.05, v02[i, 1] + 0.05)
-                           for i in range(self.Nindep))
-        nested = tuple((xbonds[i], ybonds[i]) for i in range(self.Nindep))
+            ybounds = tuple((v02[i, 1] - 0.05, v02[i, 1] + 0.05)
+                            for i in range(self.Nindep))
+        nested = tuple((xbounds[i], ybounds[i]) for i in range(self.Nindep))
         b2 = list(item for sublist in nested for item in sublist)
 
         v0 = np.concatenate((v01, v02.reshape(-1)))
-        bonds = tuple(b1 + b2)
-        return v0, bonds
+        bounds = tuple(b1 + b2)
+
+        if random:
+            v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
+            trap_depth = v0[:self.Nindep]
+            trap_center = v0[self.Nindep:].reshape(self.Nindep, 2)
+
+        if self.verbosity or random:
+            print(f"Initial trap depths: {trap_depth}")
+            print("Initial trap centers:")
+            print(trap_center)
+
+        return v0, bounds
 
     def cbd_cost_func(self,
                       offset: np.ndarray,
+                      info: Union[dict, None],
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
                       utv: tuple[bool] = (False, False, False),
+                      weight: np.ndarray = np.ones(3),
                       unitary: Union[list, None] = None) -> float:
 
         trap_depth = offset[:self.Nindep]
@@ -173,6 +185,7 @@ class HubbardParamEqualizer(MLWF):
         if isinstance(target, Iterable):
             Vtarget, Utarget, nntx, nnty = target
 
+        w = weight.copy()
         cu = 0
         if u:
             # U is different, as calculating U costs time
@@ -180,23 +193,41 @@ class HubbardParamEqualizer(MLWF):
 
         ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
         if not t:
-            # Force T to have no effect on cost function
-            ct = 0
+            # Force t to have no effect on cost function
+            w[1] = 0
 
         cv = self.v_cost_func(A, Vtarget)
         if not v:
             # Force V to have no effect on cost function
-            cv = 0
+            w[2] = 0
 
-        c = cv + ct + cu
+        cvec = np.array((cu, ct, cv))
+        c = w @ cvec
         if self.verbosity:
             print(f"Current total distance: {c}\n")
+
+        # Keep revcord
+        if info != None:
+            info['Nfeval'] += 1
+            info['x'] = np.append(info['x'], offset[None], axis=0)
+            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
+            ctot = np.sum(cvec)
+            info['ctot'] = np.append(info['ctot'], ctot)
+            info['fval'] = np.append(info['fval'], c)
+            diff = info['fval'][len(info['fval'])//2] - c
+            info['diff'] = np.append(info['diff'], diff)
+            # display information
+            if info['Nfeval'] % 50 == 0:
+                print(
+                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
+
         return c
 
     def v_cost_func(self, A, Vtarget) -> float:
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
-        cv = la.norm(np.real(np.diag(A)) - Vtarget) / abs(Vtarget)
+        cv = la.norm(np.real(np.diag(A)) - Vtarget) / \
+            abs(Vtarget * np.sqrt(len(A)))
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite potential target={Vtarget}')
@@ -214,10 +245,10 @@ class HubbardParamEqualizer(MLWF):
             if nntx is None:
                 xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
-        dist = (abs(nnt[xlinks]) - nntx) / abs(nntx)
-        if any(ylinks == True):
+        dist = (abs(nnt[xlinks]) - nntx) / (nntx * np.sqrt(len(xlinks)))
+        if nnty != None:
             dist = np.concatenate(
-                (dist, (abs(nnt[ylinks]) - nnty) / abs(nntx)))
+                (dist, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(len(ylinks)))))
         ct = la.norm(dist)
         if self.verbosity:
             if self.verbosity > 1:
@@ -228,7 +259,7 @@ class HubbardParamEqualizer(MLWF):
     def u_cost_func(self, U, Utarget) -> float:
         if Utarget is None:
             Utarget = np.mean(U)
-        cu = la.norm(U - Utarget) / abs(Utarget)
+        cu = la.norm(U - Utarget) / abs(Utarget * np.sqrt(len(U)))
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite interaction target fixed to {Utarget}')
@@ -237,7 +268,6 @@ class HubbardParamEqualizer(MLWF):
 
 
 # ===================== TO BE DEPRECATED =====================================
-
 
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
