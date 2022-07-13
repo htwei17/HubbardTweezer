@@ -23,7 +23,7 @@ class HubbardParamEqualizer(MLWF):
         # set equalization label in file output
         self.eq_label = 'neq'
         if equalize:
-            self.eq_label = 'eq'
+            self.eq_label = eqtarget
             # self.homogenize(eqtarget, fixed)
             self.equalzie(eqtarget, callback=True)
 

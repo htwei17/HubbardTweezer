@@ -439,8 +439,10 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
         if dvr.lattice_dim == 1:
             # If only one R given, the problem is simply diagonalization
             # In high dimension, numerical error may cause the commutativity problem
-            X, solution = la.eigh(R[0]) # solution is eigenstates of operator X
-            U = solution[:, np.argsort(X)] # Auto sort eigenvectors by X eigenvalues
+            # solution is eigenstates of operator X
+            X, solution = la.eigh(R[0])
+            # Auto sort eigenvectors by X eigenvalues
+            U = solution[:, np.argsort(X)]
         else:
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
@@ -449,9 +451,8 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     else:
         U = np.ones((1, 1))
 
-    A = (
-        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    )  # TB parameter matrix, in unit of kHz
+    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    # TB parameter matrix, in unit of kHz
 
     t1 = time()
     if dvr.verbosity:
