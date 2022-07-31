@@ -1,8 +1,8 @@
-# DVR
+# HubbardTweezer
 
-![](https://img.shields.io/gitlab/v/release/Nottforestfc/DVR?color=brightgreen&sort=semver)
+![](https://img.shields.io/github/v/release/Kvanti17/HubbardTweezer?color=green&include_prereleases)
 
-Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
+Repo for Hubbard parameter calculations in 1&2D optical tweezer array systems.
 
 ## Features:
 * dynamics of on-off strobe potential
