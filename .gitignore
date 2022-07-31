@@ -25,3 +25,4 @@ output
 *.exe
 Computation/src/python
 Computation/src.zip
+pymanopt
