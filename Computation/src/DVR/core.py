@@ -25,6 +25,33 @@ dim = 3  # space dimension
 
 
 class DVR:
+    """DVR base class
+
+    Args:
+    ----------
+        n (`np.ndarray[int, int, int]`): DVR grid half-size in each direction.
+            The actual grid size is 2n+1.
+            If i-th dimension is not calculated, n[i]=0
+        R0 (`np.ndarray[float, float]`): Grid halfwidth in each direction
+        model (`str`): Trap potential.
+            'Gaussian' means tweezer potential;
+            'sho' means harmonic potential
+        avg (`float`): Factor a in Humiltonian H = T + aV
+        trap (`tuple[float, float | tuple[float, float]]`): Trap potential parameters.
+            trap[0] is the trap potential strength in unit of kHz
+            trap[1] is the waist in unit of nm;
+            if trap[1] given as a tuple, then it is (wx, wy)
+        atom (`float`): Atom mass in unit of amu
+        laser ('float'): Laser wavelength in unit of nm
+        zR ('float'): Rayleigh length in unit of nm;
+            if not given, zR is calculated by \pi * w^2 / laser
+        sparse (`bool`): Whether to use sparse matrix
+        symmetry (`bool`): Whether to use symmetry in DVR
+        absorber (`bool`): Whether to use absorber
+        ab_param (`tuple[float, float]`): Absorber parameters.
+            ab_param[0] is the strength of linear imaginary potential in unit of kHz
+            ab_param[1] is the width of absorber in unit of wx
+    """
 
     def update_n(self, n: np.ndarray, R0: np.ndarray):
         # Change n by fixed R0
@@ -47,11 +74,14 @@ class DVR:
 
     def update_ab(self):
         # Update absorber
-        print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
-        print('DVR: n={} is set.'.format(self.n[self.nd]))
-        print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
+        if self.verbosity:
+            print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
+            if self.verbosity > 1:
+                print('DVR: n={} is set.'.format(self.n[self.nd]))
+                print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
         if self.absorber:
-            print('DVR: Absorber width LI={:g}w'.format(self.LI))
+            if self.verbosity:
+                print('DVR: Absorber width LI={:g}w'.format(self.LI))
             # if __debug__:
             #     print(self.R0[0])
             #     print(self.dx[0])
@@ -59,10 +89,11 @@ class DVR:
             #     print(a[0])
             #     print(np.rint(self.LI / self.dx[self.nd]).astype(int))
             self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
-            print('DVR: n is set to {} by adding absorber.'.format(
-                self.n[self.nd]))
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
-            print('DVR: R={}w is set.'.format(self.R[self.nd]))
+            if self.verbosity > 1:
+                print('DVR: n is set to {} by adding absorber.'.format(
+                    self.n[self.nd]))
+                print('DVR: R={}w is set.'.format(self.R[self.nd]))
 
     def update_p(self, p):
         # Update parity
@@ -83,7 +114,9 @@ class DVR:
             symmetry: bool = False,
             absorber: bool = False,
             ab_param=(57.04, 1),
-            sparse: bool = False) -> None:
+            sparse: bool = False,
+            verbosity: int = 2  # How much information to print
+    ) -> None:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of waist
         self.R = R0.copy()  # Total region size, R = R0 + LI
@@ -93,6 +126,7 @@ class DVR:
         self.symmetry = symmetry
         self.nd = n != 0  # Nonzero dimensions
         self.sparse = sparse
+        self.verbosity = verbosity
 
         self.dx = np.zeros(n.shape)
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of waist
@@ -109,8 +143,9 @@ class DVR:
         self.p = np.zeros(dim, dtype=int)
         if symmetry:
             self.p[self.nd] = 1
-            axis = np.array(['x', 'y', 'z'])
-            print('{}-reflection symmetry is used.'.format(axis[self.nd]))
+            if self.verbosity:
+                axis = np.array(['x', 'y', 'z'])
+                print('{}-reflection symmetry is used.'.format(axis[self.nd]))
         self.init = get_init(self.n, self.p)
 
         if model == 'Gaussian':
@@ -149,8 +184,9 @@ class DVR:
             # Trap harmonic lengths
             self.hl = np.sqrt(self.hb / (self.m * self.omega))
 
-            print("param_set: trap parameter V0={}kHz w={}nm".format(
-                trap[0], trap[1]))
+            if self.verbosity:
+                print("param_set: trap parameter V0={}kHz w={}nm".format(
+                    trap[0], trap[1]))
         elif model == 'sho':
             # Harmonic parameters
             self.hb = 1  # Reduced Planck constant
@@ -356,10 +392,11 @@ def H_mat(dvr: DVR):
     dvr.dx *= dvr.n != 0
 
     # np.set_printoptions(precision=2, suppress=True)
-    print("H_mat: n={} dx={}w p={} {} starts.".format(dvr.n[dvr.nd],
-                                                      dvr.dx[dvr.nd],
-                                                      dvr.p[dvr.nd],
-                                                      dvr.model))
+    if dvr.verbosity:
+        print("H_mat: n={} dx={}w p={} {} diagonalization starts.".format(dvr.n[dvr.nd],
+                                                                          dvr.dx[dvr.nd],
+                                                                          dvr.p[dvr.nd],
+                                                                          dvr.model))
     T = Tmat(dvr)
     V, no = Vmat(dvr)
     H = T + V
@@ -368,7 +405,9 @@ def H_mat(dvr: DVR):
     H = H.reshape((N, N))
     if not dvr.absorber:
         H = (H + H.T.conj()) / 2
-    print("H_mat: H matrix memory usage: {:.2f} MiB.".format(H.nbytes / 2**20))
+    if dvr.verbosity > 1:
+        print("H_mat: H matrix memory usage: {:.2f} MiB.".format(
+            H.nbytes / 2**20))
     return H
 
 
@@ -376,15 +415,17 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
     # Solve Hamiltonian matrix
 
     if dvr.sparse:
-        print(
-            "H_op: n={} dx={}w p={} {} sparse diagonalization is enabled. Lowest {} states are to be calculated."
-            .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
-                    k))
+        if dvr.verbosity:
+            print(
+                "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated."
+                .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
+                        k))
 
         T = Tmat(dvr)
         V, no = Vmat(dvr)
-        print("H_op: n={} dx={}w p={} {} operator constructed.".format(
-            dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model))
+        if dvr.verbosity > 1:
+            print("H_op: n={} dx={}w p={} {} operator constructed.".format(
+                dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model))
 
         def applyH(psi):
             return H_op(dvr, T, V, no, psi)
@@ -396,18 +437,24 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
         if k <= 0:
             k = 10
         if dvr.absorber:
-            print('H_solver: diagonalize sparse non-hermitian matrix.')
+            if dvr.verbosity > 1:
+                print('H_solver: diagonalize sparse non-hermitian matrix.')
             E, W = sla.eigs(H, k, which='SA')
         else:
-            print('H_solver: diagonalize sparse hermitian matrix.')
+            if dvr.verbosity > 1:
+                print('H_solver: diagonalize sparse hermitian matrix.')
             E, W = sla.eigsh(H, k, which='SA')
     else:
         # avg factor is used to control the time average potential strength
         H = H_mat(dvr)
         t0 = time()
         if dvr.absorber:
+            if dvr.verbosity > 1:
+                print('H_solver: diagonalize non-hermitian matrix.')
             E, W = la.eig(H)
         else:
+            if dvr.verbosity > 1:
+                print('H_solver: diagonalize hermitian matrix.')
             E, W = la.eigh(H)
         if k > 0:
             E = E[:k]
@@ -415,14 +462,15 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
 
     t1 = time()
 
-    if dvr.avg > 0:
-        print('H_solver: {} Hamiltonian solved. Time spent: {:.2f}s.'.format(
-            dvr.model, t1 - t0))
-    elif dvr.avg == 0:
-        print(
-            'H_solver: free particle Hamiltonian solved. Time spent: {:.2f}s.'.
-            format(t1 - t0))
-    print("H_solver: eigenstates memory usage: {:.2f} MiB.".format(W.nbytes /
-                                                                   2**20))
+    if dvr.verbosity:
+        if dvr.avg > 0:
+            print('H_solver: {} Hamiltonian solved. Time spent: {:.2f}s.'.format(
+                dvr.model, t1 - t0))
+        elif dvr.avg == 0:
+            print(
+                'H_solver: free particle Hamiltonian solved. Time spent: {:.2f}s.'.
+                format(t1 - t0))
+        print("H_solver: eigenstates memory usage: {:.2f} MiB.".format(W.nbytes /
+                                                                       2**20))
     # No absorber, all eigenstates are real
     return E, W

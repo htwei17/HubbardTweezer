@@ -5,16 +5,16 @@ import matplotlib as mpl
 
 from .equalizer import *
 
-params = {
-    'figure.dpi': 300,
-    # 'figure.figsize': (15, 5),
-    'legend.fontsize': 'x-large',
-    'axes.labelsize': 'xx-large',
-    'axes.titlesize': 'xx-large',
-    'xtick.labelsize': 'xx-large',
-    'ytick.labelsize': 'xx-large'
-}
-mpl.rcParams.update(params)
+# params = {
+#     'figure.dpi': 300,
+#     # 'figure.figsize': (15, 5),
+#     'legend.fontsize': 'x-large',
+#     'axes.labelsize': 'xx-large',
+#     'axes.titlesize': 'xx-large',
+#     'xtick.labelsize': 'xx-large',
+#     'ytick.labelsize': 'xx-large'
+# }
+# mpl.rcParams.update(params)
 
 
 class HubbardGraph(HubbardParamEqualizer):
@@ -88,7 +88,8 @@ class HubbardGraph(HubbardParamEqualizer):
         self.update_edge_weight(label)
         self.update_node_weight(label)
 
-        print('\nStart to plot graph...')
+        if self.verbosity:
+            print('\nStart to plot graph...')
         if self.lattice_dim == 1:
             fs = (self.lattice[0] * 2, self.lattice[1] * 6)
         elif self.lattice_dim == 2:
@@ -108,7 +109,7 @@ class HubbardGraph(HubbardParamEqualizer):
             el = link_list[i]
             cs = "arc3"
             if self.lattice_dim == 1 and not any(
-                (el == self.links).all(axis=1)):
+                    (el == self.links).all(axis=1)):
                 cs = "arc3,rad=0.2"
             nx.draw_networkx_edges(self.graph,
                                    self.pos,
@@ -127,8 +128,18 @@ class HubbardGraph(HubbardParamEqualizer):
                                      font_color=[0.256, 0.439, 0.588])
         if label == 'param':
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
+            # self.pos = dict(
+            #     (n, self.trap_centers[n] + np.array((0, -0.0))) for n in self.graph.nodes())
+            # self.node_label = dict(
+            #     (n, f'{self.U[i]:.3g}') for n in self.graph.nodes)
+            # nx.draw_networkx_labels(self.graph,
+            #                         pos=self.pos,
+            #                         font_color='#FF8000',
+            #                         font_size=8,
+            #                         labels=self.node_label)
         plt.axis('off')
-        plt.savefig(f'{self.lattice} graph {label} {self.eq_label}.pdf')
+        plt.savefig(
+            f'{self.lattice} graph {self.dim}d {label} {self.eq_label}.pdf')
 
     def draw_node_overhead_labels(
             self,

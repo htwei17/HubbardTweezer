@@ -1,0 +1,31 @@
+graph lattice {
+	node [color="#99CCFF" fixedsize=shape fontcolor="#FF8000" fontname=Meiryo fontsize=6 shape=circle style=filled]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	0 [label="V = -36.4
+ U = 2.47" height=0.4 pos="-1.5,0.0!" width=0.4]
+	1 [label="-37.3
+2.37" height=0.4 pos="-0.5,0.0!" width=0.4]
+	2 [label="-37.3
+2.37" height=0.4 pos="0.5,0.0!" width=0.4]
+	3 [label="-36.4
+2.47" height=0.4 pos="1.5,0.0!" width=0.4]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	0 -- 1 [label="t = 0.266" alpha=255 color="#606060ff"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	1 -- 2 [label=0.229 alpha=236 color="#606060ec"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	2 -- 3 [label=0.266 alpha=254 color="#606060fe"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=compound]
+	invis_02 [label=0.0134 color=invis fixedsize=shape fontcolor="#000066" pos="-0.5,0.25!" shape=circle width=0]
+	0 -- invis_02 [alpha=57 color="#60606039"]
+	invis_02 -- 2 [alpha=57 color="#60606039"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=compound]
+	invis_03 [label=0.0013 color=invis fixedsize=shape fontcolor="#000066" pos="0.0,0.25!" shape=circle width=0]
+	0 -- invis_03 [alpha=17 color="#60606011"]
+	invis_03 -- 3 [alpha=17 color="#60606011"]
+}

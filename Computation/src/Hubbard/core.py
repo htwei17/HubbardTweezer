@@ -3,6 +3,7 @@ from typing import Iterable
 from opt_einsum import contract
 from tools.fix_phase import fix_phase
 from scipy.integrate import romb
+from time import time
 import itertools
 import sparse
 import numpy.linalg as la
@@ -17,10 +18,28 @@ import pymanopt.optimizers
 from DVR.core import *
 from .lattice import *
 from tools.simdiag import simdiag
+from tools.jacobi_angles import jacobi_angles
 
 
 class MLWF(DVR):
-    def create_lattice(self, lattice: np.ndarray, lc=(1520, 1690), shape="square"):
+    """Maximally localized Wannier function
+
+    Args:
+    ----------
+        N (`int`): DVR grid size
+        lattice (`np.ndarray[int, int]`): Lattice dimensions
+        shape (`str`): Lattice geometry
+        ascatt (`float`): Scattering length in unit of a0
+        band (`int`): Number of bands
+        dim (`int`): System dimension
+        ...: See `DVR.__init__` for other arguments
+
+    """
+
+    def create_lattice(self,
+                       lattice: np.ndarray,
+                       lc: tuple[float, float] = (1520, 1690),
+                       shape: str = "square"):
         # graph : each line represents coordinate (x, y) of one lattice site
 
         self.Nsite = np.prod(lattice)
@@ -67,10 +86,12 @@ class MLWF(DVR):
         lattice_range = np.resize(
             np.pad(lattice_range, (0, 2), constant_values=0), dim)
         lc = np.resize(self.lc, dim)
-        print(f"lattice: dx is fixed at: {dx}w")
-        print(f"lattice: lattice shape is {shape}")
-        print(f"lattice: Full lattice sizes: {lattice}")
-        print(f"lattice: lattice constants: {lc}w")
+        if self.verbosity:
+            print(f"lattice: lattice shape is {shape}")
+            print(f"lattice: Full lattice sizes: {lattice}")
+            if self.verbosity > 1:
+                print(f"lattice: lattice constants: {lc}w")
+                print(f"lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range * lc + self.R00
         R0 *= self.nd
@@ -84,10 +105,13 @@ class MLWF(DVR):
         lattice = np.resize(
             np.pad(self.lattice, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
-        print(f"lattice: dx is fixed at: {dx}w")
-        print(f"lattice: Full lattice sizes updated to: {lattice}")
-        print(f"lattice: lattice constants updated to: {lc}w")
-        # Let there be R0's wide outside the edge trap center
+        if self.verbosity:
+            print(
+                f"lattice: Full lattice sizes updated to: {lattice[self.nd]}")
+            if self.verbosity > 1:
+                # Let there be R0's wide outside the edge trap center
+                print(f"lattice: lattice constants updated to: {lc}w")
+                print(f"lattice: dx fixed to: {dx[self.nd]}w")
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
@@ -112,6 +136,11 @@ class MLWF(DVR):
         self.bands = band
         n = np.zeros(3, dtype=int)
         n[:dim] = N
+        absorber = kwargs.get('absorber', False)
+        if absorber:
+            TypeError(
+                "Absorber is not supported for Wannier Function construction!")
+
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
@@ -126,7 +155,8 @@ class MLWF(DVR):
             # Two-site SHO case
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
         else:
-            # NOTE: DO NOT SET coord DIRECTLY! THIS WILL DIRECTLY MODIFY self.graph!
+            # NOTE: DO NOT SET coord DIRECTLY!
+            # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
@@ -135,6 +165,7 @@ class MLWF(DVR):
     def singleband_Hubbard(
         self, u=False, x0=None, output_unitary=False, eig_sol=None
     ):
+
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         self.bands = 1
@@ -147,7 +178,8 @@ class MLWF(DVR):
         p = p[0]
         self.A, V = singleband_optimize(self, E, W, p, x0)
         if u:
-            print("Calculate U.")
+            if self.verbosity:
+                print("Calculate U.")
             self.U = singleband_interaction(self, V, V, W, W, p, p)
             self.bands = band_bak
             if output_unitary:
@@ -164,6 +196,7 @@ class MLWF(DVR):
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
+        # Not limited to specific geometry
         if self.Nsite == 1:
             nnt = np.zeros(1)
         elif self.lattice_dim == 1:
@@ -178,6 +211,10 @@ class MLWF(DVR):
         parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
         for row in range(self.reflection.shape[0]):
             if graph:  # Symmetrize graph node coordinates
+                # NOTE: what if repeated elements in reflection?
+                #       numpy will take the last assigned value
+                #       It doen't matter for cost funciton validity
+                #       but it does matter for graph symmetry
                 target[self.reflection[row, :]] = parity * info[row][None]
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
@@ -330,43 +367,40 @@ def locality_mat(dvr: MLWF, W, parity):
             R.append(Rx)
     return R
 
-# ===================== NEW ALGORITHM =====================================
+# # ================ DIAGONALIZATION ALGORITHM: TO BE DEPRECATED ================
 
 
-def diagonalize(dvr: MLWF, E, W, parity):
-    # Multiband optimization
-    A = []
-    w = []
-    for b in range(dvr.bands):
-        t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
-        A.append(t_ij)
-        w.append(w_mu)
-    return A, w
+# def diagonalize(dvr: MLWF, E, W, parity):
+#     # Multiband optimization
+#     A = []
+#     w = []
+#     for b in range(dvr.bands):
+#         t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
+#         A.append(t_ij)
+#         w.append(w_mu)
+#     return A, w
 
 
-def singleband_diagonalize(dvr: MLWF, E, W, parity):
-    # Singleband Wannier function optimization
-    # x0 is the initial guess
-    R = locality_mat(dvr, W, parity)
+# def singleband_diagonalize(dvr: MLWF, E, W, parity):
+#     # Singleband Wannier function optimization
+#     # x0 is the initial guess
+#     R = locality_mat(dvr, W, parity)
 
-    if dvr.Nsite > 1:
-        solution = simdiag(R, evals=False, safe_mode=False)
-    elif dvr.Nsite == 1:
-        solution = np.ones((1, 1))
+#     if dvr.Nsite > 1:
+#         # solution = simdiag(R, evals=False, safe_mode=False)
+#         solution, X, __ = jacobi_angles(*R)
+#     elif dvr.Nsite == 1:
+#         solution = np.ones((1, 1))
 
-    U = site_order(dvr, W, solution, parity)
+#     U = site_order(dvr, W, solution, parity)
+#     # U = solution[:, np.argsort(X)]
 
-    A = (
-        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    )  # TB parameter matrix, in unit of kHz
-    return A, U
+#     A = (
+#         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+#     )  # TB parameter matrix, in unit of kHz
+#     return A, U
 
-# ===================== TO BE DEPRECATED =====================================
-
-
-def multi_tensor(R):
-    # Convert list of ndarray to list of Tensor
-    return [torch.from_numpy(Ri) for Ri in R]
+# ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
 def cost_func(U, R) -> float:
@@ -382,9 +416,10 @@ def cost_func(U, R) -> float:
     # its diagonal is real and positive, o >= 0
     # Min is found when X diagonal, which means U diagonalize R
     # SO U can be pure real orthogonal matrix!
-    # Q: Can X, Y, Z be diagonalized simultaneously?
-    # A: Sure thing from elementary QM
-    # TODO: Numerically stable simultaneous diagonalization
+    # Q: Can X, Y, Z be diagonalized simultaneously in high dims?
+    # A: If the space is conplete then by QM theory it is possible
+    #    to diagonalize X, Y, Z simultaneously.
+    #    But this is not the case as it's a subspace.
     return np.real(o)
 
 
@@ -402,33 +437,52 @@ def optimize(dvr: MLWF, E, W, parity):
 def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     # Singleband Wannier function optimization
     # x0 is the initial guess
-    R = multi_tensor(locality_mat(dvr, W, parity))
+
+    t0 = time()
 
     if dvr.Nsite > 1:
-        # It's proven above that U can be purely real
-        manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
+        R = locality_mat(dvr, W, parity)
+        if dvr.lattice_dim == 1:
+            # If only one R given, the problem is simply diagonalization
+            # solution is eigenstates of operator X
+            X, solution = la.eigh(R[0])
+            # Auto sort eigenvectors by X eigenvalues
+            U = solution[:, np.argsort(X)]
+        else:
+            # In high dimension, X, Y, Z don't commute
+            # Convert list of ndarray to list of Tensor
+            R = [torch.from_numpy(Ri) for Ri in R]
+            solution = riemann_optimize(dvr, x0, R)
+            U = site_order(dvr, W, solution, parity)
+    else:
+        U = np.ones((1, 1))
 
-        @pymanopt.function.pytorch(manifold)
-        def cost(point: torch.Tensor) -> float:
-            return cost_func(point, R)
+    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    # TB parameter matrix, in unit of kHz
 
-        problem = pymanopt.Problem(manifold=manifold, cost=cost)
-        optimizer = pymanopt.optimizers.ConjugateGradient(
-            max_iterations=3000, verbosity=1)
-        result = optimizer.run(
-            problem, initial_point=x0, reuse_line_searcher=True)
-        solution = result.point
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band optimization time: {t1 - t0}s.")
 
-        # solution = fix_phase(solution)
-    elif dvr.Nsite == 1:
-        solution = np.ones((1, 1))
-
-    U = site_order(dvr, W, solution, parity)
-
-    A = (
-        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    )  # TB parameter matrix, in unit of kHz
     return A, U
+
+
+def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
+    # It's proven above that U can be purely real 
+    # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
+    manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
+
+    @pymanopt.function.pytorch(manifold)
+    def cost(point: torch.Tensor) -> float:
+        return cost_func(point, R)
+
+    problem = pymanopt.Problem(manifold=manifold, cost=cost)
+    optimizer = pymanopt.optimizers.ConjugateGradient(
+        max_iterations=1000, verbosity=dvr.verbosity)
+    result = optimizer.run(
+        problem, initial_point=x0, reuse_line_searcher=True)
+    solution = result.point
+    return solution
 
 # =============================================================================
 
@@ -447,8 +501,9 @@ def site_order(dvr: MLWF, W, U, p):
     # print(center_val)
     # Find at which trap max of Wannier func is
     order = np.argmax(center_val, axis=1)
-    print("Trap site position of Wannier functions:", order)
-    print("Order of Wannier function is set to match trap site.")
+    if dvr.verbosity > 1:
+        print("Trap site position of Wannier functions:", order)
+        print("Order of Wannier functions is set to match traps.")
     return U[:, order]
 
 
@@ -472,13 +527,18 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
 
 
 def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
+
+    t0 = time()
+
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
     )  # Unit to kHz
-    # # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
+    # # Construct interaction integral,
+    # # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
     # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
     # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
-    # # Bands are degenerate, only differed by spin index, so they share the same set of Wannier functions
+    # # Bands are degenerate, only differed by spin index,
+    # $ so they share the same set of Wannier functions
     # Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
     #                 integrl)
     # Uint_onsite = np.zeros(dvr.Nsite)
@@ -510,6 +570,11 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
             np.real(Uint_onsite) * (np.sqrt(2 * np.pi)
                                     ) ** dvr.dim * np.prod(dvr.hl),
         )
+
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band interaction time: {t1 - t0}s.")
+
     return u * Uint_onsite
 
 
@@ -530,9 +595,10 @@ def intgrl3d(dx, integrand):
     return integrand
 
 
-# ######## DEPRECATED DUE TO WRONG ASSUMPTION OF QUADRATURE ##########
+# ============= DEPRECATED DUE TO WRONG ASSUMPTIONS OF QUADRATURE =============
 # def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
-#     # Construct interaction integral, assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
+#     # Construct interaction integral,
+#     # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
 #     for i in range(dvr.Nsite):
 #         Wii = Wi[i].conj()
 #         for j in range(dvr.Nsite):

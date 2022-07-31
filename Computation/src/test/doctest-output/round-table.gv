@@ -1,0 +1,13 @@
+// The Round Table
+graph "round-table" {
+	fontcolor=white
+	node [fillcolor="white:black" fixedsize=shape fontcolor=black gradientangle=360 label="n9:360" shape=circle style=filled]
+	n8 [label="n8:315" gradientangle=315 height=8 pos="8,-8!" width=8]
+	n7 [label="n7:270" gradientangle=270 height=7 pos="7,-7!" width=7]
+	n6 [label="n6:225" gradientangle=225 height=6 pos="6,-6!" width=6]
+	n5 [label="n5:180" gradientangle=180 height=5 pos="5,-5!" width=5]
+	n4 [label="n4:135" gradientangle=135 height=4 pos="4,-4!" width=4]
+	n3 [label="n3:90" gradientangle=90 height=3 pos="3,-3!" width=3]
+	n2 [label="n2:45" gradientangle=45 height=2 pos="2,-2!" width=2]
+	n1 [label="n1:0" gradientangle=0 height=1 pos="1,-1!" width=1]
+}
