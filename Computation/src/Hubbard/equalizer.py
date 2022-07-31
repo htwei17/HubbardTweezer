@@ -15,7 +15,7 @@ class HubbardParamEqualizer(MLWF):
             self,
             N,
             equalize=False,  # Homogenize trap or not
-            eqtarget='Ut',  # Equalization target
+            eqtarget='UT',  # Equalization target
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -28,21 +28,23 @@ class HubbardParamEqualizer(MLWF):
             self.equalzie(eqtarget, callback=True)
 
     def equalzie(self,
-                 target: str = 'Ut',
+                 target: str = 'UT',
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  callback: bool = False):
         if self.verbosity:
             print(f"Equalizing {target}.")
         u, t, v = False, False, False
-        fix_u, fix_v = False, False
+        fix_u, fix_t, fix_v = False, False, False
         if 'u' in target or 'U' in target:
             u = True
             if 'U' in target:
                 # Whether to fix target in combined cost function
                 fix_u = True
-        if 't' in target:
+        if 't' in target or 'T' in target:
             t = True
+            if 'T' in target:
+                fix_t = True
         if 'v' in target or 'V' in target:
             v = True
             if 'V' in target:
@@ -61,9 +63,11 @@ class HubbardParamEqualizer(MLWF):
             Utarget = None
         if t:
             nnt = self.nn_tunneling(A)
-            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+            if not fix_t:
+                txTarget, tyTarget = None, None
         else:
-            nnt, xlinks, ylinks, nntx, nnty = None, None, None, None, None
+            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
         if fix_v:
             Vtarget = np.mean(np.real(np.diag(A)))
         else:
@@ -83,7 +87,7 @@ class HubbardParamEqualizer(MLWF):
 
         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, nntx, nnty), (u, t, v), weight, x0)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
 
             return c
 

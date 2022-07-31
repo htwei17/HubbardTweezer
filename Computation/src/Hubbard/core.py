@@ -211,6 +211,10 @@ class MLWF(DVR):
         parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
         for row in range(self.reflection.shape[0]):
             if graph:  # Symmetrize graph node coordinates
+                # NOTE: what if repeated elements in reflection?
+                #       numpy will take the last assigned value
+                #       It doen't matter for cost funciton validity
+                #       but it does matter for graph symmetry
                 target[self.reflection[row, :]] = parity * info[row][None]
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
@@ -363,37 +367,38 @@ def locality_mat(dvr: MLWF, W, parity):
             R.append(Rx)
     return R
 
-# ================ DIAGONALIZATION ALGORITHM: STABILITY ISSUE! ================
+# # ================ DIAGONALIZATION ALGORITHM: TO BE DEPRECATED ================
 
 
-def diagonalize(dvr: MLWF, E, W, parity):
-    # Multiband optimization
-    A = []
-    w = []
-    for b in range(dvr.bands):
-        t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
-        A.append(t_ij)
-        w.append(w_mu)
-    return A, w
+# def diagonalize(dvr: MLWF, E, W, parity):
+#     # Multiband optimization
+#     A = []
+#     w = []
+#     for b in range(dvr.bands):
+#         t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
+#         A.append(t_ij)
+#         w.append(w_mu)
+#     return A, w
 
 
-def singleband_diagonalize(dvr: MLWF, E, W, parity):
-    # Singleband Wannier function optimization
-    # x0 is the initial guess
-    R = locality_mat(dvr, W, parity)
+# def singleband_diagonalize(dvr: MLWF, E, W, parity):
+#     # Singleband Wannier function optimization
+#     # x0 is the initial guess
+#     R = locality_mat(dvr, W, parity)
 
-    if dvr.Nsite > 1:
-        # solution = simdiag(R, evals=False, safe_mode=False)
-        solution, __, __ = jacobi_angles(*R)
-    elif dvr.Nsite == 1:
-        solution = np.ones((1, 1))
+#     if dvr.Nsite > 1:
+#         # solution = simdiag(R, evals=False, safe_mode=False)
+#         solution, X, __ = jacobi_angles(*R)
+#     elif dvr.Nsite == 1:
+#         solution = np.ones((1, 1))
 
-    U = site_order(dvr, W, solution, parity)
+#     U = site_order(dvr, W, solution, parity)
+#     # U = solution[:, np.argsort(X)]
 
-    A = (
-        U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    )  # TB parameter matrix, in unit of kHz
-    return A, U
+#     A = (
+#         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+#     )  # TB parameter matrix, in unit of kHz
+#     return A, U
 
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
@@ -411,9 +416,10 @@ def cost_func(U, R) -> float:
     # its diagonal is real and positive, o >= 0
     # Min is found when X diagonal, which means U diagonalize R
     # SO U can be pure real orthogonal matrix!
-    # Q: Can X, Y, Z be diagonalized simultaneously?
-    # A: Sure thing from elementary QM
-    # TODO: Numerically stable simultaneous diagonalization
+    # Q: Can X, Y, Z be diagonalized simultaneously in high dims?
+    # A: If the space is conplete then by QM theory it is possible
+    #    to diagonalize X, Y, Z simultaneously.
+    #    But this is not the case as it's a subspace.
     return np.real(o)
 
 
@@ -438,12 +444,12 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
         R = locality_mat(dvr, W, parity)
         if dvr.lattice_dim == 1:
             # If only one R given, the problem is simply diagonalization
-            # In high dimension, numerical error may cause the commutativity problem
             # solution is eigenstates of operator X
             X, solution = la.eigh(R[0])
             # Auto sort eigenvectors by X eigenvalues
             U = solution[:, np.argsort(X)]
         else:
+            # In high dimension, X, Y, Z don't commute
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
             solution = riemann_optimize(dvr, x0, R)
@@ -462,7 +468,8 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
 
 
 def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
-    # It's proven above that U can be purely real
+    # It's proven above that U can be purely real 
+    # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
     @pymanopt.function.pytorch(manifold)

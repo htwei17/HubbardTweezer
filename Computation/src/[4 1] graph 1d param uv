@@ -1,0 +1,21 @@
+graph lattice {
+	node [color="#99CCFF" fixedsize=shape fontcolor="#FF8000" fontname=Meiryo fontsize=6 shape=circle style=filled]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=4 penwidth=2]
+	0 [label="V = -46.8
+ U = 1.95" height=0.30302361784347726 pos="-1.45,-0.0!" width=0.30302361784347726]
+	1 [label="-47.4
+1.95" height=0.30523552294929013 pos="-0.55,-0.0!" width=0.30523552294929013]
+	2 [label="-47.4
+1.95" height=0.30523552294929013 pos="0.55,-0.0!" width=0.30523552294929013]
+	3 [label="-46.8
+1.95" height=0.30302361784347726 pos="1.45,-0.0!" width=0.30302361784347726]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	0 -- 1 [label="t = 0.767" alpha=254 color="#606060fe"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	1 -- 2 [label=0.0384 alpha=57 color="#60606039"]
+	edge [fontcolor="#000066" fontname=Meiryo fontsize=6 penwidth=2]
+	edge [splines=false style=solid]
+	2 -- 3 [label=0.767 alpha=255 color="#606060ff"]
+}
