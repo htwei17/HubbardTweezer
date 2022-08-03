@@ -9,16 +9,14 @@ import sparse
 import numpy.linalg as la
 
 import torch
-
-# import autograd
 import pymanopt
 import pymanopt.manifolds
 import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
-from tools.simdiag import simdiag
-from tools.jacobi_angles import jacobi_angles
+# from tools.simdiag import simdiag
+# from tools.jacobi_angles import jacobi_angles
 
 
 class MLWF(DVR):
