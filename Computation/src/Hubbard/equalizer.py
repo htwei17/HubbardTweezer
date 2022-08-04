@@ -34,21 +34,7 @@ class HubbardParamEqualizer(MLWF):
                  callback: bool = False):
         if self.verbosity:
             print(f"Equalizing {target}.")
-        u, t, v = False, False, False
-        fix_u, fix_t, fix_v = False, False, False
-        if 'u' in target or 'U' in target:
-            u = True
-            if 'U' in target:
-                # Whether to fix target in combined cost function
-                fix_u = True
-        if 't' in target or 'T' in target:
-            t = True
-            if 'T' in target:
-                fix_t = True
-        if 'v' in target or 'V' in target:
-            v = True
-            if 'V' in target:
-                fix_v = True
+        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, output_unitary=True)
         if u:
@@ -112,6 +98,24 @@ class HubbardParamEqualizer(MLWF):
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
         return self.Voff, self.trap_centers, info
+
+    def str_to_flags(self, target: str):
+        u, t, v = False, False, False
+        fix_u, fix_t, fix_v = False, False, False
+        if 'u' in target or 'U' in target:
+            u = True
+            if 'U' in target:
+                # Whether to fix target in combined cost function
+                fix_u = True
+        if 't' in target or 'T' in target:
+            t = True
+            if 'T' in target:
+                fix_t = True
+        if 'v' in target or 'V' in target:
+            v = True
+            if 'V' in target:
+                fix_v = True
+        return u, t, v, fix_u, fix_t, fix_v
 
     def init_guess(self, random=False) -> tuple[np.ndarray, tuple]:
         v01 = np.ones(self.Nindep)
@@ -272,6 +276,7 @@ class HubbardParamEqualizer(MLWF):
 
 
 # ===================== TO BE DEPRECATED =====================================
+
 
     def homogenize(self, target: str = 'vt', fixed=False):
         # Force target to be 2-character string
