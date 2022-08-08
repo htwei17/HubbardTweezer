@@ -5,6 +5,7 @@ from opt_einsum import contract
 from pyparsing import Char
 from scipy.integrate import romb
 from scipy.optimize import minimize, shgo
+from numba import njit
 
 from .core import *
 
@@ -25,7 +26,7 @@ class HubbardParamEqualizer(MLWF):
         if equalize:
             self.eq_label = eqtarget
             # self.homogenize(eqtarget, fixed)
-            self.equalzie(eqtarget, callback=True)
+            self.equalzie(eqtarget, random=True, callback=True)
 
     def equalzie(self,
                  target: str = 'UT',
@@ -61,6 +62,7 @@ class HubbardParamEqualizer(MLWF):
 
         Voff_bak = self.Voff
         ls_bak = self.trap_centers
+        w_bak = self.waists
         v0, bounds = self.init_guess(random=random)
 
         # Decide if each step cost function used the last step's unitary matrix
@@ -86,18 +88,21 @@ class HubbardParamEqualizer(MLWF):
         t0 = time()
         # res = minimize(cost_func, v0, bounds=bounds, method='Nelder-Mead', options={
         #                'disp': True, 'return_all': True, 'adaptive': True})
-        res = minimize(cost_func, v0, args=info, bounds=bounds, options={
-            'disp': 0, 'ftol': 1e-9})
+        res = minimize(cost_func, v0, args=info, bounds=bounds)
+        # res = minimize(cost_func, v0, args=info, bounds=bounds, options={
+        #     'disp': 0, 'ftol': 1e-15})
         t1 = time()
         if self.verbosity:
             print(f"Equalization took {t1 - t0} seconds.")
 
         trap_depth = res.x[:self.Nindep]
-        trap_center = res.x[self.Nindep:].reshape(self.Nindep, 2)
+        trap_waist_ratio = res.x[self.Nindep:2 * self.Nindep]
+        trap_center = res.x[2 * self.Nindep:].reshape(self.Nindep, 2)
         self.symm_unfold(self.Voff, trap_depth)
+        self.symm_unfold(self.waists[:, 1], trap_waist_ratio)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
-        return self.Voff, self.trap_centers, info
+        return self.Voff, self.waists, self.trap_centers, info
 
     def str_to_flags(self, target: str):
         u, t, v = False, False, False
@@ -119,9 +124,12 @@ class HubbardParamEqualizer(MLWF):
 
     def init_guess(self, random=False) -> tuple[np.ndarray, tuple]:
         v01 = np.ones(self.Nindep)
-        v02 = self.trap_centers[self.reflection[:, 0]]
+        v02 = np.ones(self.Nindep)
+        v03 = self.trap_centers[self.reflection[:, 0]]
         # Bound trap depth variation
         b1 = list((0.9, 1.1) for i in range(self.Nindep))
+        # Bound waist variation
+        b2 = list((0.9, 1.1) for i in range(self.Nindep))
         # Bound lattice spacing variation
         xbounds = tuple(
             (v02[i, 0] - 0.05, v02[i, 0] + 0.05) for i in range(self.Nindep))
@@ -131,18 +139,21 @@ class HubbardParamEqualizer(MLWF):
             ybounds = tuple((v02[i, 1] - 0.05, v02[i, 1] + 0.05)
                             for i in range(self.Nindep))
         nested = tuple((xbounds[i], ybounds[i]) for i in range(self.Nindep))
-        b2 = list(item for sublist in nested for item in sublist)
+        b3 = list(item for sublist in nested for item in sublist)
 
-        v0 = np.concatenate((v01, v02.reshape(-1)))
-        bounds = tuple(b1 + b2)
+        v0 = np.concatenate((v01, v02, v03.reshape(-1)))
+        bounds = tuple(b1 + b2 + b3)
 
         if random:
             v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
-            trap_depth = v0[:self.Nindep]
-            trap_center = v0[self.Nindep:].reshape(self.Nindep, 2)
+
+        trap_depth = v0[:self.Nindep]
+        trap_waist_ratio = v0[self.Nindep:2 * self.Nindep]
+        trap_center = v0[2 * self.Nindep:].reshape(self.Nindep, 2)
 
         if self.verbosity or random:
             print(f"Initial trap depths: {trap_depth}")
+            print(f"Initial waist ratios: {trap_waist_ratio}")
             print("Initial trap centers:")
             print(trap_center)
 
@@ -158,12 +169,16 @@ class HubbardParamEqualizer(MLWF):
                       unitary: Union[list, None] = None) -> float:
 
         trap_depth = offset[:self.Nindep]
-        trap_center = offset[self.Nindep:].reshape(self.Nindep, 2)
+        trap_waist_ratio = offset[self.Nindep:2 * self.Nindep]
+        trap_center = offset[2 * self.Nindep:].reshape(self.Nindep, 2)
+
         if self.verbosity:
             print(f"\nCurrent trap depths: {trap_depth}")
+            print(f"nCurrent waist ratios: {trap_waist_ratio}")
             print("Current trap centers:")
             print(trap_center)
         self.symm_unfold(self.Voff, trap_depth)
+        self.symm_unfold(self.waists[:, 1], trap_waist_ratio)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 
@@ -174,13 +189,15 @@ class HubbardParamEqualizer(MLWF):
 
         u, t, v = utv
 
-        res = self.singleband_Hubbard(
-            u=u, x0=x0, output_unitary=True)
-        if u:
-            A, U, x0 = res
-        else:
-            A, x0 = res
-            U = None
+        A, U, x0 = self.singleband_Hubbard(
+            u=True, x0=x0, output_unitary=True)
+        # res = self.singleband_Hubbard(
+        #     u=u, x0=x0, output_unitary=True)
+        # if u:
+        #     A, U, x0 = res
+        # else:
+        #     A, x0 = res
+        #     U = None
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
@@ -194,10 +211,10 @@ class HubbardParamEqualizer(MLWF):
             Vtarget, Utarget, nntx, nnty = target
 
         w = weight.copy()
-        cu = 0
-        if u:
-            # U is different, as calculating U costs time
-            cu = self.u_cost_func(U, Utarget)
+        # cu = 0
+        # if u:
+        #     # U is different, as calculating U costs time
+        cu = self.u_cost_func(U, Utarget)
 
         ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
         if not t:
@@ -275,176 +292,175 @@ class HubbardParamEqualizer(MLWF):
         return cu
 
 
-# ===================== TO BE DEPRECATED =====================================
+# # ===================== TO BE DEPRECATED =====================================
 
+#     def homogenize(self, target: str = 'vt', fixed=False):
+#         # Force target to be 2-character string
+#         if len(target) == 1:
+#             if target == 't' or target == 'T':
+#                 # Tunneling is varying spacings in default
+#                 target = '0' + target
+#             else:
+#                 # Other is varying trap depths in default
+#                 target = target + '0'
 
-    def homogenize(self, target: str = 'vt', fixed=False):
-        # Force target to be 2-character string
-        if len(target) == 1:
-            if target == 't' or target == 'T':
-                # Tunneling is varying spacings in default
-                target = '0' + target
-            else:
-                # Other is varying trap depths in default
-                target = target + '0'
+#         cost_func, quantity = self.one_equzlize(target[0], fixed)
+#         self.Voff = self.depth_equalize(cost_func)
+#         if quantity != None:
+#             print(f'{quantity} homogenized by trap depths.\n')
 
-        cost_func, quantity = self.one_equzlize(target[0], fixed)
-        self.Voff = self.depth_equalize(cost_func)
-        if quantity != None:
-            print(f'{quantity} homogenized by trap depths.\n')
+#         cost_func, quantity = self.one_equzlize(target[1], fixed)
+#         self.trap_centers = self.spacing_equalize(cost_func)
+#         if quantity != None:
+#             print(f'{quantity} homogenized by trap spacings.\n')
 
-        cost_func, quantity = self.one_equzlize(target[1], fixed)
-        self.trap_centers = self.spacing_equalize(cost_func)
-        if quantity != None:
-            print(f'{quantity} homogenized by trap spacings.\n')
+#         return self.Voff, self.trap_centers
 
-        return self.Voff, self.trap_centers
+#     def one_equzlize(self, target: str, fixed=False):
+#         if 'v' in target:
+#             cost_func = self.v_equalize(u=False)
+#             quantity = 'Onsite potential'
+#         elif 'V' in target:
+#             # Combined cost function for U and V is used
+#             cost_func = self.v_equalize(u=True, fixed=fixed)
+#             quantity = 'Onsite potential combining interaction'
+#         elif 'u' in target:
+#             cost_func = self.u_equalize()
+#             quantity = 'Onsite interaction'
+#         elif 't' in target:
+#             cost_func = self.t_equalize(v=False)
+#             quantity = 'Tunneling'
+#         elif 'T' in target:
+#             # Combined cost function for t and V is used
+#             cost_func = self.t_equalize(v=True, fixed=fixed)
+#             quantity = 'Tunneling combining onsite potential'
+#         else:
+#             cost_func = None
+#             quantity = None
+#             print('Input target not recognized.')
+#         return cost_func, quantity
 
-    def one_equzlize(self, target: str, fixed=False):
-        if 'v' in target:
-            cost_func = self.v_equalize(u=False)
-            quantity = 'Onsite potential'
-        elif 'V' in target:
-            # Combined cost function for U and V is used
-            cost_func = self.v_equalize(u=True, fixed=fixed)
-            quantity = 'Onsite potential combining interaction'
-        elif 'u' in target:
-            cost_func = self.u_equalize()
-            quantity = 'Onsite interaction'
-        elif 't' in target:
-            cost_func = self.t_equalize(v=False)
-            quantity = 'Tunneling'
-        elif 'T' in target:
-            # Combined cost function for t and V is used
-            cost_func = self.t_equalize(v=True, fixed=fixed)
-            quantity = 'Tunneling combining onsite potential'
-        else:
-            cost_func = None
-            quantity = None
-            print('Input target not recognized.')
-        return cost_func, quantity
+#     def v_equalize(self, u, fixed=False) -> Callable[[np.ndarray], float]:
+#         res = self.singleband_Hubbard(u)
+#         if u:
+#             A, U = res
+#         else:
+#             A = res
+#         if fixed:
+#             Utarget = np.mean(U)
+#         else:
+#             Utarget = None
+#         Vtarget = np.mean(np.real(np.diag(A)))
 
-    def v_equalize(self, u, fixed=False) -> Callable[[np.ndarray], float]:
-        res = self.singleband_Hubbard(u)
-        if u:
-            A, U = res
-        else:
-            A = res
-        if fixed:
-            Utarget = np.mean(U)
-        else:
-            Utarget = None
-        Vtarget = np.mean(np.real(np.diag(A)))
+#         def cost_func(offset: np.ndarray, offset_type) -> float:
+#             # If target = None, then U and V are targeted to mean values
+#             # If target is given, for V it's float value, for U and V it's a tuple
+#             if offset_type == 'd':
+#                 self.symm_unfold(self.Voff, offset)
+#                 print("\nCurrent trap depths:", offset)
+#             elif offset_type == 's':
+#                 offset = offset.reshape(self.Nindep, 2)
+#                 self.symm_unfold(self.trap_centers, offset, graph=True)
+#                 self.update_lattice(self.trap_centers)
+#                 print("\nCurrent trap centers:", offset)
 
-        def cost_func(offset: np.ndarray, offset_type) -> float:
-            # If target = None, then U and V are targeted to mean values
-            # If target is given, for V it's float value, for U and V it's a tuple
-            if offset_type == 'd':
-                self.symm_unfold(self.Voff, offset)
-                print("\nCurrent trap depths:", offset)
-            elif offset_type == 's':
-                offset = offset.reshape(self.Nindep, 2)
-                self.symm_unfold(self.trap_centers, offset, graph=True)
-                self.update_lattice(self.trap_centers)
-                print("\nCurrent trap centers:", offset)
+#             res = self.singleband_Hubbard(u)
+#             if u:
+#                 A, U = res
+#             else:
+#                 A = res
 
-            res = self.singleband_Hubbard(u)
-            if u:
-                A, U = res
-            else:
-                A = res
+#             c = self.v_cost_func(A, Vtarget)
+#             if u:
+#                 c += self.u_cost_func(U, Utarget)
+#             print("Current total cost:", c, "\n")
+#             return c
 
-            c = self.v_cost_func(A, Vtarget)
-            if u:
-                c += self.u_cost_func(U, Utarget)
-            print("Current total cost:", c, "\n")
-            return c
+#         return cost_func
 
-        return cost_func
+#     def u_equalize(self) -> Callable[[np.ndarray], float]:
+#         # Equalize onsite chemical potential
+#         A, U = self.singleband_Hubbard(u=True)
+#         Utarget = np.mean(U)
 
-    def u_equalize(self) -> Callable[[np.ndarray], float]:
-        # Equalize onsite chemical potential
-        A, U = self.singleband_Hubbard(u=True)
-        Utarget = np.mean(U)
+#         def cost_func(offset: np.ndarray, offset_type) -> float:
+#             if offset_type == 'd':
+#                 self.symm_unfold(self.Voff, offset)
+#                 print("\nCurrent trap depths:", offset)
+#             elif offset_type == 's':
+#                 offset = offset.reshape(self.Nindep, 2)
+#                 self.symm_unfold(self.trap_centers, offset, graph=True)
+#                 self.update_lattice(self.trap_centers)
+#                 print("\nCurrent trap centers:", offset)
 
-        def cost_func(offset: np.ndarray, offset_type) -> float:
-            if offset_type == 'd':
-                self.symm_unfold(self.Voff, offset)
-                print("\nCurrent trap depths:", offset)
-            elif offset_type == 's':
-                offset = offset.reshape(self.Nindep, 2)
-                self.symm_unfold(self.trap_centers, offset, graph=True)
-                self.update_lattice(self.trap_centers)
-                print("\nCurrent trap centers:", offset)
+#             A, U = self.singleband_Hubbard(u=True)
+#             c = self.u_cost_func(U, Utarget)
+#             print("Current total cost:", c, "\n")
+#             return c
 
-            A, U = self.singleband_Hubbard(u=True)
-            c = self.u_cost_func(U, Utarget)
-            print("Current total cost:", c, "\n")
-            return c
+#         return cost_func
 
-        return cost_func
+#     def depth_equalize(self, cost_func) -> np.ndarray:
+#         # Equalize onsite chemical potential
 
-    def depth_equalize(self, cost_func) -> np.ndarray:
-        # Equalize onsite chemical potential
+#         if cost_func != None:
+#             Voff_bak = self.Voff
 
-        if cost_func != None:
-            Voff_bak = self.Voff
+#             v0 = np.ones(self.Nindep)
+#             # Bound trap depth variation
+#             bonds = tuple((0.9, 1.1) for i in range(self.Nindep))
+#             res = minimize(cost_func, v0, 'd', bounds=bonds)
+#             self.symm_unfold(self.Voff, res.x)
+#         return self.Voff
 
-            v0 = np.ones(self.Nindep)
-            # Bound trap depth variation
-            bonds = tuple((0.9, 1.1) for i in range(self.Nindep))
-            res = minimize(cost_func, v0, 'd', bounds=bonds)
-            self.symm_unfold(self.Voff, res.x)
-        return self.Voff
+#     def t_equalize(self, v, fixed=False) -> Callable[[np.ndarray], float]:
+#         A = self.singleband_Hubbard()
+#         nnt = self.nn_tunneling(A)
+#         xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+#         Vtarget = None
+#         if fixed:
+#             Vtarget = np.mean(np.real(np.diag(A)))
 
-    def t_equalize(self, v, fixed=False) -> Callable[[np.ndarray], float]:
-        A = self.singleband_Hubbard()
-        nnt = self.nn_tunneling(A)
-        xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-        Vtarget = None
-        if fixed:
-            Vtarget = np.mean(np.real(np.diag(A)))
+#         def cost_func(offset: np.ndarray, offset_type) -> float:
+#             if offset_type == 'd':
+#                 self.symm_unfold(self.Voff, offset)
+#                 print("\nCurrent trap depths:", offset)
+#             elif offset_type == 's':
+#                 offset = offset.reshape(self.Nindep, 2)
+#                 self.symm_unfold(self.trap_centers, offset, graph=True)
+#                 self.update_lattice(self.trap_centers)
+#                 print("\nCurrent trap centers:", offset)
 
-        def cost_func(offset: np.ndarray, offset_type) -> float:
-            if offset_type == 'd':
-                self.symm_unfold(self.Voff, offset)
-                print("\nCurrent trap depths:", offset)
-            elif offset_type == 's':
-                offset = offset.reshape(self.Nindep, 2)
-                self.symm_unfold(self.trap_centers, offset, graph=True)
-                self.update_lattice(self.trap_centers)
-                print("\nCurrent trap centers:", offset)
+#             A = self.singleband_Hubbard()
+#             c = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
+#             if v:
+#                 c += self.v_cost_func(A, Vtarget)
+#             print("Current total cost:", c, "\n")
+#             return c
 
-            A = self.singleband_Hubbard()
-            c = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
-            if v:
-                c += self.v_cost_func(A, Vtarget)
-            print("Current total cost:", c, "\n")
-            return c
+#         return cost_func
 
-        return cost_func
+#     def spacing_equalize(self, cost_func) -> np.ndarray:
+#         # Equalize tunneling
+#         if cost_func != None:
+#             ls_bak = self.trap_centers
 
-    def spacing_equalize(self, cost_func) -> np.ndarray:
-        # Equalize tunneling
-        if cost_func != None:
-            ls_bak = self.trap_centers
-
-            v0 = self.trap_centers[self.reflection[:, 0]]
-            # print('v0', v0)
-            # Bound lattice spacing variation
-            xbonds = tuple(
-                (v0[i, 0] - 0.05, v0[i, 0] + 0.05) for i in range(self.Nindep))
-            if self.lattice_dim == 1:
-                ybonds = tuple((0, 0) for i in range(self.Nindep))
-            else:
-                ybonds = tuple((v0[i, 1] - 0.05, v0[i, 1] + 0.05)
-                               for i in range(self.Nindep))
-            nested = tuple((xbonds[i], ybonds[i]) for i in range(self.Nindep))
-            bonds = tuple(item for sublist in nested for item in sublist)
-            # print('bounds', bonds)
-            res = minimize(cost_func, v0.reshape(-1), 's', bounds=bonds)
-            self.symm_unfold(self.trap_centers,
-                             res.x.reshape(self.Nindep, 2),
-                             graph=True)
-            self.update_lattice(self.trap_centers)
-        return self.trap_centers
+#             v0 = self.trap_centers[self.reflection[:, 0]]
+#             # print('v0', v0)
+#             # Bound lattice spacing variation
+#             xbonds = tuple(
+#                 (v0[i, 0] - 0.05, v0[i, 0] + 0.05) for i in range(self.Nindep))
+#             if self.lattice_dim == 1:
+#                 ybonds = tuple((0, 0) for i in range(self.Nindep))
+#             else:
+#                 ybonds = tuple((v0[i, 1] - 0.05, v0[i, 1] + 0.05)
+#                                for i in range(self.Nindep))
+#             nested = tuple((xbonds[i], ybonds[i]) for i in range(self.Nindep))
+#             bonds = tuple(item for sublist in nested for item in sublist)
+#             # print('bounds', bonds)
+#             res = minimize(cost_func, v0.reshape(-1), 's', bounds=bonds)
+#             self.symm_unfold(self.trap_centers,
+#                              res.x.reshape(self.Nindep, 2),
+#                              graph=True)
+#             self.update_lattice(self.trap_centers)
+#         return self.trap_centers

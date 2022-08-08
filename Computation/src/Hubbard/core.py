@@ -12,6 +12,7 @@ import torch
 import pymanopt
 import pymanopt.manifolds
 import pymanopt.optimizers
+from numba import njit, jit
 
 from DVR.core import *
 from .lattice import *
@@ -144,6 +145,10 @@ class MLWF(DVR):
         self.R00 = self.R0.copy()
         self.create_lattice(lattice, lc, shape)
         self.Voff = np.ones(self.Nsite)  # Set default trap offset
+        # Set waist adjustment factor
+        # NOTE: so far only second column is tunable
+        # TODO: find protocol in future to tune both waists
+        self.waists = self.wxy[None] * np.ones((self.Nsite, 2))
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
@@ -157,6 +162,7 @@ class MLWF(DVR):
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
+                self.wxy = self.waists[i]
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
@@ -239,12 +245,6 @@ def eigen_basis(dvr: MLWF):
     # Find eigenbasis of symmetry block diagonalized Hamiltonian
     k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
-        # The code is designed for 1D and 2D lattice, and
-        # we always leave z direction to be in even sector.
-        # So all sectors are [x x 1] with x collected below.
-        # This is because the energy cost to go higher level
-        # of z direction is of ~5kHz, way above the bandwidth ~200Hz.
-
         p_list = sector(dvr)
         E_sb = np.array([])
         W_sb = []
@@ -401,6 +401,7 @@ def locality_mat(dvr: MLWF, W, parity):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
+@jit(parallel=True)
 def cost_func(U, R) -> float:
     # Cost function to Wannier optimize
     o = 0
@@ -421,6 +422,7 @@ def cost_func(U, R) -> float:
     return np.real(o)
 
 
+@jit(parallel=True)
 def optimize(dvr: MLWF, E, W, parity):
     # Multiband optimization
     A = []
@@ -465,8 +467,9 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     return A, U
 
 
+@jit(parallel=True)
 def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
-    # It's proven above that U can be purely real 
+    # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
@@ -485,6 +488,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
 # =============================================================================
 
 
+@jit(parallel=True)
 def site_order(dvr: MLWF, W, U, p):
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
@@ -577,19 +581,19 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
 
 
 def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
-    V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
+    V = np.zeros((len(x[0]), len(x[1]), len(x[2]), p.shape[0]))
     for i in range(p.shape[0]):
-        V = np.append(V, psi(dvr.n, dvr.dx, W[i], *x, p[i, :]), axis=dim)
+        V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
-def intgrl3d(dx, integrand):
+def intgrl3d(dx: list[float, float, float], integrand: np.ndarray) -> float:
     for i in range(dim):
         if dx[i] > 0:
             integrand = romb(integrand, dx[i], axis=0)
         else:
-            integrand = integrand[0, :]
+            integrand = integrand[0]
     return integrand
 
 
