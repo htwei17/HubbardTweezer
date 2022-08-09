@@ -5,7 +5,6 @@ from opt_einsum import contract
 from pyparsing import Char
 from scipy.integrate import romb
 from scipy.optimize import minimize, shgo
-from numba import njit
 
 from .core import *
 
@@ -143,18 +142,19 @@ class HubbardParamEqualizer(MLWF):
             b2y = list((0.9, 1.1) for i in range(self.Nindep))
         else:
             b2y = list((1, 1) for i in range(self.Nindep))
-        nested = tuple((b2x[i], b2y[i]) for i in range(self.Nindep))
-        b2 = list(item for sublist in nested for item in sublist)
+        n2 = tuple((b2x[i], b2y[i]) for i in range(self.Nindep))
+        b2 = list(item for sublist in n2 for item in sublist)
         # Bound lattice spacing variation
-        b3x = tuple(
-            (v03[i, 0] - 0.1, v03[i, 0] + 0.1) for i in range(self.Nindep))
+        b3x = tuple((v03[i, 0] - 0.1, v03[i, 0] + 0.1) if self.inv_coords[i, 0]
+                    == False else (0, 0) for i in range(self.Nindep))
         if self.lattice_dim == 1:
             b3y = tuple((0, 0) for i in range(self.Nindep))
         else:
             b3y = tuple((v03[i, 1] - 0.1, v03[i, 1] + 0.1)
-                        for i in range(self.Nindep))
-        nested = tuple((b3x[i], b3y[i]) for i in range(self.Nindep))
-        b3 = list(item for sublist in nested for item in sublist)
+                        if self.inv_coords[i, 1]
+                        == False else (0, 0) for i in range(self.Nindep))
+        n3 = tuple((b3x[i], b3y[i]) for i in range(self.Nindep))
+        b3 = list(item for sublist in n3 for item in sublist)
 
         v0 = np.concatenate((v01, v02, v03.reshape(-1)))
         bounds = tuple(b1 + b2 + b3)

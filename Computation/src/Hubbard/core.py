@@ -65,7 +65,7 @@ class MLWF(DVR):
                 # For squre
                 lc = (lc, lc)
 
-        self.tc0, self.links, self.reflection = lattice_graph(
+        self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape
         )
         self.trap_centers = self.tc0.copy()
@@ -214,11 +214,10 @@ class MLWF(DVR):
         parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
         for row in range(self.reflection.shape[0]):
             if graph:  # Symmetrize graph node coordinates
-                # NOTE: what if repeated elements in reflection?
-                #       numpy will take the last assigned value
-                #       It doen't matter for cost funciton validity
-                #       but it does matter for graph symmetry
-                target[self.reflection[row, :]] = parity * info[row][None]
+                # NOTE: repeated nodes will be removed
+                info[row][self.inv_coords[row]] = 0
+                pinfo = parity * info[row][None]
+                target[self.reflection[row, :]] = pinfo
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
 
