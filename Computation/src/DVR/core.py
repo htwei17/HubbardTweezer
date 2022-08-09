@@ -246,7 +246,6 @@ class DVR:
         return V
 
 
-@njit(int64[:](int64[:], int64[:]))
 def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
     init = -n
     init[p == 1] = 0
@@ -297,7 +296,6 @@ def psi(n: np.ndarray, dx: np.ndarray,
     return psi
 
 
-@jit(float64[:, :](int64, float64[:], float64[:]))
 def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:
     # Symmetrized sinc DVR basis funciton, x in unit of dx
     Wx = np.sinc(x[:, None] - xn[None])

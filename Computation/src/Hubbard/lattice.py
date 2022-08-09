@@ -235,7 +235,7 @@ def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     return links
 
 
-def build_reflection(graph, shape='square'):
+def build_reflection(graph, shape='c4'):
     # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other

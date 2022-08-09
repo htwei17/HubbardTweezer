@@ -17,12 +17,16 @@ class HubbardParamEqualizer(MLWF):
             N,
             equalize=False,  # Homogenize trap or not
             eqtarget='UT',  # Equalization target
+            waist='x',  # Waist to vary
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
 
         # set equalization label in file output
         self.eq_label = 'neq'
+        self.waist_dir = waist
+        if self.lattice_dim > 1:
+            self.waist_dir = 'xy'
         if equalize:
             self.eq_label = eqtarget
             # self.homogenize(eqtarget, fixed)
@@ -60,9 +64,9 @@ class HubbardParamEqualizer(MLWF):
         else:
             Vtarget = None
 
-        Voff_bak = self.Voff
-        ls_bak = self.trap_centers
-        w_bak = self.waists
+        # Voff_bak = self.Voff
+        # ls_bak = self.trap_centers
+        # w_bak = self.waists
         v0, bounds = self.init_guess(random=random)
 
         # Decide if each step cost function used the last step's unitary matrix
@@ -96,15 +100,16 @@ class HubbardParamEqualizer(MLWF):
             print(f"Equalization took {t1 - t0} seconds.")
 
         trap_depth = res.x[:self.Nindep]
-        trap_waist_ratio = res.x[self.Nindep:2 * self.Nindep]
-        trap_center = res.x[2 * self.Nindep:].reshape(self.Nindep, 2)
+        trap_waist_ratio = res.x[self.Nindep:3 *
+                                 self.Nindep].reshape(self.Nindep, 2)
+        trap_center = res.x[3 * self.Nindep:].reshape(self.Nindep, 2)
         self.symm_unfold(self.Voff, trap_depth)
-        self.symm_unfold(self.waists[:, 1], trap_waist_ratio)
+        self.symm_unfold(self.waists, trap_waist_ratio)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, info
 
-    def str_to_flags(self, target: str):
+    def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
         u, t, v = False, False, False
         fix_u, fix_t, fix_v = False, False, False
         if 'u' in target or 'U' in target:
@@ -124,21 +129,31 @@ class HubbardParamEqualizer(MLWF):
 
     def init_guess(self, random=False) -> tuple[np.ndarray, tuple]:
         v01 = np.ones(self.Nindep)
-        v02 = np.ones(self.Nindep)
-        v03 = self.trap_centers[self.reflection[:, 0]]
+        v02 = np.ones(2 * self.Nindep)
+        v03 = self.tc0[self.reflection[:, 0]]
+
         # Bound trap depth variation
-        b1 = list((0.9, 1.1) for i in range(self.Nindep))
+        b1 = list((0.9, 1.1) for i in range(len(v01)))
         # Bound waist variation
-        b2 = list((0.9, 1.1) for i in range(self.Nindep))
-        # Bound lattice spacing variation
-        xbounds = tuple(
-            (v02[i, 0] - 0.05, v02[i, 0] + 0.05) for i in range(self.Nindep))
-        if self.lattice_dim == 1:
-            ybounds = tuple((0, 0) for i in range(self.Nindep))
+        if 'x' in self.waist_dir:
+            b2x = list((0.9, 1.1) for i in range(self.Nindep))
         else:
-            ybounds = tuple((v02[i, 1] - 0.05, v02[i, 1] + 0.05)
-                            for i in range(self.Nindep))
-        nested = tuple((xbounds[i], ybounds[i]) for i in range(self.Nindep))
+            b2x = list((1, 1) for i in range(self.Nindep))
+        if 'y' in self.waist_dir:
+            b2y = list((0.9, 1.1) for i in range(self.Nindep))
+        else:
+            b2y = list((1, 1) for i in range(self.Nindep))
+        nested = tuple((b2x[i], b2y[i]) for i in range(self.Nindep))
+        b2 = list(item for sublist in nested for item in sublist)
+        # Bound lattice spacing variation
+        b3x = tuple(
+            (v03[i, 0] - 0.1, v03[i, 0] + 0.1) for i in range(self.Nindep))
+        if self.lattice_dim == 1:
+            b3y = tuple((0, 0) for i in range(self.Nindep))
+        else:
+            b3y = tuple((v03[i, 1] - 0.1, v03[i, 1] + 0.1)
+                        for i in range(self.Nindep))
+        nested = tuple((b3x[i], b3y[i]) for i in range(self.Nindep))
         b3 = list(item for sublist in nested for item in sublist)
 
         v0 = np.concatenate((v01, v02, v03.reshape(-1)))
@@ -148,12 +163,14 @@ class HubbardParamEqualizer(MLWF):
             v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
 
         trap_depth = v0[:self.Nindep]
-        trap_waist_ratio = v0[self.Nindep:2 * self.Nindep]
-        trap_center = v0[2 * self.Nindep:].reshape(self.Nindep, 2)
+        trap_waist = v0[self.Nindep:3 *
+                        self.Nindep].reshape(self.Nindep, 2)
+        trap_center = v0[3 * self.Nindep:].reshape(self.Nindep, 2)
 
         if self.verbosity or random:
             print(f"Initial trap depths: {trap_depth}")
-            print(f"Initial waist ratios: {trap_waist_ratio}")
+            print(f"Initial waists:")
+            print(trap_waist)
             print("Initial trap centers:")
             print(trap_center)
 
@@ -169,16 +186,18 @@ class HubbardParamEqualizer(MLWF):
                       unitary: Union[list, None] = None) -> float:
 
         trap_depth = offset[:self.Nindep]
-        trap_waist_ratio = offset[self.Nindep:2 * self.Nindep]
-        trap_center = offset[2 * self.Nindep:].reshape(self.Nindep, 2)
+        trap_waist = offset[self.Nindep:3 *
+                            self.Nindep].reshape(self.Nindep, 2)
+        trap_center = offset[3 * self.Nindep:].reshape(self.Nindep, 2)
 
         if self.verbosity:
             print(f"\nCurrent trap depths: {trap_depth}")
-            print(f"nCurrent waist ratios: {trap_waist_ratio}")
+            print(f"nCurrent waists:")
+            print(trap_waist)
             print("Current trap centers:")
             print(trap_center)
         self.symm_unfold(self.Voff, trap_depth)
-        self.symm_unfold(self.waists[:, 1], trap_waist_ratio)
+        self.symm_unfold(self.waists, trap_waist)
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 

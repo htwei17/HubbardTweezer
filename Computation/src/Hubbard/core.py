@@ -12,7 +12,6 @@ import torch
 import pymanopt
 import pymanopt.manifolds
 import pymanopt.optimizers
-from numba import njit, jit
 
 from DVR.core import *
 from .lattice import *
@@ -66,9 +65,10 @@ class MLWF(DVR):
                 # For squre
                 lc = (lc, lc)
 
-        self.trap_centers, self.links, self.reflection = lattice_graph(
+        self.tc0, self.links, self.reflection = lattice_graph(
             self.lattice, shape
         )
+        self.trap_centers = self.tc0.copy()
         self.Nsite = self.trap_centers.shape[0]
 
         self.Nindep = self.reflection.shape[
@@ -97,7 +97,7 @@ class MLWF(DVR):
         self.update_R0(R0, dx)
 
     def update_lattice(self, tc: np.ndarray):
-        # Update DVR grids when self.graph is updated
+        # Update DVR grids when trap centers are shifted
 
         self.trap_centers = tc.copy()
         dx = self.dx.copy()
@@ -146,9 +146,8 @@ class MLWF(DVR):
         self.create_lattice(lattice, lc, shape)
         self.Voff = np.ones(self.Nsite)  # Set default trap offset
         # Set waist adjustment factor
-        # NOTE: so far only second column is tunable
-        # TODO: find protocol in future to tune both waists
-        self.waists = self.wxy[None] * np.ones((self.Nsite, 2))
+        self.wxy0 = self.wxy.copy()
+        self.waists = np.ones((self.Nsite, 2))
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
@@ -162,7 +161,7 @@ class MLWF(DVR):
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
-                self.wxy = self.waists[i]
+                self.wxy = self.wxy0 * self.waists[i]
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
@@ -401,7 +400,6 @@ def locality_mat(dvr: MLWF, W, parity):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-@jit(parallel=True)
 def cost_func(U, R) -> float:
     # Cost function to Wannier optimize
     o = 0
@@ -422,7 +420,6 @@ def cost_func(U, R) -> float:
     return np.real(o)
 
 
-@jit(parallel=True)
 def optimize(dvr: MLWF, E, W, parity):
     # Multiband optimization
     A = []
@@ -467,7 +464,6 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     return A, U
 
 
-@jit(parallel=True)
 def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
@@ -488,7 +484,6 @@ def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
 # =============================================================================
 
 
-@jit(parallel=True)
 def site_order(dvr: MLWF, W, U, p):
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
