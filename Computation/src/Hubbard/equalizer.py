@@ -6,9 +6,12 @@ from pyparsing import Char
 from scipy.integrate import romb
 from scipy.optimize import minimize, shgo
 
-from mystic.solvers import DifferentialEvolutionSolver, diffev
-from mystic.termination import ChangeOverGeneration, VTR
-from mystic.monitors import Monitor, VerboseMonitor
+# from mystic.solvers import DifferentialEvolutionSolver
+# from mystic.termination import ChangeOverGeneration, VTR
+# from mystic.strategy import Best1Exp, Best1Bin, Rand1Exp
+# from mystic.monitors import VerboseMonitor
+# from mystic.tools import getch
+# from mystic.bounds import Bounds
 
 from .core import *
 
@@ -118,85 +121,103 @@ class HubbardParamEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, info
 
-# ================ TEST MYSTIC =====================
+# # ================ TEST MYSTIC =====================
 
-    def equalzie_mystic(self,
-                        target: str = 'UT',
-                        weight: np.ndarray = np.ones(3),
-                        random: bool = False,
-                        callback: bool = False):
-        if self.verbosity:
-            print(f"Equalizing {target}.")
-        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
+#     def equalzie_mystic(self,
+#                         target: str = 'UT',
+#                         weight: np.ndarray = np.ones(3),
+#                         random: bool = False,
+#                         callback: bool = False):
+#         if self.verbosity:
+#             print(f"Equalizing {target}.")
+#         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
 
-        res = self.singleband_Hubbard(u=u, output_unitary=True)
-        if u:
-            A, U, V = res
-        else:
-            A, V = res
-            U = None
+#         res = self.singleband_Hubbard(u=u, output_unitary=True)
+#         if u:
+#             A, U, V = res
+#         else:
+#             A, V = res
+#             U = None
 
-        if fix_u:
-            Utarget = np.mean(U)
-        else:
-            Utarget = None
-        if t:
-            nnt = self.nn_tunneling(A)
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-            if not fix_t:
-                txTarget, tyTarget = None, None
-        else:
-            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
-        if fix_v:
-            Vtarget = np.mean(np.real(np.diag(A)))
-        else:
-            Vtarget = None
+#         if fix_u:
+#             Utarget = np.mean(U)
+#         else:
+#             Utarget = None
+#         if t:
+#             nnt = self.nn_tunneling(A)
+#             xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+#             if not fix_t:
+#                 txTarget, tyTarget = None, None
+#         else:
+#             nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+#         if fix_v:
+#             Vtarget = np.mean(np.real(np.diag(A)))
+#         else:
+#             Vtarget = None
 
-        # Voff_bak = self.Voff
-        # ls_bak = self.trap_centers
-        # w_bak = self.waists
-        v0, bounds = self.init_guess(random=random)
+#         # Voff_bak = self.Voff
+#         # ls_bak = self.trap_centers
+#         # w_bak = self.waists
+#         v0, bounds = self.init_guess(random=random)
+#         bounds = Bounds(tuple(i[0] for i in bounds),
+#                         tuple(i[1] for i in bounds))
 
-        # Decide if each step cost function used the last step's unitary matrix
-        # callback can have sometimes very few iteraction steps
-        if callback:
-            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
-            x0 = [V]
-        else:
-            x0 = None
+#         # Decide if each step cost function used the last step's unitary matrix
+#         # callback can have sometimes very few iteraction steps
+#         if callback:
+#             # Pack x0 to be mutable, thus can be updated in each iteration of minimize
+#             x0 = [V]
+#         else:
+#             x0 = None
 
-        def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
-            c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
+#         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
+#             if not isinstance(offset, np.ndarray):
+#                 offset = np.array(offset)
+#             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
+#                                    (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
 
-            return c
+#             return c
 
-        info = {'Nfeval': 0,
-                'cost': np.array([]).reshape(0, 3),
-                'ctot': np.array([]),
-                'fval': np.array([]),
-                'diff': np.array([]),
-                'x': np.array([]).reshape(0, *v0.shape)}
+#         info = {'Nfeval': 0,
+#                 'cost': np.array([]).reshape(0, 3),
+#                 'ctot': np.array([]),
+#                 'fval': np.array([]),
+#                 'diff': np.array([]),
+#                 'x': np.array([]).reshape(0, *v0.shape)}
 
-        t0 = time()
+#         t0 = time()
 
+#         ND = v0.shape[0]
+#         NP = 10 * ND
+#         MAX_GENERATIONS = ND * NP
 
+#         solver = DifferentialEvolutionSolver(ND, NP)
+#         solver.SetRandomInitialPoints(min=[0]*ND, max=[2]*ND)
+#         solver.SetEvaluationLimits(generations=MAX_GENERATIONS)
+#         solver.SetGenerationMonitor(VerboseMonitor(30))
+#         strategy = Best1Exp
 
-        t1 = time()
-        if self.verbosity:
-            print(f"Equalization took {t1 - t0} seconds.")
+#         solver.Solve(cost_func, ExtraArgs=(info,), bounds=bounds, termination=VTR(0.01), strategy=strategy,
+#                      CrossProbability=0.9, ScalingFactor=0.8)
 
-        trap_depth = res.x[:self.Nindep]
-        trap_waist_ratio = res.x[self.Nindep:3 *
-                                 self.Nindep].reshape(self.Nindep, 2)
-        trap_center = res.x[3 * self.Nindep:].reshape(self.Nindep, 2)
-        self.symm_unfold(self.Voff, trap_depth)
-        self.symm_unfold(self.waists, trap_waist_ratio)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
-        self.update_lattice(self.trap_centers)
-        return self.Voff, self.waists, self.trap_centers, info
+#         res = solver.Solution()
 
-# ================ TEST OVER =====================
+#         t1 = time()
+#         if self.verbosity:
+#             print(f"Equalization took {t1 - t0} seconds.")
+
+#         # trap_depth = res.x[:self.Nindep]
+#         # trap_waist_ratio = res.x[self.Nindep:3 *
+#         #                          self.Nindep].reshape(self.Nindep, 2)
+#         # trap_center = res.x[3 * self.Nindep:].reshape(self.Nindep, 2)
+#         # self.symm_unfold(self.Voff, trap_depth)
+#         # self.symm_unfold(self.waists, trap_waist_ratio)
+#         # self.symm_unfold(self.trap_centers, trap_center, graph=True)
+#         # self.update_lattice(self.trap_centers)
+#         # return self.Voff, self.waists, self.trap_centers, info
+#         return res, info
+
+# # ================ TEST OVER =====================
 
     def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
         u, t, v = False, False, False
@@ -222,7 +243,7 @@ class HubbardParamEqualizer(MLWF):
         v03 = self.tc0[self.reflection[:, 0]]
 
         # Bound trap depth variation
-        b1 = list((0.9, 1.1) for i in range(len(v01)))
+        b1 = list((0.9, 1.1) for i in range(self.Nindep))
         # Bound waist variation
         if 'x' in self.waist_dir:
             b2x = list((0.9, 1.1) for i in range(self.Nindep))
