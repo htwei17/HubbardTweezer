@@ -6,6 +6,10 @@ from pyparsing import Char
 from scipy.integrate import romb
 from scipy.optimize import minimize, shgo
 
+from mystic.solvers import DifferentialEvolutionSolver, diffev
+from mystic.termination import ChangeOverGeneration, VTR
+from mystic.monitors import Monitor, VerboseMonitor
+
 from .core import *
 
 
@@ -35,6 +39,7 @@ class HubbardParamEqualizer(MLWF):
                  target: str = 'UT',
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
+                 nobounds: bool = False,
                  callback: bool = False):
         if self.verbosity:
             print(f"Equalizing {target}.")
@@ -88,12 +93,17 @@ class HubbardParamEqualizer(MLWF):
                 'fval': np.array([]),
                 'diff': np.array([]),
                 'x': np.array([]).reshape(0, *v0.shape)}
+
         t0 = time()
-        # res = minimize(cost_func, v0, bounds=bounds, method='Nelder-Mead', options={
-        #                'disp': True, 'return_all': True, 'adaptive': True})
-        res = minimize(cost_func, v0, args=info, bounds=bounds)
-        # res = minimize(cost_func, v0, args=info, bounds=bounds, options={
-        #     'disp': 0, 'ftol': 1e-15})
+        if nobounds:
+            res = minimize(cost_func, v0, args=info)
+        else:
+            # res = minimize(cost_func, v0, args=info, bounds=bounds, method='Nelder-Mead', options={
+            #                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-8, 'fatol': 1e-10})
+            res = minimize(cost_func, v0, args=info, bounds=bounds, method='SLSQP', options={
+                           'disp': True, 'ftol': 1e-10, 'maxiter': 1000, 'eps': 1e-8})
+            # res = minimize(cost_func, v0, args=info, bounds=bounds, options={
+            #                'disp': 1, 'gtol': 1e-15, 'ftol': 1e-15})
         t1 = time()
         if self.verbosity:
             print(f"Equalization took {t1 - t0} seconds.")
@@ -107,6 +117,86 @@ class HubbardParamEqualizer(MLWF):
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, info
+
+# ================ TEST MYSTIC =====================
+
+    def equalzie_mystic(self,
+                        target: str = 'UT',
+                        weight: np.ndarray = np.ones(3),
+                        random: bool = False,
+                        callback: bool = False):
+        if self.verbosity:
+            print(f"Equalizing {target}.")
+        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
+
+        res = self.singleband_Hubbard(u=u, output_unitary=True)
+        if u:
+            A, U, V = res
+        else:
+            A, V = res
+            U = None
+
+        if fix_u:
+            Utarget = np.mean(U)
+        else:
+            Utarget = None
+        if t:
+            nnt = self.nn_tunneling(A)
+            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+            if not fix_t:
+                txTarget, tyTarget = None, None
+        else:
+            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+        if fix_v:
+            Vtarget = np.mean(np.real(np.diag(A)))
+        else:
+            Vtarget = None
+
+        # Voff_bak = self.Voff
+        # ls_bak = self.trap_centers
+        # w_bak = self.waists
+        v0, bounds = self.init_guess(random=random)
+
+        # Decide if each step cost function used the last step's unitary matrix
+        # callback can have sometimes very few iteraction steps
+        if callback:
+            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
+            x0 = [V]
+        else:
+            x0 = None
+
+        def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
+            c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
+
+            return c
+
+        info = {'Nfeval': 0,
+                'cost': np.array([]).reshape(0, 3),
+                'ctot': np.array([]),
+                'fval': np.array([]),
+                'diff': np.array([]),
+                'x': np.array([]).reshape(0, *v0.shape)}
+
+        t0 = time()
+
+
+
+        t1 = time()
+        if self.verbosity:
+            print(f"Equalization took {t1 - t0} seconds.")
+
+        trap_depth = res.x[:self.Nindep]
+        trap_waist_ratio = res.x[self.Nindep:3 *
+                                 self.Nindep].reshape(self.Nindep, 2)
+        trap_center = res.x[3 * self.Nindep:].reshape(self.Nindep, 2)
+        self.symm_unfold(self.Voff, trap_depth)
+        self.symm_unfold(self.waists, trap_waist_ratio)
+        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+        self.update_lattice(self.trap_centers)
+        return self.Voff, self.waists, self.trap_centers, info
+
+# ================ TEST OVER =====================
 
     def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
         u, t, v = False, False, False
