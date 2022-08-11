@@ -239,7 +239,7 @@ class MLWF(DVR):
         return xlinks, ylinks, nntx, nnty
 
 
-def eigen_basis(dvr: MLWF):
+def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
     # Find eigenbasis of symmetry block diagonalized Hamiltonian
     k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
@@ -316,7 +316,7 @@ def locality_mat(dvr: MLWF, W, parity):
 
     R = []
 
-    # For calculation keeping only p_z = 1 sector,
+    # For 2D lattice band building keep single p_z = 1 or -1 sector,
     # Z is always zero. Explained below.
     for i in range(dim - 1):
         if dvr.nd[i]:
@@ -328,8 +328,7 @@ def locality_mat(dvr: MLWF, W, parity):
                 # As 1 and -1 sector have a dimension difference,
                 # the matrix X is alsways a n-diagonal matrix
                 # with n-by-n+1 or n+1-by-n dimension
-                # So, Z is always zero, if we only use states in
-                # p_z = 1 sectors.
+                # So, Z is always zero, as we only keep single p_z sector
                 x = np.arange(1, dvr.n[i] + 1) * dvr.dx[i]
                 lenx = len(x)
                 idx = np.roll(np.arange(dim, dtype=int), -i)
@@ -577,7 +576,7 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
 def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
     V = np.zeros((len(x[0]), len(x[1]), len(x[2]), p.shape[0]))
     for i in range(p.shape[0]):
-        V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], *x, p[i, :])[..., 0]
+        V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], x, p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 

@@ -10,7 +10,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
-from numba import njit, jit, int8, int32, int64, float32, float64, complex64, complex128
+from numba import njit, guvectorize, int64, float64, complex128
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
@@ -276,7 +276,7 @@ def Vmat(dvr: DVR):
 
 def psi(n: np.ndarray, dx: np.ndarray,
         W: np.ndarray,
-        x, y, z,
+        x: list[np.ndarray, np.ndarray, np.ndarray],
         p: np.ndarray = np.zeros(dim,
                                  dtype=int)) -> np.ndarray:
     init = get_init(n, p)
@@ -286,10 +286,14 @@ def psi(n: np.ndarray, dx: np.ndarray,
     deltax = dx.copy()
     nd = deltax == 0
     deltax[nd] = 1
-    xn = [np.arange(init[i], n[i] + 1) for i in range(dim)]
-    V = map(delta, p, [x / deltax[0], y / deltax[1], z / deltax[2]], xn)
-    # if W.ndim < 4:
-    #     W = W[..., *[None for i in range(4-W.ndim)]]
+    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(dim)]
+    x = [x[i] / deltax[i] for i in range(dim)]
+    # map object itself is not a list, but we can unpacked it by *V
+    V = map(delta, p, x, xn)
+    # ufunc of list of different length of arrays are not supported by numpy
+    # vd = np.vectorize(delta, signature='(),(m),(n)->(m,n)')
+    # V = vd(p, x, xn)
+    # V = delta(p, x, xn)
     if W.ndim == 3:
         W = W[..., None]
     psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmno', *V, W)
@@ -305,6 +309,17 @@ def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:
         if p == 1:
             Wx[:, 0] /= np.sqrt(2)
     return Wx
+# @guvectorize([(int64, float64[:], float64[:], float64[:, :])], '(),(m),(n)->(m,n)', target='parallel')
+# def delta(p: int, x: np.ndarray, xn: np.ndarray, Wx):
+#     # Symmetrized sinc DVR basis funciton, x in unit of dx
+#     x = x.copy()
+#     xn = xn.copy()
+#     Wx = np.sinc(x.reshape(-1, 1) - xn.reshape(1, -1))
+#     if p != 0:
+#         Wx += p * np.sinc(x.reshape(-1, 1) + xn.reshape(1, -1))
+#         Wx /= np.sqrt(2)
+#         if p == 1:
+#             Wx[:, 0] /= np.sqrt(2)
 
 
 def kinetic_offdiag(T: np.ndarray) -> np.ndarray:
