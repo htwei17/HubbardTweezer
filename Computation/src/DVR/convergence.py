@@ -1,6 +1,3 @@
-from mimetypes import init
-from statistics import mode
-from tkinter import N
 import numpy as np
 import scipy.linalg as la
 # import scipy.sparse.linalg as sla

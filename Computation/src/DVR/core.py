@@ -1,4 +1,3 @@
-import imp
 from numbers import Number
 from typing import Iterable
 import numpy as np
@@ -10,7 +9,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
-from numba import njit, guvectorize, int64, float64, complex128
+# from numba import njit, guvectorize, int64, float64, complex128
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter

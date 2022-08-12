@@ -5,7 +5,6 @@ from tools.fix_phase import fix_phase
 from scipy.integrate import romb
 from time import time
 import itertools
-import sparse
 import numpy.linalg as la
 
 import torch
