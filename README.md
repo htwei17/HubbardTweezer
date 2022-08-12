@@ -29,6 +29,7 @@
 * `DVR/output.py`: output storage `.h5` file interal structure definitions
 * `DVR_exe.py`: execute script of DVR dynamics on command line
 
+
 ### Hubbard parameters
 
 * The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices

@@ -1,10 +1,10 @@
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
-from tools.fix_phase import fix_phase
 from scipy.integrate import romb
 from time import time
 import itertools
+# import sparse
 import numpy.linalg as la
 
 import torch
@@ -14,6 +14,7 @@ import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
+# from tools.fix_phase import fix_phase
 # from tools.simdiag import simdiag
 # from tools.jacobi_angles import jacobi_angles
 

@@ -1,8 +1,7 @@
 import numpy as np
 import numpy.linalg as la
 from typing import Callable, Iterable, Union
-from opt_einsum import contract
-from pyparsing import Char
+# from opt_einsum import contract
 from scipy.integrate import romb
 from scipy.optimize import minimize, shgo
 
