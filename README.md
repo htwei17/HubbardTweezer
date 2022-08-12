@@ -10,6 +10,17 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 2. Solve Hubbard parameters of 2d arbitrary geometry
 3. Equalize Hubbard parameters over all sites
 
+## Dependencies
+
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch) (or [`autograd`](https://github.com/HIPS/autograd) by your preference)
+* [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
+* [`graphviz`](https://github.com/xflr6/graphviz) and [`networkx`](https://github.com/networkx/networkx)
+* `numpy`
+* `scipy`
+* `matplotlib`
+* `pympler`
+* `h5py`
+
 ## Modules
 
 ### DYR dynamics
@@ -21,11 +32,10 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 
 ### Hubbard parameters
 
-* Dependency: [`pymanopt`](https://github.com/pymanopt/pymanopt)
 * The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices
 * `Hubbard/core.py` : `MLWF` class to construct maximally localized Wannier funcitons
 * `Hubbard/equalizer.py` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
-* `Hubbard/plot.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs
+* `Hubbard/plot.py` and `Hubbard/graph.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs, their difference is choice of graph plot packages
 * `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
 
 ### Test and executables
