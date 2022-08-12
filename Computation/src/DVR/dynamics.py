@@ -128,7 +128,7 @@ class DVRdynamics(DVR):
         sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
         filename = '{} {} {} {:g} {:g} {:.2g} {:.2g} '.format(
-            self.n[self.nd], self.dx[self.nd], self.w * self.wy * 1E9,
+            self.n[self.nd], self.dx[self.nd], self.w * self.wxy * 1E9,
             self.V0 / self.kHz_2p, self.freq, self.stop_time, t_step)
         for str in (self.model, rt_str, sym_str, ab_str, sm_str):
             filename += str

@@ -1,3 +1,4 @@
+import imp
 from numbers import Number
 from typing import Iterable
 import numpy as np
@@ -9,6 +10,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
+from numba import njit, guvectorize, int64, float64, complex128
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
@@ -113,7 +115,7 @@ class DVR:
             zR=None,  # Rayleigh range input by hand
             symmetry: bool = False,
             absorber: bool = False,
-            ab_param=(57.04, 1),
+            ab_param: tuple[float, float] = (57.04, 1),
             sparse: bool = False,
             verbosity: int = 2  # How much information to print
     ) -> None:
@@ -124,7 +126,7 @@ class DVR:
         self.model = model
         self.absorber = absorber
         self.symmetry = symmetry
-        self.nd = n != 0  # Nonzero dimensions
+        self.nd: np.ndarray = n != 0  # Nonzero dimensions
         self.sparse = sparse
         self.verbosity = verbosity
 
@@ -151,45 +153,45 @@ class DVR:
         if model == 'Gaussian':
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
-            self.m = atom * amu  # Atom mass, in unit of electron mass
+            self.m: float = atom * amu  # Atom mass, in unit of electron mass
             self.l = laser * 1E-9  # Laser wavelength, in unit of Bohr radius
             self.kHz = 1E3  # Make in the frequency unit of kHz
             self.kHz_2p = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
-            self.V0 = trap[
+            self.V0: float = trap[
                 0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
 
             # Input in unit of nm, converted to m
             if isinstance(trap[1], Iterable):  # Convert to np.array
                 self.w = np.array(trap[1][0]) * 1E-9
-                self.wy = np.array(trap[1]) / trap[1][0]  # wi/wx
+                self.wxy: np.ndarray = np.array(trap[1]) / trap[1][0]  # wi/wx
             elif isinstance(trap[1], Number):  # Number convert to np.array
-                self.w = trap[1] * 1E-9
-                self.wy = np.ones(2)
+                self.w = np.array([trap[1]]) * 1E-9
+                self.wxy = np.ones(2)
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
             # Rayleigh range, a vector of (zRx, zRy), in unit of wx
-            self.zR = np.pi * self.w * self.wy**2 / self.l
+            self.zR = np.pi * self.w * self.wxy**2 / self.l
             # Rayleigh range input by hand, in unit of wx
             if isinstance(zR, Number):
-                self.zR = zR * np.ones(2) / self.w
+                self.zR: np.ndarray = zR * np.ones(2) / self.w
             elif isinstance(zR, Iterable):
-                self.zR = zR / self.w
+                self.zR: np.ndarray = np.array(zR) / self.w
             # "Effective" Rayleigh range
-            self.zR0 = np.prod(self.zR) / la.norm(self.zR)
+            self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
 
             # Trap frequencies
-            self.omega = np.array([*(2 / self.wy), 1 / self.zR0])
+            self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
             self.omega *= np.sqrt(avg * self.hb * self.V0 / self.m) / self.w
             # Trap harmonic lengths
-            self.hl = np.sqrt(self.hb / (self.m * self.omega))
+            self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
 
             if self.verbosity:
                 print("param_set: trap parameter V0={}kHz w={}nm".format(
                     trap[0], trap[1]))
         elif model == 'sho':
             # Harmonic parameters
-            self.hb = 1  # Reduced Planck constant
+            self.hb = 1.0  # Reduced Planck constant
             self.omega = np.ones(dim)  # Harmonic frequencies
             self.m = 1.0
             self.w = 1.0
@@ -197,8 +199,8 @@ class DVR:
             self.V0 = 1.0
             self.kHz = 1.0
             self.kHz_2p = 1.0
-            self.hl = np.sqrt(self.hb /
-                              (self.m * self.omega))  # Harmonic lengths
+            self.hl: np.ndarray = np.sqrt(self.hb /
+                                          (self.m * self.omega))  # Harmonic lengths
 
             print("param_set: trap parameter V0={} w={}".format(
                 self.V0, self.w))
@@ -219,8 +221,8 @@ class DVR:
         if self.model == 'Gaussian':
             # Tweezer potential funciton, Eq. 2 in PRA
             d0 = 1 + (z / self.zR0)**2 / 2
-            dxy = (x / self.wy[0])**2 / (1 + (z / self.zR[0])**2)
-            dxy += (y / self.wy[1])**2 / (1 + (z / self.zR[1])**2)
+            dxy = (x / self.wxy[0])**2 / (1 + (z / self.zR[0])**2)
+            dxy += (y / self.wxy[1])**2 / (1 + (z / self.zR[1])**2)
             V = -1 / d0 * np.exp(-2 * dxy)
         elif self.model == 'sho':
             # Harmonic potential function
@@ -244,9 +246,8 @@ class DVR:
         return V
 
 
-def get_init(n, p):
-    init = np.zeros(n.shape, dtype=int)
-    init[p == 0] = -n[p == 0]
+def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
+    init = -n
     init[p == 1] = 0
     init[p == -1] = 1
     return init
@@ -273,8 +274,11 @@ def Vmat(dvr: DVR):
     return V, no
 
 
-def psi(n, dx, W: np.ndarray, x, y, z, p=np.zeros(dim,
-                                                  dtype=int)) -> np.ndarray:
+def psi(n: np.ndarray, dx: np.ndarray,
+        W: np.ndarray,
+        x: list[np.ndarray, np.ndarray, np.ndarray],
+        p: np.ndarray = np.zeros(dim,
+                                 dtype=int)) -> np.ndarray:
     init = get_init(n, p)
     # V = np.sum(
     #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
@@ -282,31 +286,43 @@ def psi(n, dx, W: np.ndarray, x, y, z, p=np.zeros(dim,
     deltax = dx.copy()
     nd = deltax == 0
     deltax[nd] = 1
-    xn = [np.arange(init[i], n[i] + 1) for i in range(dim)]
-    V = delta(p, [x / deltax[0], y / deltax[1], z / deltax[2]], xn)
-    # if W.ndim < 4:
-    #     W = W[..., *[None for i in range(4-W.ndim)]]
+    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(dim)]
+    x = [x[i] / deltax[i] for i in range(dim)]
+    # map object itself is not a list, but we can unpacked it by *V
+    V = map(delta, p, x, xn)
+    # ufunc of list of different length of arrays are not supported by numpy
+    # vd = np.vectorize(delta, signature='(),(m),(n)->(m,n)')
+    # V = vd(p, x, xn)
+    # V = delta(p, x, xn)
     if W.ndim == 3:
         W = W[..., None]
-    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmnp', *V, W)
+    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmno', *V, W)
     return psi
 
 
-def delta(p, x, xn):
-    # Symmetrized sinc DVR basis funciton, x, y, z are in unit of dx
-    W = []
-    for i in range(dim):
-        Wx = np.sinc(x[i][:, None] - xn[i][None])
-        if p[i] != 0:
-            Wx += p[i] * np.sinc(x[i][:, None] + xn[i][None])
-            Wx /= np.sqrt(2)
-            if p[i] == 1:
-                Wx[:, 0] /= np.sqrt(2)
-        W.append(Wx)
-    return W
+def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:
+    # Symmetrized sinc DVR basis funciton, x in unit of dx
+    Wx = np.sinc(x[:, None] - xn[None])
+    if p != 0:
+        Wx += p * np.sinc(x[:, None] + xn[None])
+        Wx /= np.sqrt(2)
+        if p == 1:
+            Wx[:, 0] /= np.sqrt(2)
+    return Wx
+# @guvectorize([(int64, float64[:], float64[:], float64[:, :])], '(),(m),(n)->(m,n)', target='parallel')
+# def delta(p: int, x: np.ndarray, xn: np.ndarray, Wx):
+#     # Symmetrized sinc DVR basis funciton, x in unit of dx
+#     x = x.copy()
+#     xn = xn.copy()
+#     Wx = np.sinc(x.reshape(-1, 1) - xn.reshape(1, -1))
+#     if p != 0:
+#         Wx += p * np.sinc(x.reshape(-1, 1) + xn.reshape(1, -1))
+#         Wx /= np.sqrt(2)
+#         if p == 1:
+#             Wx[:, 0] /= np.sqrt(2)
 
 
-def kinetic_offdiag(T: np.ndarray):
+def kinetic_offdiag(T: np.ndarray) -> np.ndarray:
     # Kinetic energy matrix off-diagonal elements
     non0 = T != 0  # To avoid warning on 0-divide-0
     T[non0] = 2 * np.power(-1., T[non0]) / T[non0]**2
@@ -321,7 +337,7 @@ def Tmat_1d(dvr: DVR, i: int):
     dx = dvr.dx[i] * dvr.w
     p = dvr.p[i]
 
-    init = get_init(np.array([n]), p)[0]
+    init = get_init(np.array([n]), np.array([p]))[0]
 
     # Off-diagonal part
     T0 = np.arange(init, n + 1, dtype=float)[None]

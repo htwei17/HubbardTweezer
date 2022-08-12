@@ -74,9 +74,9 @@ def lattice_graph(size: np.ndarray,
         nodes = nodes[~hole, :]
         links = shift_links(links, hole_idx)
 
-    reflection = build_reflection(nodes, shape)
+    reflection, inv_coords = build_reflection(nodes, shape)
     # TODO: consider what we can do with multi-fold rotations
-    return nodes, links, reflection
+    return nodes, links, reflection, inv_coords
 
 
 def ring_coord(size: int) -> np.ndarray:
@@ -235,7 +235,7 @@ def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     return links
 
 
-def build_reflection(graph, shape='square'):
+def build_reflection(graph, shape='c4'):
     # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other
@@ -248,6 +248,7 @@ def build_reflection(graph, shape='square'):
 
     nsec = 4  # Number of sectors
     reflection = np.array([], dtype=int).reshape(0, nsec)
+    inv_coords = np.array([], dtype=bool).reshape(0, 2)
     for i in range(graph.shape[0]):
         if all(graph[i, :] <= 0):
             pp = i  # [1 1] sector
@@ -261,4 +262,6 @@ def build_reflection(graph, shape='square'):
                 np.prod(np.array([[-1, -1]]) * graph == graph[i, :],
                         axis=1))[0][0]  # [-1 -1] sector
             reflection = np.append(reflection, [[pp, mp, pm, mm]], axis=0)
-    return reflection
+            inv_coords = np.append(
+                inv_coords, np.array([graph[i, :] == 0]), axis=0)
+    return reflection, inv_coords

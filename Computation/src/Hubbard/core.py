@@ -9,16 +9,14 @@ import sparse
 import numpy.linalg as la
 
 import torch
-
-# import autograd
 import pymanopt
 import pymanopt.manifolds
 import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
-from tools.simdiag import simdiag
-from tools.jacobi_angles import jacobi_angles
+# from tools.simdiag import simdiag
+# from tools.jacobi_angles import jacobi_angles
 
 
 class MLWF(DVR):
@@ -67,9 +65,10 @@ class MLWF(DVR):
                 # For squre
                 lc = (lc, lc)
 
-        self.trap_centers, self.links, self.reflection = lattice_graph(
+        self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape
         )
+        self.trap_centers = self.tc0.copy()
         self.Nsite = self.trap_centers.shape[0]
 
         self.Nindep = self.reflection.shape[
@@ -98,7 +97,7 @@ class MLWF(DVR):
         self.update_R0(R0, dx)
 
     def update_lattice(self, tc: np.ndarray):
-        # Update DVR grids when self.graph is updated
+        # Update DVR grids when trap centers are shifted
 
         self.trap_centers = tc.copy()
         dx = self.dx.copy()
@@ -146,6 +145,9 @@ class MLWF(DVR):
         self.R00 = self.R0.copy()
         self.create_lattice(lattice, lc, shape)
         self.Voff = np.ones(self.Nsite)  # Set default trap offset
+        # Set waist adjustment factor
+        self.wxy0 = self.wxy.copy()
+        self.waists = np.ones((self.Nsite, 2))
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
@@ -159,6 +161,7 @@ class MLWF(DVR):
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
+                self.wxy = self.wxy0 * self.waists[i]
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
@@ -211,11 +214,10 @@ class MLWF(DVR):
         parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
         for row in range(self.reflection.shape[0]):
             if graph:  # Symmetrize graph node coordinates
-                # NOTE: what if repeated elements in reflection?
-                #       numpy will take the last assigned value
-                #       It doen't matter for cost funciton validity
-                #       but it does matter for graph symmetry
-                target[self.reflection[row, :]] = parity * info[row][None]
+                # NOTE: repeated nodes will be removed
+                info[row][self.inv_coords[row]] = 0
+                pinfo = parity * info[row][None]
+                target[self.reflection[row, :]] = pinfo
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
 
@@ -237,16 +239,10 @@ class MLWF(DVR):
         return xlinks, ylinks, nntx, nnty
 
 
-def eigen_basis(dvr: MLWF):
+def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
     # Find eigenbasis of symmetry block diagonalized Hamiltonian
     k = dvr.Nsite * dvr.bands
     if dvr.symmetry:
-        # The code is designed for 1D and 2D lattice, and
-        # we always leave z direction to be in even sector.
-        # So all sectors are [x x 1] with x collected below.
-        # This is because the energy cost to go higher level
-        # of z direction is of ~5kHz, way above the bandwidth ~200Hz.
-
         p_list = sector(dvr)
         E_sb = np.array([])
         W_sb = []
@@ -320,7 +316,7 @@ def locality_mat(dvr: MLWF, W, parity):
 
     R = []
 
-    # For calculation keeping only p_z = 1 sector,
+    # For 2D lattice band building keep single p_z = 1 or -1 sector,
     # Z is always zero. Explained below.
     for i in range(dim - 1):
         if dvr.nd[i]:
@@ -332,8 +328,7 @@ def locality_mat(dvr: MLWF, W, parity):
                 # As 1 and -1 sector have a dimension difference,
                 # the matrix X is alsways a n-diagonal matrix
                 # with n-by-n+1 or n+1-by-n dimension
-                # So, Z is always zero, if we only use states in
-                # p_z = 1 sectors.
+                # So, Z is always zero, as we only keep single p_z sector
                 x = np.arange(1, dvr.n[i] + 1) * dvr.dx[i]
                 lenx = len(x)
                 idx = np.roll(np.arange(dim, dtype=int), -i)
@@ -468,7 +463,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
 
 
 def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
-    # It's proven above that U can be purely real 
+    # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
@@ -579,19 +574,19 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
 
 
 def wannier_func(dvr, W, U, p, x: Iterable) -> np.ndarray:
-    V = np.array([]).reshape(len(x[0]), len(x[1]), len(x[2]), 0)
+    V = np.zeros((len(x[0]), len(x[1]), len(x[2]), p.shape[0]))
     for i in range(p.shape[0]):
-        V = np.append(V, psi(dvr.n, dvr.dx, W[i], *x, p[i, :]), axis=dim)
+        V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], x, p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
-def intgrl3d(dx, integrand):
+def intgrl3d(dx: list[float, float, float], integrand: np.ndarray) -> float:
     for i in range(dim):
         if dx[i] > 0:
             integrand = romb(integrand, dx[i], axis=0)
         else:
-            integrand = integrand[0, :]
+            integrand = integrand[0]
     return integrand
 
 
