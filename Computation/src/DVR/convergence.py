@@ -1,12 +1,9 @@
-from mimetypes import init
-from statistics import mode
-from tkinter import N
 import numpy as np
 import scipy.linalg as la
 # import scipy.sparse.linalg as sla
 # import scipy.sparse as sp
 # import sparse
-from opt_einsum import contract
+# from opt_einsum import contract
 
 from .core import *
 

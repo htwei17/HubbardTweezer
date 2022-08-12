@@ -20,6 +20,7 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 * `matplotlib`
 * `pympler`
 * `h5py`
+* `configobj`
 
 ## Modules
 
@@ -41,7 +42,6 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 ### Test and executables
 
 * `*.ipynb` are for test use. Most are self-explained by their title cells.
-
 
 ## TODO
 

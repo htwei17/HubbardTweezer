@@ -5,7 +5,6 @@ Hao-Tian Wei <weihaotian776@gmail.com?
 """
 __all__ = ['jacobi_angles']
 
-import imp
 import numpy as np
 import numpy.linalg as la
 

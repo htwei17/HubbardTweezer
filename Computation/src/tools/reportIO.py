@@ -10,6 +10,7 @@ tweezers Hubbard parameters calculators
 
 from configobj import ConfigObj
 import numpy as np
+
 global reportObj
 
 
@@ -135,7 +136,7 @@ def create_report(report, section: str, **kwargs) -> None:
         print("Created section: " + section)
 
     for key, value in kwargs.items():
-        #if type(value) == list or np.ndarray:
+        # if type(value) == list or np.ndarray:
         try:
             report[section][key] = value.tolist()
         except:

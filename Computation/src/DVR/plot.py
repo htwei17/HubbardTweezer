@@ -3,12 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from scipy.optimize import curve_fit
-from scipy.stats.mstats import gmean
 import matplotlib as mpl
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from cycler import cycler
-from scipy.special import erf
 
 from .output import DVRdynaOutput
 from .dynamics import *
