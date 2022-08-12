@@ -18,6 +18,7 @@
 * `matplotlib`
 * `pympler`
 * `h5py`
+* `configobj`
 
 ## Modules
 
