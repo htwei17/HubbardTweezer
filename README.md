@@ -21,7 +21,7 @@ Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
 
 ### Hubbard parameters
 
-* Prerequisite: [`pymanopt`](https://github.com/pymanopt/pymanopt)
+* Dependency: [`pymanopt`](https://github.com/pymanopt/pymanopt)
 * The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices
 * `Hubbard/core.py` : `MLWF` class to construct maximally localized Wannier funcitons
 * `Hubbard/equalizer.py` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
