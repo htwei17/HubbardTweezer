@@ -64,6 +64,7 @@ class HubbardGraph(HubbardParamEqualizer):
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
         # NOTE: explicit square lattice geometry somewhat assumed
+        # FIXME: 3x2 lattice error as this gives an index 6
         if limit + 2 > self.Nsite:
             limit = self.Nsite - 2
         if center >= self.Nsite:
@@ -108,8 +109,7 @@ class HubbardGraph(HubbardParamEqualizer):
         for i in range(len(link_list)):
             el = link_list[i]
             cs = "arc3"
-            if self.lattice_dim == 1 and not any(
-                    (el == self.links).all(axis=1)):
+            if not any((el == self.links).all(axis=1)):
                 cs = "arc3,rad=0.2"
             nx.draw_networkx_edges(self.graph,
                                    self.pos,
@@ -128,15 +128,6 @@ class HubbardGraph(HubbardParamEqualizer):
                                      font_color=[0.256, 0.439, 0.588])
         if label == 'param':
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
-            # self.pos = dict(
-            #     (n, self.trap_centers[n] + np.array((0, -0.0))) for n in self.graph.nodes())
-            # self.node_label = dict(
-            #     (n, f'{self.U[i]:.3g}') for n in self.graph.nodes)
-            # nx.draw_networkx_labels(self.graph,
-            #                         pos=self.pos,
-            #                         font_color='#FF8000',
-            #                         font_size=8,
-            #                         labels=self.node_label)
         plt.axis('off')
         plt.savefig(
             f'{self.lattice} graph {self.dim}d {label} {self.eq_label}.pdf')
