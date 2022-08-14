@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import matplotlib as mpl
+from scipy.stats.mstats import gmean
 
 from .equalizer import *
 
@@ -44,10 +45,10 @@ class HubbardGraph(HubbardParamEqualizer):
             for edge in self.graph.edges)
         max_len = max(dict(self.graph.edges).items(),
                       key=lambda x: x[1]["weight"])[-1]["weight"]
-        self.edge_alpha = [
+        self.edge_alpha = np.array([
             self.graph[edge[0]][edge[1]]["weight"] / max_len
             for edge in self.graph.edges
-        ]
+        ])
 
     def update_node_weight(self, label='param'):
         if label == 'param':
@@ -59,7 +60,9 @@ class HubbardGraph(HubbardParamEqualizer):
             # Label trap offset
             self.node_label = dict(
                 (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
-        self.node_size = [i**10 * 600 for i in self.Voff]
+        self.node_size = [i**2 * 600 for i in gmean(self.waists, axis=1)]
+        max_depth = np.max(abs(self.Voff))
+        self.node_alpha = self.Voff / max_depth
 
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
@@ -99,6 +102,7 @@ class HubbardGraph(HubbardParamEqualizer):
         nx.draw_networkx_nodes(self.graph,
                                pos=self.pos,
                                node_color='#99CCFF',
+                               alpha=self.node_alpha ** 40,
                                node_size=self.node_size)
         nx.draw_networkx_labels(self.graph,
                                 pos=self.pos,
