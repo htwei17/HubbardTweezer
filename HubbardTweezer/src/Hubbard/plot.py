@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 import matplotlib as mpl
+from scipy.stats.mstats import gmean
 
 from .equalizer import *
 
@@ -44,10 +45,10 @@ class HubbardGraph(HubbardParamEqualizer):
             for edge in self.graph.edges)
         max_len = max(dict(self.graph.edges).items(),
                       key=lambda x: x[1]["weight"])[-1]["weight"]
-        self.edge_alpha = [
+        self.edge_alpha = np.array([
             self.graph[edge[0]][edge[1]]["weight"] / max_len
             for edge in self.graph.edges
-        ]
+        ])
 
     def update_node_weight(self, label='param'):
         if label == 'param':
@@ -59,11 +60,14 @@ class HubbardGraph(HubbardParamEqualizer):
             # Label trap offset
             self.node_label = dict(
                 (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
-        self.node_size = [i**10 * 600 for i in self.Voff]
+        self.node_size = [i**2 * 600 for i in gmean(self.waists, axis=1)]
+        max_depth = np.max(abs(self.Voff))
+        self.node_alpha = self.Voff / max_depth
 
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
         # NOTE: explicit square lattice geometry somewhat assumed
+        # FIXME: 3x2 lattice error as this gives an index 6
         if limit + 2 > self.Nsite:
             limit = self.Nsite - 2
         if center >= self.Nsite:
@@ -98,6 +102,7 @@ class HubbardGraph(HubbardParamEqualizer):
         nx.draw_networkx_nodes(self.graph,
                                pos=self.pos,
                                node_color='#99CCFF',
+                               alpha=self.node_alpha ** 40,
                                node_size=self.node_size)
         nx.draw_networkx_labels(self.graph,
                                 pos=self.pos,
@@ -108,8 +113,7 @@ class HubbardGraph(HubbardParamEqualizer):
         for i in range(len(link_list)):
             el = link_list[i]
             cs = "arc3"
-            if self.lattice_dim == 1 and not any(
-                    (el == self.links).all(axis=1)):
+            if not any((el == self.links).all(axis=1)):
                 cs = "arc3,rad=0.2"
             nx.draw_networkx_edges(self.graph,
                                    self.pos,
@@ -128,15 +132,6 @@ class HubbardGraph(HubbardParamEqualizer):
                                      font_color=[0.256, 0.439, 0.588])
         if label == 'param':
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
-            # self.pos = dict(
-            #     (n, self.trap_centers[n] + np.array((0, -0.0))) for n in self.graph.nodes())
-            # self.node_label = dict(
-            #     (n, f'{self.U[i]:.3g}') for n in self.graph.nodes)
-            # nx.draw_networkx_labels(self.graph,
-            #                         pos=self.pos,
-            #                         font_color='#FF8000',
-            #                         font_size=8,
-            #                         labels=self.node_label)
         plt.axis('off')
         plt.savefig(
             f'{self.lattice} graph {self.dim}d {label} {self.eq_label}.pdf')
