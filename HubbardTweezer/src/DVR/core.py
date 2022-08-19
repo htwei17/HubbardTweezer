@@ -186,8 +186,8 @@ class DVR:
             self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
 
             if self.verbosity:
-                print("param_set: trap parameter V0={}kHz w={}nm".format(
-                    trap[0], trap[1]))
+                print(
+                    f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
         elif model == 'sho':
             # Harmonic parameters
             self.hb = 1.0  # Reduced Planck constant
@@ -201,8 +201,7 @@ class DVR:
             self.hl: np.ndarray = np.sqrt(self.hb /
                                           (self.m * self.omega))  # Harmonic lengths
 
-            print("param_set: trap parameter V0={} w={}".format(
-                self.V0, self.w))
+            print(f"param_set: trap parameter V0={avg * self.V0} w={self.w}")
 
         self.R0 *= self.nd
         self.R *= self.nd

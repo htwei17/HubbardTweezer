@@ -1,3 +1,4 @@
+from ctypes.wintypes import PFILETIME
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
@@ -89,7 +90,7 @@ class MLWF(DVR):
             print(f"lattice: lattice shape is {shape}")
             print(f"lattice: Full lattice sizes: {lattice}")
             if self.verbosity > 1:
-                print(f"lattice: lattice constants: {lc}w")
+                print(f"lattice: lattice constants: {lc[:self.lattice_dim]}w")
                 print(f"lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range * lc + self.R00
@@ -137,7 +138,7 @@ class MLWF(DVR):
         n[:dim] = N
         absorber = kwargs.get('absorber', False)
         if absorber:
-            TypeError(
+            raise TypeError(
                 "Absorber is not supported for Wannier Function construction!")
 
         super().__init__(n, *args, **kwargs)

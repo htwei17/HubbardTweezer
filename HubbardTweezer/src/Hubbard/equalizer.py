@@ -28,16 +28,23 @@ class HubbardParamEqualizer(MLWF):
 
         # set equalization label in file output
         self.eq_label = 'neq'
-        self.waist_dir = waist
-        if self.lattice_dim > 1 and self.waist_dir != None \
-                and self.waist_dir != 'xy':
-            self.waist_dir = 'xy'
+        self.waist_dir = None
+
         if equalize:
             self.eq_label = eqtarget
-            # self.homogenize(eqtarget, fixed)
-            self.equalzie(eqtarget, random=True, callback=True)
 
-    def equalzie(self,
+            self.waist_dir = waist
+            if self.lattice_dim > 1 and self.waist_dir != None \
+                    and self.waist_dir != 'xy':
+                self.waist_dir = 'xy'
+
+            # print(f"Equalizing {self.eq_label}.")
+            # print(f"Waist direction: {self.waist_dir}.")
+
+            # self.homogenize(eqtarget, fixed)
+            self.equalize(eqtarget, random=False, callback=True)
+
+    def equalize(self,
                  target: str = 'uvt',
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
@@ -86,7 +93,6 @@ class HubbardParamEqualizer(MLWF):
         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
                                    (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
-
             return c
 
         info = {'Nfeval': 0,

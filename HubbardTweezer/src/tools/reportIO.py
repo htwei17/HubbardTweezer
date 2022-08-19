@@ -8,6 +8,7 @@ This is a module to read and write formatted input files for the optical
 tweezers Hubbard parameters calculators
 """
 
+from typing import ItemsView, Iterable
 from configobj import ConfigObj
 import numpy as np
 
@@ -24,40 +25,49 @@ def get_report(report) -> ConfigObj:
 ############ READING THE REPORT ############
 def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
     # Return a float in a section from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = float(report[section][key])
     except:  # If the key is not in the report
-        ret = default
-        if report[section][key] == 'None':  # If None is input
-            ret = None
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
 def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
     # Return an int in a section from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = int(report[section][key])
-    except:
-        ret = default
-        if report[section][key] == 'None':  # If None is input
-            ret = None
+    except:  # If the key is not in the report
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
 def s(report: ConfigObj, section: str, key=None, default='') -> str:
     # Return a string from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = str(report[section][key])
-    except:
-        ret = default
-        if report[section][key] == 'None':  # If None is input
-            ret = None
+    except:  # If the key is not in the report
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
@@ -65,11 +75,16 @@ def a(report: ConfigObj,
       section: str,
       key=None,
       default=np.array([])) -> np.ndarray:
-    # Return an array from the already loaded report
+    # Return a numerical array from the already loaded report
     # NOTE: only works for 1, 2 and 3D arrays
     try:
         # For 1D arrays
-        ret = np.array(report[section][key]).astype(float)
+        # In case somebody writes "a = 4" instead of "a = 4,"
+        # s.t. the object is a float instead of a string
+        if isinstance(report[section][key], Iterable):
+            ret = np.array(report[section][key]).astype(float)
+        else:
+            ret = np.array([report[section][key]]).astype(float)
     except:
         try:
             # For 2D arrays
@@ -109,26 +124,32 @@ def a(report: ConfigObj,
                 ret = np.array(ret).reshape(rb, ec, len(ret_3))
             except:
                 # If this is not any array listed above
-                ret = default
-                if report[section][key] == 'None':  # If None is input
-                    ret = None
+                try:
+                    if report[section][key] == 'None':  # If None is input
+                        print('Input is set to None.')
+                        ret = None
+                except:
+                    ret = default
     return ret
 
 
 def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
     # Return an array of booleans from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         dat = report[section][key]
         if isinstance(dat, str):
-            ret = bool(dat)
+            ret = True if dat == 'True' else False
         else:
             ret = np.array([True if x == 'True' else False for x in dat])
     except:
-        ret = default
-        if report[section][key] == 'None':  # If None is input
-            ret = None
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 

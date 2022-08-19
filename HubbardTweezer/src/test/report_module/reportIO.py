@@ -8,6 +8,7 @@ This is a module to read and write formatted input files for the optical
 tweezers Hubbard parameters calculators
 """
 
+from typing import ItemsView, Iterable
 from configobj import ConfigObj
 import numpy as np
 
@@ -74,11 +75,14 @@ def a(report: ConfigObj,
       section: str,
       key=None,
       default=np.array([])) -> np.ndarray:
-    # Return an array from the already loaded report
+    # Return a numerical array from the already loaded report
     # NOTE: only works for 1, 2 and 3D arrays
     try:
         # For 1D arrays
-        ret = np.array(report[section][key]).astype(float)
+        if isinstance(report[section][key], Iterable):
+            ret = np.array(report[section][key]).astype(float)
+        else:
+            ret = np.array([report[section][key]]).astype(float)
     except:
         try:
             # For 2D arrays
@@ -134,7 +138,7 @@ def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
     try:
         dat = report[section][key]
         if isinstance(dat, str):
-            ret = bool(dat)
+            ret = True if dat == 'True' else False
         else:
             ret = np.array([True if x == 'True' else False for x in dat])
     except:
