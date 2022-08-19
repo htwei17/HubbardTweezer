@@ -30,6 +30,8 @@ def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
         ret = float(report[section][key])
     except:  # If the key is not in the report
         ret = default
+        if report[section][key] == 'None':  # If None is input
+            ret = None
     return ret
 
 
@@ -41,6 +43,8 @@ def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
         ret = int(report[section][key])
     except:
         ret = default
+        if report[section][key] == 'None':  # If None is input
+            ret = None
     return ret
 
 
@@ -52,6 +56,8 @@ def s(report: ConfigObj, section: str, key=None, default='') -> str:
         ret = str(report[section][key])
     except:
         ret = default
+        if report[section][key] == 'None':  # If None is input
+            ret = None
     return ret
 
 
@@ -104,6 +110,8 @@ def a(report: ConfigObj,
             except:
                 # If this is not any array listed above
                 ret = default
+                if report[section][key] == 'None':  # If None is input
+                    ret = None
     return ret
 
 
@@ -119,6 +127,8 @@ def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
             ret = np.array([True if x == 'True' else False for x in dat])
     except:
         ret = default
+        if report[section][key] == 'None':  # If None is input
+            ret = None
     return ret
 
 

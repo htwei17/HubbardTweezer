@@ -10,6 +10,7 @@ tweezers Hubbard parameters calculators
 
 from configobj import ConfigObj
 import numpy as np
+
 global reportObj
 
 
@@ -23,34 +24,49 @@ def get_report(report) -> ConfigObj:
 ############ READING THE REPORT ############
 def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
     # Return a float in a section from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = float(report[section][key])
     except:  # If the key is not in the report
-        ret = default
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
 def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
     # Return an int in a section from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = int(report[section][key])
-    except:
-        ret = default
+    except:  # If the key is not in the report
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
 def s(report: ConfigObj, section: str, key=None, default='') -> str:
     # Return a string from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = str(report[section][key])
-    except:
-        ret = default
+    except:  # If the key is not in the report
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
@@ -102,13 +118,18 @@ def a(report: ConfigObj,
                 ret = np.array(ret).reshape(rb, ec, len(ret_3))
             except:
                 # If this is not any array listed above
-                ret = default
+                try:
+                    if report[section][key] == 'None':  # If None is input
+                        print('Input is set to None.')
+                        ret = None
+                except:
+                    ret = default
     return ret
 
 
 def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
     # Return an array of booleans from the already loaded report
-    if (key == None):
+    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         dat = report[section][key]
@@ -117,7 +138,12 @@ def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
         else:
             ret = np.array([True if x == 'True' else False for x in dat])
     except:
-        ret = default
+        try:
+            if report[section][key] == 'None':  # If None is input
+                print('Input is set to None.')
+                ret = None
+        except:
+            ret = default
     return ret
 
 
@@ -135,7 +161,7 @@ def create_report(report, section: str, **kwargs) -> None:
         print("Created section: " + section)
 
     for key, value in kwargs.items():
-        #if type(value) == list or np.ndarray:
+        # if type(value) == list or np.ndarray:
         try:
             report[section][key] = value.tolist()
         except:

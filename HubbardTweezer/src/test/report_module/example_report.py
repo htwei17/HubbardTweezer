@@ -7,7 +7,7 @@ Created on Tue Jun 21 12:20:53 2022
 Example of how to use the report_module.py
 """
 
-import tools.reportIO as rep
+import reportIO as rep
 import numpy as np
 
 filename = 'haotian_example.ini'
