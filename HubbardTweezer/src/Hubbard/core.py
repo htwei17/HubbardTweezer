@@ -229,7 +229,7 @@ class MLWF(DVR):
 
     def xy_links(self, nnt):
         # Distinguish x and y n.n. bonds and target t_x t_y values
-        # Only usable for rectangle latice
+        # FIXME: Only usable for rectangular latice
         xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         ylinks = np.logical_not(xlinks)
         nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links

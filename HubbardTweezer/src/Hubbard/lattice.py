@@ -5,8 +5,7 @@ import numpy as np
 def lattice_graph(size: np.ndarray,
                   shape: str = 'square') -> tuple[np.ndarray, np.ndarray]:
     # Square lattice graph builder
-    # shape: 'square' or 'Lieb'
-    # TODO: add function to equalize other lattices
+    # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
     # nodes: each row is a coordinate (x, y) of one site
     #        indicating the posistion of node (trap center)
@@ -33,6 +32,12 @@ def lattice_graph(size: np.ndarray,
         links = shift_links(links, hole_idx)
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size)
+    elif shape == 'zigzag':
+        # TODO: implement zigzag lattice
+        # FIXME: zigzag has no y-axis symmetry
+        #        we need to add indicator for such cases
+        # NOTE: the code below is not runnable as size-2 will be forced to be 3
+        nodes, links, __ = tri_lattice(np.array([size[0], 2]))
     elif shape == 'honeycomb':
         # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
         size[size < 3] == 3

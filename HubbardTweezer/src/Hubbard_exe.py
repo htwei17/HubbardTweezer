@@ -25,7 +25,7 @@ w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
 m = rep.f(report, "Parameters", "atom_mass", 6.015122)
 zR = rep.f(report, "Parameters", "zR", None)
 l = rep.f(report, "Parameters", "laser_wavelength", 780)
-avg = rep.i(report, "Parameters", "average", 1)
+avg = rep.f(report, "Parameters", "average", 1)
 
 eq = rep.b(report, "Parameters", "equalize", False)
 eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
