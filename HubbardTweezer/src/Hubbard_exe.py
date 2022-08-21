@@ -70,12 +70,15 @@ tij = abs(np.real(A - np.diag(Vi)))
 values = {"t_ij": tij, "V_i": Vi, "U": U}
 rep.create_report(report, "Singleband_Parameters", **values)
 
-values = {
-    "V_offset": G.Voff,
-    "trap_centers": G.trap_centers,
-    "waist_factors": G.waists
-}
-rep.create_report(report, "Trap_Adjustments", **values)
+if eq:
+    values = {
+        "equalize_status": G.eqinfo["exit_status"],
+        "termination_reason": G.eqinfo["termination_reason"],
+        "V_offset": G.Voff,
+        "trap_centers": G.trap_centers,
+        "waist_factors": G.waists
+    }
+    rep.create_report(report, "Trap_Adjustments", **values)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

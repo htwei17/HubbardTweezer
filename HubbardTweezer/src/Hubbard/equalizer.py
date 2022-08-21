@@ -39,8 +39,8 @@ class HubbardParamEqualizer(MLWF):
             # print(f"Equalizing {self.eq_label}.")
             # print(f"Waist direction: {self.waist_dir}.")
 
-            # self.homogenize(eqtarget, fixed)
-            self.equalize(eqtarget, random=False, callback=False)
+            __, __, __, self.eqinfo = self.equalize(
+                eqtarget, random=False, callback=False)
 
     def equalize(self,
                  target: str = 'uvt',
@@ -114,6 +114,9 @@ class HubbardParamEqualizer(MLWF):
         t1 = time()
         if self.verbosity:
             print(f"Equalization took {t1 - t0} seconds.")
+
+        info['termination_reason'] = res.message
+        info['exit_status'] = res.status
 
         trap_depth = res.x[:self.Nindep]
         self.symm_unfold(self.Voff, trap_depth)
