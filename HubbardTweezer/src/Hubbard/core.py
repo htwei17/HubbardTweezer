@@ -379,8 +379,7 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # A: If the space is conplete then by QM theory it is possible
     #    to diagonalize X, Y, Z simultaneously.
     #    But this is not the case as it's a subspace.
-    # TODO: update to unitary manifold and modify to torch.real(o)
-    return o
+    return o.real
 
 
 def optimize(dvr: MLWF, E, W, parity):
@@ -438,7 +437,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list):
 
     problem = pymanopt.Problem(manifold=manifold, cost=cost)
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, verbosity=dvr.verbosity)
+        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity)
     result = optimizer.run(
         problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point
