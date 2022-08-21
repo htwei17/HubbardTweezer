@@ -1,11 +1,9 @@
-from ctypes.wintypes import PFILETIME
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
 from scipy.integrate import romb
 from time import time
 import itertools
-# import sparse
 import numpy.linalg as la
 
 import torch
@@ -15,9 +13,6 @@ import pymanopt.optimizers
 
 from DVR.core import *
 from .lattice import *
-# from tools.fix_phase import fix_phase
-# from tools.simdiag import simdiag
-# from tools.jacobi_angles import jacobi_angles
 
 
 class MLWF(DVR):
@@ -367,7 +362,7 @@ def locality_mat(dvr: MLWF, W, parity):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def cost_func(U, R) -> float:
+def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Cost function to Wannier optimize
     o = 0
     for i in range(len(R)):
@@ -384,7 +379,7 @@ def cost_func(U, R) -> float:
     # A: If the space is conplete then by QM theory it is possible
     #    to diagonalize X, Y, Z simultaneously.
     #    But this is not the case as it's a subspace.
-    return np.real(o)
+    return torch.real(o)
 
 
 def optimize(dvr: MLWF, E, W, parity):
@@ -431,13 +426,13 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     return A, U
 
 
-def riemann_optimize(dvr: MLWF, x0, R: list[torch.Tensor]):
+def riemann_optimize(dvr: MLWF, x0, R: list):
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
     @pymanopt.function.pytorch(manifold)
-    def cost(point: torch.Tensor) -> float:
+    def cost(point: torch.Tensor) -> torch.Tensor:
         return cost_func(point, R)
 
     problem = pymanopt.Problem(manifold=manifold, cost=cost)
