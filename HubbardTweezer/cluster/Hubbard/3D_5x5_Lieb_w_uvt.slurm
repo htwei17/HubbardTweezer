@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="3D_5x5_Lieb_neq"
+#SBATCH --job-name="3D_5x5_Lieb_w_uvt"
 #SBATCH --partition=scavenge
 #SBATCH --time=4:00:00
 #SBATCH --nodes=1
@@ -25,7 +25,7 @@ fi
 unset __conda_setup
 conda activate ~/env
 
-fn=3D_5x5_Lieb_neq.ini
+fn=3D_5x5_Lieb_w_uvt.ini
 rm $fn
 
 echo "[Parameters]" >>$fn
@@ -41,11 +41,11 @@ average = 0.5
 waist = 1000, 1000
 dimension = 3
 waist_direction = xy
-equalize = False
+equalize = True
 equalize_target = uvt
 verbosity = 2" >>$fn
 
-WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/"5x5_Lieb_neq"
+WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/"5x5_Lieb_w_uvt"
 
 mkdir -p $WORKING_LOCAL_PATH
 cp -r $SLURM_SUBMIT_DIR/src $WORKING_LOCAL_PATH

@@ -379,7 +379,8 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # A: If the space is conplete then by QM theory it is possible
     #    to diagonalize X, Y, Z simultaneously.
     #    But this is not the case as it's a subspace.
-    return torch.real(o)
+    # TODO: update to unitary manifold and modify to torch.real(o)
+    return o
 
 
 def optimize(dvr: MLWF, E, W, parity):
