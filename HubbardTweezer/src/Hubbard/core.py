@@ -363,38 +363,6 @@ def locality_mat(dvr: MLWF, W, parity):
             R.append(Rx)
     return R
 
-# # ================ DIAGONALIZATION ALGORITHM: TO BE DEPRECATED ================
-
-
-# def diagonalize(dvr: MLWF, E, W, parity):
-#     # Multiband optimization
-#     A = []
-#     w = []
-#     for b in range(dvr.bands):
-#         t_ij, w_mu = singleband_diagonalize(dvr, E[b], W[b], parity[b])
-#         A.append(t_ij)
-#         w.append(w_mu)
-#     return A, w
-
-
-# def singleband_diagonalize(dvr: MLWF, E, W, parity):
-#     # Singleband Wannier function optimization
-#     # x0 is the initial guess
-#     R = locality_mat(dvr, W, parity)
-
-#     if dvr.Nsite > 1:
-#         # solution = simdiag(R, evals=False, safe_mode=False)
-#         solution, X, __ = jacobi_angles(*R)
-#     elif dvr.Nsite == 1:
-#         solution = np.ones((1, 1))
-
-#     U = site_order(dvr, W, solution, parity)
-#     # U = solution[:, np.argsort(X)]
-
-#     A = (
-#         U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-#     )  # TB parameter matrix, in unit of kHz
-#     return A, U
 
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
@@ -589,66 +557,3 @@ def intgrl3d(dx: list[float, float, float], integrand: np.ndarray) -> float:
         else:
             integrand = integrand[0]
     return integrand
-
-
-# ============= DEPRECATED DUE TO WRONG ASSUMPTIONS OF QUADRATURE =============
-# def intgrl_mat(dvr, Wi, Wj, pi, pj, integrl):
-#     # Construct interaction integral,
-#     # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
-#     for i in range(dvr.Nsite):
-#         Wii = Wi[i].conj()
-#         for j in range(dvr.Nsite):
-#             Wjj = Wj[j].conj()
-#             for k in range(dvr.Nsite):
-#                 Wjk = Wj[k]
-#                 for l in range(dvr.Nsite):
-#                     Wil = Wi[l]
-#                     if dvr.symmetry:
-#                         p_ijkl = np.concatenate(
-#                             (pi[i, :][None], pj[j, :][None], pj[k, :][None],
-#                              pi[l, :][None]),
-#                             axis=0)
-#                         pqrs = np.prod(p_ijkl, axis=0)
-#                         # Cancel n = 0 column for any p = -1 in one direction
-#                         nlen = dvr.n.copy()
-#                         # Mark which dimension has n=0 basis
-#                         line0 = np.all(p_ijkl != -1, axis=0)
-#                         nlen[line0] += 1
-#                         # prefactor of n=0 line
-#                         pref0 = np.zeros(dim)
-#                         pref0[dvr.nd] = 1 / dvr.dx[dvr.nd]
-#                         # prefactor of n>0 lines
-#                         pref = (1 + pqrs) / 4 * pref0
-#                         for d in range(dim):
-#                             if dvr.nd[d]:
-#                                 f = pref[d] * np.ones(Wil.shape[d])
-#                                 if Wil.shape[d] > dvr.n[d]:
-#                                     f[0] = pref0[d]
-#                                 idx = np.ones(dim, dtype=int)
-#                                 idx[d] = len(f)
-#                                 f = f.reshape(idx)
-#                                 Wil = f * Wil
-#                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk',
-#                                                        pick(Wii, nlen),
-#                                                        pick(Wjj, nlen),
-#                                                        pick(Wjk, nlen),
-#                                                        pick(Wil, nlen))
-#                     else:
-#                         integrl[i, j, k, l] = contract('ijk,ijk,ijk,ijk', Wii,
-#                                                        Wjj, Wjk, Wil)
-
-# def pick(W: np.ndarray, nlen) -> np.ndarray:
-#     # Truncate matrix to only n>0 columns
-#     return W[-nlen[0]:, -nlen[1]:, -nlen[2]:]
-
-# def parity_transfm(n: int):
-#     # Parity basis transformation matrix: 1D version
-
-#     Up = np.zeros((n + 1, 2 * n + 1))
-#     Up[0, n] = 1  # n=d
-#     Up[1:, :n] = np.eye(n)  # Negative half-axis
-#     Up[1:, (n + 1):] = np.eye(n)  # Positive half-axis
-#     Um = np.zeros((n, 2 * n + 1))
-#     Um[:, n:] = -1 * np.eye(n)  # Negative half-axis
-#     Um[:, :n] = np.eye(n)  # Positive half-axis
-#     return Up, Um
