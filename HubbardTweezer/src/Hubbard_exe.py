@@ -71,9 +71,14 @@ values = {"t_ij": tij, "V_i": Vi, "U": U}
 rep.create_report(report, "Singleband_Parameters", **values)
 
 if eq:
+    values = {"min_target_value": G.eqinfo["fval"][-1],
+              "total_cost_func": G.eqinfo["ctot"][-1],
+              "func_evals": G.eqinfo["Nfeval"],
+              "equalize_status": G.eqinfo["exit_status"],
+              "termination_reason": G.eqinfo["termination_reason"]
+              }
+    rep.create_report(report, "Equalization_Info", **values)
     values = {
-        "equalize_status": G.eqinfo["exit_status"],
-        "termination_reason": G.eqinfo["termination_reason"],
         "V_offset": G.Voff,
         "trap_centers": G.trap_centers,
         "waist_factors": G.waists
