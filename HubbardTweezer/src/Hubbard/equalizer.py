@@ -2,6 +2,7 @@ import numpy as np
 import numpy.linalg as la
 from typing import Iterable, Union
 from scipy.optimize import minimize, shgo
+from configobj import ConfigObj
 
 # from mystic.solvers import DifferentialEvolutionSolver
 # from mystic.termination import ChangeOverGeneration, VTR
@@ -10,7 +11,8 @@ from scipy.optimize import minimize, shgo
 # from mystic.bounds import Bounds
 
 from .core import *
-from .output import *
+from .output import write_equalization
+
 
 class HubbardParamEqualizer(MLWF):
 
@@ -94,7 +96,7 @@ class HubbardParamEqualizer(MLWF):
 
         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, iofile)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
             return c
 
         info = {'Nfeval': 0,
@@ -398,9 +400,9 @@ class HubbardParamEqualizer(MLWF):
             diff = info['fval'][len(info['fval'])//2] - c
             info['diff'] = np.append(info['diff'], diff)
             # display information
-            if info['Nfeval'] % 50 == 0:
+            if info['Nfeval'] % 10 == 0:
                 if isinstance(report, ConfigObj):
-                    write_equalization(report, self, info)
+                    write_equalization(report, self, info, final=False)
                 print(
                     f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
 

@@ -5,10 +5,11 @@ from Hubbard.equalizer import *
 import tools.reportIO as rep
 import sys
 
-# ====== Read input ======
+# ====== Read arguments ======
 inFile = sys.argv[1]
 # outFile = sys.argv[2]
 
+# ====== Read parameters ======
 report = rep.get_report(inFile)
 
 N = rep.i(report, "Parameters", "N", 20)
@@ -73,7 +74,7 @@ values = {"t_ij": tij, "V_i": Vi, "U": U}
 rep.create_report(report, "Singleband_Parameters", **values)
 
 if eq:
-    write_equalization(report, G, G.eqinfo)
+    write_equalization(report, G, G.eqinfo, final=True)
 
 
 if G.bands > 1:
