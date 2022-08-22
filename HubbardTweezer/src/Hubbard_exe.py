@@ -1,4 +1,5 @@
 import numpy as np
+from Hubbard.output import write_equalization
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
@@ -57,6 +58,7 @@ G = HubbardGraph(
     equalize=eq,
     eqtarget=eqt,
     symmetry=symm,
+    iofile=report,
     verbosity=verb)
 
 eig_sol = eigen_basis(G)
@@ -71,19 +73,8 @@ values = {"t_ij": tij, "V_i": Vi, "U": U}
 rep.create_report(report, "Singleband_Parameters", **values)
 
 if eq:
-    values = {"min_target_value": G.eqinfo["fval"][-1],
-              "total_cost_func": G.eqinfo["ctot"][-1],
-              "func_evals": G.eqinfo["Nfeval"],
-              "equalize_status": G.eqinfo["exit_status"],
-              "termination_reason": G.eqinfo["termination_reason"]
-              }
-    rep.create_report(report, "Equalization_Info", **values)
-    values = {
-        "V_offset": G.Voff,
-        "trap_centers": G.trap_centers,
-        "waist_factors": G.waists
-    }
-    rep.create_report(report, "Trap_Adjustments", **values)
+    write_equalization(report, G, G.eqinfo)
+
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

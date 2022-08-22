@@ -10,7 +10,7 @@ from scipy.optimize import minimize, shgo
 # from mystic.bounds import Bounds
 
 from .core import *
-
+from .output import *
 
 class HubbardParamEqualizer(MLWF):
 
@@ -20,6 +20,7 @@ class HubbardParamEqualizer(MLWF):
             equalize=False,  # Homogenize trap or not
             eqtarget='uvt',  # Equalization target
             waist='x',  # Waist to vary, None means no waist change
+            iofile=None,  # Input/output file
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -40,14 +41,15 @@ class HubbardParamEqualizer(MLWF):
             # print(f"Waist direction: {self.waist_dir}.")
 
             __, __, __, self.eqinfo = self.equalize(
-                eqtarget, random=False, callback=False)
+                eqtarget, random=False, callback=False, iofile=iofile)
 
     def equalize(self,
                  target: str = 'uvt',
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
-                 callback: bool = False):
+                 callback: bool = False,
+                 iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         if self.verbosity:
             print(f"Equalizing {target}.")
         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
@@ -92,7 +94,7 @@ class HubbardParamEqualizer(MLWF):
 
         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, iofile)
             return c
 
         info = {'Nfeval': 0,
@@ -313,7 +315,8 @@ class HubbardParamEqualizer(MLWF):
                       target: tuple[float, ...],
                       utv: tuple[bool] = (False, False, False),
                       weight: np.ndarray = np.ones(3),
-                      unitary: Union[list, None] = None) -> float:
+                      unitary: Union[list, None] = None,
+                      report: ConfigObj = None) -> float:
 
         trap_depth = offset[:self.Nindep]
         self.symm_unfold(self.Voff, trap_depth)
@@ -396,6 +399,8 @@ class HubbardParamEqualizer(MLWF):
             info['diff'] = np.append(info['diff'], diff)
             # display information
             if info['Nfeval'] % 50 == 0:
+                if isinstance(report, ConfigObj):
+                    write_equalization(report, self, info)
                 print(
                     f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
 

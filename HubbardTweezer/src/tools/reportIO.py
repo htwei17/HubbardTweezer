@@ -8,7 +8,7 @@ This is a module to read and write formatted input files for the optical
 tweezers Hubbard parameters calculators
 """
 
-from typing import ItemsView, Iterable
+from typing import Iterable
 from configobj import ConfigObj
 import numpy as np
 
