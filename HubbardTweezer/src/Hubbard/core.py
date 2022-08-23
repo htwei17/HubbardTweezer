@@ -437,7 +437,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list):
 
     problem = pymanopt.Problem(manifold=manifold, cost=cost)
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity)
+        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity-1 if dvr.verbosity > 0 else 0)
     result = optimizer.run(
         problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point

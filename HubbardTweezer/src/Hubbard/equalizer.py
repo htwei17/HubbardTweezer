@@ -53,7 +53,7 @@ class HubbardParamEqualizer(MLWF):
                  callback: bool = False,
                  iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         if self.verbosity:
-            print(f"Equalizing {target}.")
+            print(f"Equalizing {target}.\n")
         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, output_unitary=True)

@@ -1,5 +1,5 @@
 import numpy as np
-from Hubbard.output import write_equalization
+from Hubbard.output import write_equalization, singleband_write
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
@@ -70,8 +70,7 @@ Vi = np.real(np.diag(A))
 tij = abs(np.real(A - np.diag(Vi)))
 
 # ====== Write output ======
-values = {"t_ij": tij, "V_i": Vi, "U": U}
-rep.create_report(report, "Singleband_Parameters", **values)
+singleband_write(report, U, Vi, tij)
 
 if eq:
     write_equalization(report, G, G.eqinfo, final=True)
