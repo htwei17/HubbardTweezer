@@ -32,7 +32,7 @@ def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
     except:  # If the key is not in the report
         try:
             if report[section][key] == 'None':  # If None is input
-                print('Input is set to None.')
+                print(f'Input {key} is set to None.')
                 ret = None
         except:
             ret = default
@@ -48,7 +48,7 @@ def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
     except:  # If the key is not in the report
         try:
             if report[section][key] == 'None':  # If None is input
-                print('Input is set to None.')
+                print(f'Input {key} is set to None.')
                 ret = None
         except:
             ret = default
@@ -62,12 +62,11 @@ def s(report: ConfigObj, section: str, key=None, default='') -> str:
     try:
         ret = str(report[section][key])
     except:  # If the key is not in the report
-        try:
-            if report[section][key] == 'None':  # If None is input
-                print('Input is set to None.')
-                ret = None
-        except:
-            ret = default
+        ret = default
+    # If None is input for string, this will not throw an ERROR
+    if report[section][key] == 'None':
+        print(f'Input {key} is set to None.')
+        ret = None
     return ret
 
 
@@ -126,7 +125,7 @@ def a(report: ConfigObj,
                 # If this is not any array listed above
                 try:
                     if report[section][key] == 'None':  # If None is input
-                        print('Input is set to None.')
+                        print(f'Input {key} is set to None.')
                         ret = None
                 except:
                     ret = default
@@ -146,7 +145,7 @@ def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
     except:
         try:
             if report[section][key] == 'None':  # If None is input
-                print('Input is set to None.')
+                print(f'Input {key} is set to None.')
                 ret = None
         except:
             ret = default

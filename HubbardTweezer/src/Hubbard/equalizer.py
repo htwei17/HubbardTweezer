@@ -345,15 +345,15 @@ class HubbardParamEqualizer(MLWF):
 
         u, t, v = utv
 
-        A, U, x0 = self.singleband_Hubbard(
-            u=True, x0=x0, output_unitary=True)
-        # res = self.singleband_Hubbard(
-        #     u=u, x0=x0, output_unitary=True)
-        # if u:
-        #     A, U, x0 = res
-        # else:
-        #     A, x0 = res
-        #     U = None
+        # A, U, x0 = self.singleband_Hubbard(
+        #     u=True, x0=x0, output_unitary=True)
+        res = self.singleband_Hubbard(
+            u=u, x0=x0, output_unitary=True)
+        if u:
+            A, U, x0 = res
+        else:
+            A, x0 = res
+            U = None
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
@@ -367,10 +367,10 @@ class HubbardParamEqualizer(MLWF):
             Vtarget, Utarget, nntx, nnty = target
 
         w = weight.copy()
-        # cu = 0
-        # if u:
-        #     # U is different, as calculating U costs time
-        cu = self.u_cost_func(U, Utarget)
+        cu = 0
+        if u:
+            # U is different, as calculating U costs time
+            cu = self.u_cost_func(U, Utarget)
 
         ct = self.t_cost_func(A, (xlinks, ylinks), (nntx, nnty))
         if not t:

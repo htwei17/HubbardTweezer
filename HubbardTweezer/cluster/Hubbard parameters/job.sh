@@ -1,25 +1,43 @@
 #!/bin/bash
 
+# ====== Default values ======
+# Lattice
 L=3
 LATTICE_DIM=2
-d=3
 SHAPE=square
+# Equalization
+EQ_FLAG=True
 WAIST=xy
 STATUS=neq
+PARTITION=scavenge
+TIME="4:00:00"
+SUFFIX=""
+# DVR
+d=3
 N=20
 R=3
 Rz=7.2
-SUFFIX=""
 NL_DEFINITION="N=$N
 R=$R
 Rz=$Rz"
 
+# ====== Read arguments ======
 while :; do
     case $1 in
-    # -h|-\?|--help)
-    #     show_help    # Display a usage synopsis.
-    #     exit
-    #     ;;
+    -h|-\?|--help)
+    # Display a usage synopsis.
+        echo "HELP: Hubbard parameter job submission"
+        echo "-l, --L:  lattice grid size (Default: $L)"
+        echo "-t, --lattice-dim:    lattice dimension (Default: $LATTICE_DIM)"
+        echo "-d, --D:  DVR dimension (Default: $d)"
+        echo "-s, --shape:  lattice shape (Default: $s)"
+        echo "-w, --waist:  determine which waist direction to vary (Default: $WAIST)"
+        echo "              it can be 'x', 'y', 'xy' and 'None'"
+        echo "-e, --eq: determine which parameter to equalize (Default: $STATUS)"
+        echo "          it can be 'neq' for no equalization,"
+        echo "          'L'('N') for varying L(N) to check convergence ('neq' implied)"
+        exit
+        ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
             L=$2
@@ -78,7 +96,6 @@ while :; do
     *) # Default case: No more options, so break out of the loop.
         break ;;
     esac
-
     shift
 done
 
@@ -87,14 +104,6 @@ if [[ $STATUS == "neq" ]]; then
     WAIST=None
     PARTITION=scavenge
     TIME="0:02:00"
-elif [[ $STATUS == "vt" ]]; then
-    EQ_FLAG=True
-    PARTITION=scavenge
-    TIME="4:00:00"
-elif [[ $STATUS == "uvt" ]]; then
-    EQ_FLAG=True
-    PARTITION=commons
-    TIME="12:00:00"
 elif [[ $STATUS == "L" ]]; then
     EQ_FLAG=False
     WAIST=None
@@ -114,6 +123,12 @@ elif [[ $STATUS == "N" ]]; then
 R=$R
 Rz=$Rz"
 fi
+
+# if [ $WAIST != "None" ]; then
+#     EQ_FLAG=True
+#     PARTITION=commons
+#     TIME="12:00:00"
+# fi
 
 if [ $SHAPE != "square" ]; then
     LATTICE_DIM=2
@@ -189,23 +204,23 @@ equalize_target = $STATUS
 verbosity = 2\" >>\$FN
 fi
 
-WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$SUFFIX
 
-mkdir -p \$WORKING_LOCAL_PATH
-cp -r \$SLURM_SUBMIT_DIR/src \$WORKING_LOCAL_PATH
-cp $FN \$WORKING_LOCAL_PATH
+mkdir -p \$WORK_DIR
+cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
+cp \$FN \$WORK_DIR
 echo \"Job name: \$SLURM_JOB_NAME\"
 echo \"No. of cores to run: \$SLURM_CPUS_PER_TASK\"
 echo \"I ran on: \$SLURM_NODELIST\"
 # echo \"Task No.: \$SLURM_ARRAY_TASK_ID\"
 
 # Code run
-cd \$WORKING_LOCAL_PATH
-$HOME/env/bin/python -O -u src/Hubbard_exe.py $FN
-cp $FN \$SLURM_SUBMIT_DIR" >>$SLURM_FN
+cd \$WORK_DIR
+$HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
+cp \$FN \$SLURM_SUBMIT_DIR" >>$SLURM_FN
 
-# if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
-#     sbatch --array=16-22:2 $SLURM_FN
-# else
-#     sbatch --export=L=$L $SLURM_FN
-# fi
+if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
+    sbatch --array=16-22:2 $SLURM_FN
+else
+    sbatch --export=L=$L $SLURM_FN
+fi

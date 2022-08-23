@@ -80,9 +80,9 @@ class HubbardGraph(HubbardParamEqualizer):
                 self.graph.add_edge(center, i + 2)
 
     def singleband_params(self, label='param', A=None, U=None):
-        if label == 'param' and (A == None or U == None):
+        if label == 'param' and (A is None or U is None):
             self.singleband_Hubbard(u=True)
-        elif label == 'adjust' and A == None:
+        elif label == 'adjust' and A is None:
             self.singleband_Hubbard(u=False)
 
     def draw_graph(self, label='param', nnn=False, A=None, U=None):
