@@ -39,9 +39,6 @@ class HubbardParamEqualizer(MLWF):
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
-            # print(f"Equalizing {self.eq_label}.")
-            # print(f"Waist direction: {self.waist_dir}.")
-
             __, __, __, self.eqinfo = self.equalize(
                 eqtarget, random=False, callback=False, iofile=iofile)
 
@@ -53,6 +50,7 @@ class HubbardParamEqualizer(MLWF):
                  callback: bool = False,
                  iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         if self.verbosity:
+            print(f"Varying waist direction: {self.waist_dir}.")
             print(f"Equalizing {target}.\n")
         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
 
