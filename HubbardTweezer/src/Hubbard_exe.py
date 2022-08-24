@@ -1,5 +1,5 @@
 import numpy as np
-from Hubbard.output import write_equalization, write_singleband
+from Hubbard.output import *
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
@@ -69,8 +69,9 @@ G.singleband_Hubbard(u=True, eig_sol=eig_sol)
 
 # ====== Write output ======
 write_singleband(report, G)
-
-write_equalization(report, G, G.eqinfo, eq=eq, final=True)
+write_trap_params(report, G)
+if eq:
+    write_equalize_log(report, G.eqinfo, final=True)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

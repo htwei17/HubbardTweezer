@@ -1,3 +1,4 @@
+from tkinter import E
 import numpy as np
 import numpy.linalg as la
 from typing import Iterable, Union
@@ -11,7 +12,7 @@ from configobj import ConfigObj
 # from mystic.bounds import Bounds
 
 from .core import *
-from .output import write_equalization
+from .output import *
 
 
 class HubbardParamEqualizer(MLWF):
@@ -21,6 +22,7 @@ class HubbardParamEqualizer(MLWF):
             N,
             equalize=False,  # Homogenize trap or not
             eqtarget='uvt',  # Equalization target
+            eqmethod: str = 'SLSQP',  # Minimize algorithm method
             waist='x',  # Waist to vary, None means no waist change
             iofile=None,  # Input/output file
             *args,
@@ -40,18 +42,19 @@ class HubbardParamEqualizer(MLWF):
                 self.waist_dir = 'xy'
 
             __, __, __, self.eqinfo = self.equalize(
-                eqtarget, random=False, callback=False, iofile=iofile)
+                eqtarget, random=False, callback=False, method=eqmethod, iofile=iofile)
 
     def equalize(self,
                  target: str = 'uvt',
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
+                 method: str = 'SLSQP',
                  callback: bool = False,
                  iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
-        if self.verbosity:
-            print(f"Varying waist direction: {self.waist_dir}.")
-            print(f"Equalizing {target}.\n")
+        print(f"Varying waist direction: {self.waist_dir}.")
+        print(f"Equalization method: {method}")
+        print(f"Equalization target: {target}\n")
         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, output_unitary=True)
@@ -81,6 +84,8 @@ class HubbardParamEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
         v0, bounds = self.init_guess(random=random)
+        if nobounds:
+            bounds = None
 
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
@@ -105,17 +110,16 @@ class HubbardParamEqualizer(MLWF):
                 'x': np.array([]).reshape(0, *v0.shape)}
 
         t0 = time()
-        if nobounds:
-            res = minimize(cost_func, v0, args=info, method='SLSQP', options={
-                           'disp': True, 'ftol': 1e-9})
-        else:
-            # res = minimize(cost_func, v0, args=info, bounds=bounds, method='Nelder-Mead', options={
-            #                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-8, 'fatol': 1e-10})
-            res = minimize(cost_func, v0, args=info, bounds=bounds, method='SLSQP', options={
-                           'disp': True, 'ftol': 1e-9})
+        # Method-specific options
+        if method == 'Nelder-Mead':
+            options = {
+                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-8, 'fatol': 1e-10}
+        elif method == 'SLSQP':
+            options = {'disp': True, 'ftol': 1e-9}
+        res = minimize(cost_func, v0, args=info,
+                        bounds=bounds, method=method, options=options)
         t1 = time()
-        if self.verbosity:
-            print(f"Equalization took {t1 - t0} seconds.")
+        print(f"Equalization took {t1 - t0} seconds.")
 
         info['termination_reason'] = res.message
         info['exit_status'] = res.status
@@ -400,7 +404,9 @@ class HubbardParamEqualizer(MLWF):
             # display information
             if info['Nfeval'] % 10 == 0:
                 if isinstance(report, ConfigObj):
-                    write_equalization(report, self, info, final=False)
+                    write_equalize_log(report, info, final=False)
+                    write_trap_params(report, self)
+                    write_singleband(report, self)
                 print(
                     f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
 

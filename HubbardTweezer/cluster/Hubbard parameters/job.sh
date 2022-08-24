@@ -103,12 +103,12 @@ if [[ $STATUS == "neq" ]]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
-    TIME="0:02:00"
+    TIME="0:05:00"
 elif [[ $STATUS == "L" ]]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
-    TIME="0:02:00"
+    TIME="0:05:00"
     SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=$N
 R=\$(echo \"scale=20; \$SLURM_ARRAY_TASK_ID*3/20\" | bc)
@@ -117,7 +117,7 @@ elif [[ $STATUS == "N" ]]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
-    TIME="0:02:00"
+    TIME="0:05:00"
     SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=$R
@@ -201,7 +201,8 @@ dimension = $d
 waist_direction = $WAIST
 equalize = $EQ_FLAG
 equalize_target = $STATUS
-verbosity = 2\" >>\$FN
+verbosity = 2
+job_id = \$SLURM_JOB_ID\" >>\$FN
 fi
 
 WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$SUFFIX
@@ -217,7 +218,7 @@ echo \"I ran on: \$SLURM_NODELIST\"
 # Code run
 cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
 
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
     sbatch --array=16-22:2 $SLURM_FN
