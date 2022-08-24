@@ -24,8 +24,8 @@ Rz=$Rz"
 # ====== Read arguments ======
 while :; do
     case $1 in
-    -h|-\?|--help)
-    # Display a usage synopsis.
+    -h | -\? | --help)
+        # Display a usage synopsis.
         echo "HELP: Hubbard parameter job submission"
         echo "-l, --L:  lattice grid size (Default: $L)"
         echo "-t, --lattice-dim:    lattice dimension (Default: $LATTICE_DIM)"
@@ -99,12 +99,12 @@ while :; do
     shift
 done
 
-if [[ $STATUS == "neq" ]]; then
+if [ $STATUS = "neq" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
     TIME="0:05:00"
-elif [[ $STATUS == "L" ]]; then
+elif [ $STATUS = "L" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
@@ -113,7 +113,7 @@ elif [[ $STATUS == "L" ]]; then
     NL_DEFINITION="N=$N
 R=\$(echo \"scale=20; \$SLURM_ARRAY_TASK_ID*3/20\" | bc)
 Rz=\$(echo \"scale=20;\$R*2.4\" | bc)"
-elif [[ $STATUS == "N" ]]; then
+elif [ $STATUS = "N" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
@@ -134,11 +134,20 @@ if [ $SHAPE != "square" ]; then
     LATTICE_DIM=2
 fi
 
-if [ $LATTICE_DIM -ge 2 ]; then
+if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     Lx=$L
     Ly=$L
     DIM_PARAM="lattice = $Lx, $Ly
 lattice_const = 1520, 1690
+laser_wavelength = 780
+V_0 = 52.26
+waist = 1000, 1000"
+elif [ $SHAPE = 'ring' ]; then
+    # Build a perfect ring s.t. no equalization needed
+    Lx=$L
+    Ly=1
+    DIM_PARAM="lattice = $Lx, $Ly
+lattice_const = 1520, 1520
 laser_wavelength = 780
 V_0 = 52.26
 waist = 1000, 1000"
@@ -220,8 +229,8 @@ cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
 cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
 
-if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
-    sbatch --array=16-22:2 $SLURM_FN
-else
-    sbatch --export=L=$L $SLURM_FN
-fi
+# if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
+#     sbatch --array=16-22:2 $SLURM_FN
+# else
+#     sbatch --export=L=$L $SLURM_FN
+# fi
