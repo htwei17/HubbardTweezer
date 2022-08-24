@@ -70,8 +70,27 @@ G.singleband_Hubbard(u=True, eig_sol=eig_sol)
 # ====== Write output ======
 write_singleband(report, G)
 write_trap_params(report, G)
+eqt = 'uvt' if eqt == 'neq' else eqt
+u, t, v, __, __, __ = G.str_to_flags(eqt)
+cv = G.v_cost_func(G.A, None)
+ct = G.t_cost_func(G.A, None, None)
+cu = G.u_cost_func(G.U, None)
+cvec = np.array([cu, ct, cv])
+
 if eq:
-    write_equalize_log(report, G.eqinfo, final=True)
+    G.eqinfo['cost'][-1] = cvec
+    G.eqinfo['fval'][-1] = np.array([u, t, v]) @ cvec
+    G.eqinfo['ctot'][-1] = np.sum(cvec)
+else:
+    v0, __ = G.init_guess(random=False)
+    G.eqinfo['x'] = v0[None]
+    G.eqinfo['Nfeval'] = 0
+    G.eqinfo['cost'] = cvec[None]
+    G.eqinfo['fval'] = np.array([np.array([u, t, v]) @ cvec])
+    G.eqinfo['ctot'] = np.array([np.sum(cvec)])
+    G.eqinfo["exit_status"] = -1
+    G.eqinfo["termination_reason"] = "Not equalized"
+write_equalize_log(report, G.eqinfo, final=True)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

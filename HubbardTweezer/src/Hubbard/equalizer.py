@@ -32,6 +32,7 @@ class HubbardParamEqualizer(MLWF):
         # set equalization label in file output
         self.eq_label = 'neq'
         self.waist_dir = None
+        self.eqinfo = {}
 
         if equalize:
             self.eq_label = eqtarget
@@ -87,6 +88,13 @@ class HubbardParamEqualizer(MLWF):
         if nobounds:
             bounds = None
 
+        self.eqinfo = {'Nfeval': 0,
+                       'cost': np.array([]).reshape(0, 3),
+                       'ctot': np.array([]),
+                       'fval': np.array([]),
+                       'diff': np.array([]),
+                       'x': np.array([]).reshape(0, *v0.shape)}
+
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
         # But since unitary optimize time cost is not large in larger systems
@@ -102,13 +110,6 @@ class HubbardParamEqualizer(MLWF):
                                    (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
             return c
 
-        info = {'Nfeval': 0,
-                'cost': np.array([]).reshape(0, 3),
-                'ctot': np.array([]),
-                'fval': np.array([]),
-                'diff': np.array([]),
-                'x': np.array([]).reshape(0, *v0.shape)}
-
         t0 = time()
         # Method-specific options
         if method == 'Nelder-Mead':
@@ -116,13 +117,14 @@ class HubbardParamEqualizer(MLWF):
                 'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-8, 'fatol': 1e-10}
         elif method == 'SLSQP':
             options = {'disp': True, 'ftol': 1e-9}
-        res = minimize(cost_func, v0, args=info,
-                        bounds=bounds, method=method, options=options)
+
+        res = minimize(cost_func, v0, args=self.eqinfo,
+                       bounds=bounds, method=method, options=options)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
-        info['termination_reason'] = res.message
-        info['exit_status'] = res.status
+        self.eqinfo['termination_reason'] = res.message
+        self.eqinfo['exit_status'] = res.status
 
         trap_depth = res.x[:self.Nindep]
         self.symm_unfold(self.Voff, trap_depth)
@@ -136,7 +138,7 @@ class HubbardParamEqualizer(MLWF):
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 
-        return self.Voff, self.waists, self.trap_centers, info
+        return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
 # # ================ TEST MYSTIC =====================
 
