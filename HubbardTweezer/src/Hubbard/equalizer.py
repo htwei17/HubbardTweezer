@@ -2,14 +2,8 @@ from tkinter import E
 import numpy as np
 import numpy.linalg as la
 from typing import Iterable, Union
-from scipy.optimize import minimize, shgo
+from scipy.optimize import minimize, least_squares
 from configobj import ConfigObj
-
-# from mystic.solvers import DifferentialEvolutionSolver
-# from mystic.termination import ChangeOverGeneration, VTR
-# from mystic.strategy import Best1Exp, Best1Bin, Rand1Exp
-# from mystic.monitors import VerboseMonitor
-# from mystic.bounds import Bounds
 
 from .core import *
 from .output import *
@@ -22,8 +16,9 @@ class HubbardParamEqualizer(MLWF):
             N,
             equalize=False,  # Homogenize trap or not
             eqtarget='uvt',  # Equalization target
-            eqmethod: str = 'SLSQP',  # Minimize algorithm method
+            method: str = 'SLSQP',  # Minimize algorithm method
             waist='x',  # Waist to vary, None means no waist change
+            random: bool = False,  # Random initial guess
             iofile=None,  # Input/output file
             *args,
             **kwargs):
@@ -36,14 +31,13 @@ class HubbardParamEqualizer(MLWF):
 
         if equalize:
             self.eq_label = eqtarget
-
             self.waist_dir = waist
             if self.lattice_dim > 1 and self.waist_dir != None \
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
             __, __, __, self.eqinfo = self.equalize(
-                eqtarget, random=False, callback=False, method=eqmethod, iofile=iofile)
+                eqtarget, random=random, callback=False, method=method, iofile=iofile)
 
     def equalize(self,
                  target: str = 'uvt',
@@ -114,7 +108,7 @@ class HubbardParamEqualizer(MLWF):
         # Method-specific options
         if method == 'Nelder-Mead':
             options = {
-                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-8, 'fatol': 1e-10}
+                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-7, 'fatol': 1e-9}
         elif method == 'SLSQP':
             options = {'disp': True, 'ftol': 1e-9}
 
@@ -139,104 +133,6 @@ class HubbardParamEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
 
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
-
-# # ================ TEST MYSTIC =====================
-
-#     def equalzie_mystic(self,
-#                         target: str = 'UT',
-#                         weight: np.ndarray = np.ones(3),
-#                         random: bool = False,
-#                         callback: bool = False):
-#         if self.verbosity:
-#             print(f"Equalizing {target}.")
-#         u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
-
-#         res = self.singleband_Hubbard(u=u, output_unitary=True)
-#         if u:
-#             A, U, V = res
-#         else:
-#             A, V = res
-#             U = None
-
-#         if fix_u:
-#             Utarget = np.mean(U)
-#         else:
-#             Utarget = None
-#         if t:
-#             nnt = self.nn_tunneling(A)
-#             xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-#             if not fix_t:
-#                 txTarget, tyTarget = None, None
-#         else:
-#             nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
-#         if fix_v:
-#             Vtarget = np.mean(np.real(np.diag(A)))
-#         else:
-#             Vtarget = None
-
-#         # Voff_bak = self.Voff
-#         # ls_bak = self.trap_centers
-#         # w_bak = self.waists
-#         v0, bounds = self.init_guess(random=random)
-#         bounds = Bounds(tuple(i[0] for i in bounds),
-#                         tuple(i[1] for i in bounds))
-
-#         # Decide if each step cost function used the last step's unitary matrix
-#         # callback can have sometimes very few iteraction steps
-#         if callback:
-#             # Pack x0 to be mutable, thus can be updated in each iteration of minimize
-#             x0 = [V]
-#         else:
-#             x0 = None
-
-#         def cost_func(offset: np.ndarray, info: Union[dict, None]) -> float:
-#             if not isinstance(offset, np.ndarray):
-#                 offset = np.array(offset)
-#             c = self.cbd_cost_func(offset, info, (xlinks, ylinks),
-#                                    (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0)
-
-#             return c
-
-#         info = {'Nfeval': 0,
-#                 'cost': np.array([]).reshape(0, 3),
-#                 'ctot': np.array([]),
-#                 'fval': np.array([]),
-#                 'diff': np.array([]),
-#                 'x': np.array([]).reshape(0, *v0.shape)}
-
-#         t0 = time()
-
-#         ND = v0.shape[0]
-#         NP = 10 * ND
-#         MAX_GENERATIONS = ND * NP
-
-#         solver = DifferentialEvolutionSolver(ND, NP)
-#         solver.SetRandomInitialPoints(min=[0]*ND, max=[2]*ND)
-#         solver.SetEvaluationLimits(generations=MAX_GENERATIONS)
-#         solver.SetGenerationMonitor(VerboseMonitor(30))
-#         strategy = Best1Exp
-
-#         solver.Solve(cost_func, ExtraArgs=(info,), bounds=bounds, termination=VTR(0.01), strategy=strategy,
-#                      CrossProbability=0.9, ScalingFactor=0.8)
-
-#         res = solver.Solution()
-
-#         t1 = time()
-#         if self.verbosity:
-#             print(f"Equalization took {t1 - t0} seconds.")
-
-#         # trap_depth = res.x[:self.Nindep]
-#         # trap_waist_ratio = res.x[self.Nindep:3 *
-#         #                          self.Nindep].reshape(self.Nindep, 2)
-#         # trap_center = res.x[3 * self.Nindep:].reshape(self.Nindep, 2)
-#         # self.symm_unfold(self.Voff, trap_depth)
-#         # self.symm_unfold(self.waists, trap_waist_ratio)
-#         # self.symm_unfold(self.trap_centers, trap_center, graph=True)
-#         # self.update_lattice(self.trap_centers)
-#         # return self.Voff, self.waists, self.trap_centers, info
-#         return res, info
-
-# # ================ TEST OVER =====================
 
     def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
         u, t, v = False, False, False
@@ -456,3 +352,248 @@ class HubbardParamEqualizer(MLWF):
                 print(f'Onsite interaction target fixed to {Utarget}')
             print(f'Onsite interaction normalized distance u={cu}')
         return cu
+
+
+# ================ TEST LEAST_SQUARE =====================
+
+    def equalize_lsq(self,
+                     target: str = 'uvt',
+                     waists: str = None,
+                     weight: np.ndarray = np.ones(3),
+                     random: bool = False,
+                     nobounds: bool = False,
+                     method: str = 'trf',
+                     callback: bool = False,
+                     iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+        print(f"Varying waist direction: {self.waist_dir}.")
+        print(f"Equalization method: {method}")
+        print(f"Equalization target: {target}\n")
+        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
+
+        res = self.singleband_Hubbard(u=u, output_unitary=True)
+        if u:
+            A, U, V = res
+        else:
+            A, V = res
+            U = None
+
+        if fix_u:
+            Utarget = np.mean(U)
+        else:
+            Utarget = None
+        if t:
+            nnt = self.nn_tunneling(A)
+            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+            if not fix_t:
+                txTarget, tyTarget = None, None
+        else:
+            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+        if fix_v:
+            Vtarget = np.mean(np.real(np.diag(A)))
+        else:
+            Vtarget = None
+
+        # Voff_bak = self.Voff
+        # ls_bak = self.trap_centers
+        # w_bak = self.waists
+        v0, bounds = self.init_guess(random=random)
+        if nobounds:
+            bounds = None
+
+        self.eqinfo = {'Nfeval': 0,
+                       'cost': np.array([]).reshape(0, 3),
+                       'ctot': np.array([]),
+                       'fval': np.array([]),
+                       'diff': np.array([]),
+                       'x': np.array([]).reshape(0, *v0.shape)}
+
+        # Decide if each step cost function used the last step's unitary matrix
+        # callback can have sometimes very few iteraction steps
+        # But since unitary optimize time cost is not large in larger systems
+        # it is not recommended
+        if callback:
+            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
+            x0 = [V]
+        else:
+            x0 = None
+
+        def res_func(offset: np.ndarray, info: Union[dict, None]):
+            c = self.cbd_res_func(offset, info, (xlinks, ylinks),
+                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
+            return c
+
+        def rho(offset: np.ndarray):
+            sqrt = np.sqrt(offset)
+            r = np.array([sqrt, 1/(2*sqrt), -1/(4*sqrt**3)])
+            return r
+
+        t0 = time()
+        res = least_squares(res_func, v0, loss=rho, args=(self.eqinfo,),
+                            method=method, verbose=2,
+                            xtol=np.finfo(float).eps, ftol=np.finfo(float).eps, gtol=np.finfo(float).eps)
+        t1 = time()
+        print(f"Equalization took {t1 - t0} seconds.")
+
+        self.eqinfo['termination_reason'] = res.message
+        self.eqinfo['exit_status'] = res.status
+
+        trap_depth = res.x[:self.Nindep]
+        self.symm_unfold(self.Voff, trap_depth)
+
+        if self.waist_dir != None:
+            trap_waist_ratio = res.x[self.Nindep:3 *
+                                     self.Nindep].reshape(self.Nindep, 2)
+            self.symm_unfold(self.waists, trap_waist_ratio)
+
+        trap_center = res.x[-2 * self.Nindep:].reshape(self.Nindep, 2)
+        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+        self.update_lattice(self.trap_centers)
+
+        return self.Voff, self.waists, self.trap_centers, self.eqinfo
+
+    def cbd_res_func(self,
+                     offset: np.ndarray,
+                     info: Union[dict, None],
+                     links: tuple[np.ndarray, np.ndarray],
+                     target: tuple[float, ...],
+                     utv: tuple[bool] = (False, False, False),
+                     weight: np.ndarray = np.ones(3),
+                     unitary: Union[list, None] = None,
+                     report: ConfigObj = None) -> float:
+
+        trap_depth = offset[:self.Nindep]
+        self.symm_unfold(self.Voff, trap_depth)
+
+        if self.waist_dir != None:
+            trap_waist = offset[self.Nindep:3 *
+                                self.Nindep].reshape(self.Nindep, 2)
+            self.symm_unfold(self.waists, trap_waist)
+
+        trap_center = offset[- 2 * self.Nindep:].reshape(self.Nindep, 2)
+        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+        self.update_lattice(self.trap_centers)
+
+        if self.verbosity:
+            print(f"\nCurrent trap depths: {trap_depth}")
+            if self.waist_dir != None:
+                print(f"Current waists:")
+                print(trap_waist)
+            print("Current trap centers:")
+            print(trap_center)
+
+        if unitary != None and self.lattice_dim > 1:
+            x0 = unitary[0]
+        else:
+            x0 = None
+
+        u, t, v = utv
+
+        # A, U, x0 = self.singleband_Hubbard(
+        #     u=True, x0=x0, output_unitary=True)
+        res = self.singleband_Hubbard(
+            u=u, x0=x0, output_unitary=True)
+        if u:
+            A, U, x0 = res
+        else:
+            A, x0 = res
+            U = None
+
+        # By accessing element of a list, x0 is mutable and can be updated
+        if unitary != None and self.lattice_dim > 1:
+            unitary[0] = x0
+
+        xlinks, ylinks = links
+        Vtarget = None
+        Utarget = None
+        nntx, nnty = None, None
+        if isinstance(target, Iterable):
+            Vtarget, Utarget, nntx, nnty = target
+
+        w = weight.copy()
+        cu = np.zeros(U.shape)
+        if u:
+            # U is different, as calculating U costs time
+            cu = self.u_res_func(U, Utarget)
+
+        ct = self.t_res_func(A, (xlinks, ylinks), (nntx, nnty))
+        if not t:
+            # Force t to have no effect on cost function
+            w[1] = 0
+
+        cv = self.v_res_func(A, Vtarget)
+        if not v:
+            # Force V to have no effect on cost function
+            w[2] = 0
+
+        cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
+        cw = [w[0] * cu, w[1] * ct, w[2] * cv]
+        c = np.concatenate(cw)
+        if self.verbosity:
+            print(f"Current total distance: {c}\n")
+
+        # Keep revcord
+        if info != None:
+            info['Nfeval'] += 1
+            info['x'] = np.append(info['x'], offset[None], axis=0)
+            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
+            ctot = np.sum(cvec)
+            info['ctot'] = np.append(info['ctot'], ctot)
+            fval = la.norm(c)
+            info['fval'] = np.append(info['fval'], fval)
+            diff = info['fval'][len(info['fval'])//2] - fval
+            info['diff'] = np.append(info['diff'], diff)
+            # display information
+            if info['Nfeval'] % 10 == 0:
+                if isinstance(report, ConfigObj):
+                    write_equalize_log(report, info, final=False)
+                    write_trap_params(report, self)
+                    write_singleband(report, self)
+                if self.verbosity:
+                    print(
+                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
+
+        return c
+
+    def v_res_func(self, A, Vtarget):
+        if Vtarget is None:
+            Vtarget = np.mean(np.real(np.diag(A)))
+        cv = (np.real(np.diag(A)) - Vtarget) / \
+            abs(Vtarget * np.sqrt(len(A)))
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Onsite potential target={Vtarget}')
+            print(f'Onsite potential normalized distance v={cv}')
+        return cv
+
+    def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
+                   target: tuple[float, ...]):
+        nnt = self.nn_tunneling(A)
+        if target is None:
+            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        elif isinstance(target, Iterable):
+            xlinks, ylinks = links
+            nntx, nnty = target
+            if nntx is None:
+                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+
+        ct = (abs(nnt[xlinks]) - nntx) / (nntx * np.sqrt(len(xlinks)))
+        if nnty != None:
+            ct = np.concatenate(
+                (ct, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(len(ylinks)))))
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Tunneling target=({nntx}, {nnty})')
+            print(f'Tunneling normalized distance t={ct}')
+        return ct
+
+    def u_res_func(self, U, Utarget):
+        if Utarget is None:
+            Utarget = np.mean(U)
+        cu = (U - Utarget) / abs(Utarget * np.sqrt(len(U)))
+        if self.verbosity:
+            if self.verbosity > 1:
+                print(f'Onsite interaction target fixed to {Utarget}')
+            print(f'Onsite interaction normalized distance u={cu}')
+        return cu
+
+# ================ TEST OVER =====================
