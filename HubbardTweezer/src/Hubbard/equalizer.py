@@ -398,7 +398,7 @@ class HubbardParamEqualizer(MLWF):
         # w_bak = self.waists
         v0, bounds = self.init_guess(random=random)
         if nobounds:
-            bounds = None
+            bounds = (-np.inf, np.inf)
         else:
             ba = np.array(bounds)
             bounds = (ba[:, 0], ba[:, 1])
@@ -425,15 +425,15 @@ class HubbardParamEqualizer(MLWF):
                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
             return c
 
-        def rho(offset: np.ndarray):
-            sqrt = np.sqrt(offset)
-            r = np.array([sqrt, 1/(2*sqrt), -1/(4*sqrt**3)])
-            return r
+        # def rho(offset: np.ndarray):
+        #     sqrt = np.sqrt(offset)
+        #     r = np.array([sqrt, 1/(2*sqrt), -1/(4*sqrt**3)])
+        #     return r
 
         t0 = time()
         res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
-                            xtol=np.finfo(float).eps, ftol=np.finfo(float).eps, gtol=np.finfo(float).eps)
+                            xtol=np.finfo(float).eps, ftol=1e-7, gtol=1e-7)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
