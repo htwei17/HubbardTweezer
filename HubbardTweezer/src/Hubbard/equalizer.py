@@ -108,7 +108,7 @@ class HubbardParamEqualizer(MLWF):
         # Method-specific options
         if method == 'Nelder-Mead':
             options = {
-                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-7, 'fatol': 1e-9}
+                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-9}
         elif method == 'SLSQP':
             options = {'disp': True, 'ftol': 1e-9}
 
@@ -152,7 +152,7 @@ class HubbardParamEqualizer(MLWF):
                 fix_v = True
         return u, t, v, fix_u, fix_t, fix_v
 
-    def init_guess(self, random=False) -> tuple[np.ndarray, tuple]:
+    def init_guess(self, random=False, lu=False) -> tuple[np.ndarray, tuple]:
         # Trap depth variation inital guess and bounds
         v01 = np.ones(self.Nindep)
         b1 = list((0.9, 1.1) for i in range(self.Nindep))
@@ -399,6 +399,9 @@ class HubbardParamEqualizer(MLWF):
         v0, bounds = self.init_guess(random=random)
         if nobounds:
             bounds = None
+        else:
+            ba = np.array(bounds)
+            bounds = (ba[:, 0], ba[:, 1])
 
         self.eqinfo = {'Nfeval': 0,
                        'cost': np.array([]).reshape(0, 3),
@@ -428,7 +431,7 @@ class HubbardParamEqualizer(MLWF):
             return r
 
         t0 = time()
-        res = least_squares(res_func, v0, loss=rho, args=(self.eqinfo,),
+        res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
                             xtol=np.finfo(float).eps, ftol=np.finfo(float).eps, gtol=np.finfo(float).eps)
         t1 = time()
