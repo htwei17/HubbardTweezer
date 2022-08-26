@@ -38,6 +38,7 @@ s = rep.b(report, "Parameters", "sparse", True)
 symm = rep.b(report, "Parameters", "symmetry", True)
 r = rep.b(report, "Parameters", "random_init_guess", False)
 meth = rep.s(report, "Parameters", "method", 'trf')
+nb = rep.b(report, "Parameters", "no_bounds", False)
 verb = rep.i(report, "Parameters", "verbosity", 0)
 
 # ====== Equalize ======
@@ -62,6 +63,7 @@ G = HubbardGraph(
     eqtarget=eqt,
     random=r,
     method=meth,
+    nobounds=nb,
     symmetry=symm,
     iofile=report,
     verbosity=verb)

@@ -17,6 +17,7 @@ class HubbardParamEqualizer(MLWF):
             equalize=False,  # Homogenize trap or not
             eqtarget='uvt',  # Equalization target
             method: str = 'trf',  # Minimize algorithm method
+            nobounds: bool = False,  # Whether to use bounds or not
             waist='x',  # Waist to vary, None means no waist change
             random: bool = False,  # Random initial guess
             iofile=None,  # Input/output file
@@ -39,7 +40,7 @@ class HubbardParamEqualizer(MLWF):
             # __, __, __, self.eqinfo = self.equalize(
             #     eqtarget, random=random, callback=False, method=method, iofile=iofile)
             __, __, __, self.eqinfo = self.equalize_lsq(
-                eqtarget, random=random, nobounds=True, callback=False, method=method, iofile=iofile)
+                eqtarget, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
 
     def equalize(self,
                  target: str = 'uvt',
@@ -366,6 +367,7 @@ class HubbardParamEqualizer(MLWF):
 
 
 # ================ TEST LEAST_SQUARE =====================
+
 
     def equalize_lsq(self,
                      target: str = 'uvt',
