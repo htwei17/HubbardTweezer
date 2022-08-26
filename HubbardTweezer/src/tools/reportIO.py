@@ -30,12 +30,10 @@ def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
     try:
         ret = float(report[section][key])
     except:  # If the key is not in the report
-        try:
-            if report[section][key] == 'None':  # If None is input
-                print(f'Input {key} is set to None.')
-                ret = None
-        except:
-            ret = default
+        ret = default
+    if ret == 'None':
+        print(f'Input item {key} is set to None.')
+        ret = None
     return ret
 
 
@@ -46,12 +44,10 @@ def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
     try:
         ret = int(report[section][key])
     except:  # If the key is not in the report
-        try:
-            if report[section][key] == 'None':  # If None is input
-                print(f'Input {key} is set to None.')
-                ret = None
-        except:
-            ret = default
+        ret = default
+    if ret == 'None':
+        print(f'Input item {key} is set to None.')
+        ret = None
     return ret
 
 
@@ -64,8 +60,8 @@ def s(report: ConfigObj, section: str, key=None, default='') -> str:
     except:  # If the key is not in the report
         ret = default
     # If None is input for string, this will not throw an ERROR
-    if report[section][key] == 'None':
-        print(f'Input {key} is set to None.')
+    if ret == 'None':
+        print(f'Input item {key} is set to None.')
         ret = None
     return ret
 
@@ -123,12 +119,7 @@ def a(report: ConfigObj,
                 ret = np.array(ret).reshape(rb, ec, len(ret_3))
             except:
                 # If this is not any array listed above
-                try:
-                    if report[section][key] == 'None':  # If None is input
-                        print(f'Input {key} is set to None.')
-                        ret = None
-                except:
-                    ret = default
+                ret = default
     return ret
 
 
@@ -143,12 +134,10 @@ def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
         else:
             ret = np.array([True if x == 'True' else False for x in dat])
     except:
-        try:
-            if report[section][key] == 'None':  # If None is input
-                print(f'Input {key} is set to None.')
-                ret = None
-        except:
-            ret = default
+        ret = default
+    if ret == 'None' or ret == 'None,' or ret == None:
+        print(f'Input item {key} is set to None.')
+        ret = None
     return ret
 
 

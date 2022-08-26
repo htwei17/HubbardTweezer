@@ -37,7 +37,7 @@ band = rep.i(report, "Parameters", "band", 1)
 s = rep.b(report, "Parameters", "sparse", True)
 symm = rep.b(report, "Parameters", "symmetry", True)
 r = rep.b(report, "Parameters", "random_init_guess", False)
-m = rep.s(report, "Parameters", "method", 'SLSQP')
+meth = rep.s(report, "Parameters", "method", 'trf')
 verb = rep.i(report, "Parameters", "verbosity", 0)
 
 # ====== Equalize ======
@@ -61,7 +61,7 @@ G = HubbardGraph(
     equalize=eq,
     eqtarget=eqt,
     random=r,
-    method=m,
+    method=meth,
     symmetry=symm,
     iofile=report,
     verbosity=verb)

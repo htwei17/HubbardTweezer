@@ -50,7 +50,10 @@ class MLWF(DVR):
             self.lattice_dim = 1
         else:
             self.lattice = lattice.copy()
-            self.lattice_dim = lattice[lattice > 1].size
+            if shape == 'ring':
+                self.lattice_dim = 2
+            else:
+                self.lattice_dim = lattice[lattice > 1].size
 
         # Convert lc to (lc, lc) or the other if only one number is given
         if not isinstance(lc, Iterable):

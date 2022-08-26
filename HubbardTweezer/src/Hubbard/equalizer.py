@@ -506,7 +506,7 @@ class HubbardParamEqualizer(MLWF):
             Vtarget, Utarget, nntx, nnty = target
 
         w = weight.copy()
-        cu = np.zeros(U.shape)
+        cu = np.zeros(self.Nsite)
         if u:
             # U is different, as calculating U costs time
             cu = self.u_res_func(U, Utarget)
@@ -524,17 +524,17 @@ class HubbardParamEqualizer(MLWF):
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         cw = [w[0] * cu, w[1] * ct, w[2] * cv]
         c = np.concatenate(cw)
+        ctot = np.sum(cvec)
+        fval = la.norm(c)
         if self.verbosity:
-            print(f"Current total distance: {c}\n")
+            print(f"Current total distance: {fval}\n")
 
         # Keep revcord
         if info != None:
             info['Nfeval'] += 1
             info['x'] = np.append(info['x'], offset[None], axis=0)
             info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            ctot = np.sum(cvec)
             info['ctot'] = np.append(info['ctot'], ctot)
-            fval = la.norm(c)
             info['fval'] = np.append(info['fval'], fval)
             diff = info['fval'][len(info['fval'])//2] - fval
             info['diff'] = np.append(info['diff'], diff)
@@ -555,10 +555,9 @@ class HubbardParamEqualizer(MLWF):
             Vtarget = np.mean(np.real(np.diag(A)))
         cv = (np.real(np.diag(A)) - Vtarget) / \
             abs(Vtarget * np.sqrt(len(A)))
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential normalized distance v={cv}')
+        if self.verbosity > 2:
+            print(f'Onsite potential target={Vtarget}')
+            print(f'Onsite potential normalized residue v={cv}')
         return cv
 
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -576,20 +575,18 @@ class HubbardParamEqualizer(MLWF):
         if nnty != None:
             ct = np.concatenate(
                 (ct, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(len(ylinks)))))
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Tunneling target=({nntx}, {nnty})')
-            print(f'Tunneling normalized distance t={ct}')
+        if self.verbosity > 2:
+            print(f'Tunneling target=({nntx}, {nnty})')
+            print(f'Tunneling normalized residue t={ct}')
         return ct
 
     def u_res_func(self, U, Utarget):
         if Utarget is None:
             Utarget = np.mean(U)
         cu = (U - Utarget) / abs(Utarget * np.sqrt(len(U)))
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction normalized distance u={cu}')
+        if self.verbosity > 2:
+            print(f'Onsite interaction target fixed to {Utarget}')
+            print(f'Onsite interaction normalized residue u={cu}')
         return cu
 
 # ================ TEST OVER =====================

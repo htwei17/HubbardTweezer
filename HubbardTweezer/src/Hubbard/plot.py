@@ -97,7 +97,10 @@ class HubbardGraph(HubbardParamEqualizer):
         if self.lattice_dim == 1:
             fs = (self.lattice[0] * 2, self.lattice[1] * 6)
         elif self.lattice_dim == 2:
-            fs = tuple(2 * i for i in self.lattice)
+            if self.lattice_shape == 'ring':
+                fs = (2 * self.lattice[0], 2 * self.lattice[0])
+            else:
+                fs = tuple(2 * i for i in self.lattice)
         f = plt.figure(figsize=fs)
         nx.draw_networkx_nodes(self.graph,
                                pos=self.pos,

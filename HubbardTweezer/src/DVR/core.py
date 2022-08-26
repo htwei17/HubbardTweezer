@@ -77,9 +77,8 @@ class DVR:
         # Update absorber
         if self.verbosity:
             print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
-            if self.verbosity > 1:
-                print('DVR: n={} is set.'.format(self.n[self.nd]))
-                print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
+            print('DVR: n={} is set.'.format(self.n[self.nd]))
+            print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
         if self.absorber:
             if self.verbosity:
                 print('DVR: Absorber width LI={:g}w'.format(self.LI))
@@ -419,7 +418,7 @@ def H_mat(dvr: DVR):
     H = H.reshape((N, N))
     if not dvr.absorber:
         H = (H + H.T.conj()) / 2
-    if dvr.verbosity > 1:
+    if dvr.verbosity:
         print("H_mat: H matrix memory usage: {:.2f} MiB.".format(
             H.nbytes / 2**20))
     return H
@@ -437,7 +436,7 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
 
         T = Tmat(dvr)
         V, no = Vmat(dvr)
-        if dvr.verbosity > 1:
+        if dvr.verbosity > 2:
             print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                 dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model))
 
@@ -451,11 +450,11 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
         if k <= 0:
             k = 10
         if dvr.absorber:
-            if dvr.verbosity > 1:
+            if dvr.verbosity > 2:
                 print('H_solver: diagonalize sparse non-hermitian matrix.')
             E, W = sla.eigs(H, k, which='SA')
         else:
-            if dvr.verbosity > 1:
+            if dvr.verbosity > 2:
                 print('H_solver: diagonalize sparse hermitian matrix.')
             E, W = sla.eigsh(H, k, which='SA')
     else:
@@ -463,11 +462,11 @@ def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
         H = H_mat(dvr)
         t0 = time()
         if dvr.absorber:
-            if dvr.verbosity > 1:
+            if dvr.verbosity > 2:
                 print('H_solver: diagonalize non-hermitian matrix.')
             E, W = la.eig(H)
         else:
-            if dvr.verbosity > 1:
+            if dvr.verbosity > 2:
                 print('H_solver: diagonalize hermitian matrix.')
             E, W = la.eigh(H)
         if k > 0:
