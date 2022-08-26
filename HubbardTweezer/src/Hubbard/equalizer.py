@@ -524,7 +524,7 @@ class HubbardParamEqualizer(MLWF):
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         cw = [w[0] * cu, w[1] * ct, w[2] * cv]
         c = np.concatenate(cw)
-        ctot = np.sum(cvec)
+        ctot = la.norm(cvec)
         fval = la.norm(c)
         if self.verbosity:
             print(f"Current total distance: {fval}\n")
@@ -546,7 +546,7 @@ class HubbardParamEqualizer(MLWF):
                     write_singleband(report, self)
                 if self.verbosity:
                     print(
-                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
+                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 
         return c
 
