@@ -48,6 +48,7 @@ class HubbardParamEqualizer(MLWF):
                  random: bool = False,
                  nobounds: bool = False,
                  method: str = 'SLSQP',
+                 lsq: bool = True,
                  callback: bool = False,
                  iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
@@ -82,7 +83,7 @@ class HubbardParamEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
         self.eff_dof()
-        v0, bounds = self.init_guess(random=random, nobounds=nobounds)
+        v0, bounds = self.init_guess(random=random, nobounds=nobounds, lsq=lsq)
 
         self.eqinfo = {'Nfeval': 0,
                        'cost': np.array([]).reshape(0, 3),
@@ -112,7 +113,7 @@ class HubbardParamEqualizer(MLWF):
             options = {
                 'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-9}
         elif method == 'SLSQP':
-            options = {'disp': True, 'ftol': 1e-9}
+            options = {'disp': True, 'ftol': np.finfo(float).eps}
 
         res = minimize(cost_func, v0, args=self.eqinfo,
                        bounds=bounds, method=method, options=options)
@@ -123,7 +124,7 @@ class HubbardParamEqualizer(MLWF):
         self.eqinfo['exit_status'] = res.status
 
         trap_depth, trap_waist, trap_center = self.set_params(
-            self.verbosity, res.x, 'Final')
+            res.x, self.verbosity, 'Final')
         self.symm_unfold(self.Voff, trap_depth)
         if self.waist_dir != None:
             self.symm_unfold(self.waists, trap_waist)
@@ -171,10 +172,10 @@ class HubbardParamEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_guess(self, random=False, nobound=False, lsq=False) -> tuple[np.ndarray, tuple]:
+    def init_guess(self, random=False, nobounds=False, lsq=False) -> tuple[np.ndarray, tuple]:
         # Trap depth variation inital guess and bounds
         v01 = np.ones(self.Nindep)
-        shift = np.inf if nobound else 0.1
+        shift = np.inf if nobounds else 0.1
 
         b1 = list((1 - shift, 1 + shift) for i in range(self.Nindep))
         # Waist variation inital guess and bounds
@@ -317,16 +318,16 @@ class HubbardParamEqualizer(MLWF):
                     write_equalize_log(report, info, final=False)
                     write_trap_params(report, self)
                     write_singleband(report, self)
-                print(
-                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
+                if self.verbosity:
+                    print(
+                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
 
         return c
 
     def v_cost_func(self, A, Vtarget) -> float:
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
-        cv = la.norm(np.real(np.diag(A)) - Vtarget) / \
-            abs(Vtarget * np.sqrt(len(A)))
+        cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vtarget**2
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite potential target={Vtarget}')
@@ -344,11 +345,9 @@ class HubbardParamEqualizer(MLWF):
             if nntx is None:
                 xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
-        dist = (abs(nnt[xlinks]) - nntx) / (nntx * np.sqrt(len(xlinks)))
+        ct = np.mean((abs(nnt[xlinks]) - nntx)**2) / nntx**2
         if nnty != None:
-            dist = np.concatenate(
-                (dist, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(len(ylinks)))))
-        ct = la.norm(dist)
+            ct += np.mean((abs(nnt[ylinks]) - nnty)**2) / nnty**2
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Tunneling target=({nntx}, {nnty})')
@@ -358,7 +357,7 @@ class HubbardParamEqualizer(MLWF):
     def u_cost_func(self, U, Utarget) -> float:
         if Utarget is None:
             Utarget = np.mean(U)
-        cu = la.norm(U - Utarget) / abs(Utarget * np.sqrt(len(U)))
+        cu = np.mean((U - Utarget)**2) / Utarget**2
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite interaction target fixed to {Utarget}')
@@ -367,7 +366,6 @@ class HubbardParamEqualizer(MLWF):
 
 
 # ================ TEST LEAST_SQUARE =====================
-
 
     def equalize_lsq(self,
                      target: str = 'uvt',
@@ -410,7 +408,8 @@ class HubbardParamEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
         self.eff_dof()
-        v0, bounds = self.init_guess(random=random, nobound=nobounds, lsq=True)
+        v0, bounds = self.init_guess(
+            random=random, nobounds=nobounds, lsq=True)
         ba = np.array(bounds)
         bounds = (ba[:, 0], ba[:, 1])
 
@@ -441,10 +440,14 @@ class HubbardParamEqualizer(MLWF):
         #     r = np.array([sqrt, 1/(2*sqrt), -1/(4*sqrt**3)])
         #     return r
 
+        # if nobounds:
+        #     method = 'lm'
+        #     print(f'Method is set to {method} given unconstraint problem.')
+
         t0 = time()
         res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
-                            xtol=np.finfo(float).eps, ftol=1e-7, gtol=1e-7)
+                            xtol=None, ftol=1e-8, gtol=1e-8)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 

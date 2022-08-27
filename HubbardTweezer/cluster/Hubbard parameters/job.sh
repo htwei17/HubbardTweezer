@@ -210,7 +210,8 @@ dimension = $d
 waist_direction = $WAIST
 equalize = $EQ_FLAG
 equalize_target = $STATUS
-verbosity = 2
+no_bounds = True
+verbosity = 1
 job_id = \$SLURM_JOB_ID\" >>\$FN
 fi
 
@@ -229,8 +230,8 @@ cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
 cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
 
-# if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
-#     sbatch --array=16-22:2 $SLURM_FN
-# else
-#     sbatch --export=L=$L $SLURM_FN
-# fi
+if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
+    sbatch --array=16-22:2 $SLURM_FN
+else
+    sbatch --export=L=$L $SLURM_FN
+fi
