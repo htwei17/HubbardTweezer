@@ -26,13 +26,11 @@ class HubbardParamEqualizer(MLWF):
         super().__init__(N, *args, **kwargs)
 
         # set equalization label in file output
-        self.eq_label = 'neq'
-        self.waist_dir = None
+        self.eq_label = eqtarget
+        self.waist_dir = waist
         self.eqinfo = {}
 
         if equalize:
-            self.eq_label = eqtarget
-            self.waist_dir = waist
             if self.lattice_dim > 1 and self.waist_dir != None \
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
@@ -327,7 +325,7 @@ class HubbardParamEqualizer(MLWF):
     def v_cost_func(self, A, Vtarget) -> float:
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
-        cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vtarget**2
+        cv = np.mean((np.real(np.diag(A)) / Vtarget - 1)**2)
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite potential target={Vtarget}')
@@ -345,9 +343,9 @@ class HubbardParamEqualizer(MLWF):
             if nntx is None:
                 xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
-        ct = np.mean((abs(nnt[xlinks]) - nntx)**2) / nntx**2
+        ct = np.mean((abs(nnt[xlinks]) / nntx - 1)**2)
         if nnty != None:
-            ct += np.mean((abs(nnt[ylinks]) - nnty)**2) / nnty**2
+            ct += np.mean((abs(nnt[ylinks]) / nnty - 1)**2)
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Tunneling target=({nntx}, {nnty})')
@@ -357,7 +355,7 @@ class HubbardParamEqualizer(MLWF):
     def u_cost_func(self, U, Utarget) -> float:
         if Utarget is None:
             Utarget = np.mean(U)
-        cu = np.mean((U - Utarget)**2) / Utarget**2
+        cu = np.mean((U / Utarget - 1)**2)
         if self.verbosity:
             if self.verbosity > 1:
                 print(f'Onsite interaction target fixed to {Utarget}')
@@ -447,7 +445,7 @@ class HubbardParamEqualizer(MLWF):
         t0 = time()
         res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
-                            xtol=None, ftol=1e-8, gtol=1e-8)
+                            xtol=None, ftol=np.finfo(float).eps, gtol=1e-8)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
@@ -559,7 +557,7 @@ class HubbardParamEqualizer(MLWF):
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
         cv = (np.real(np.diag(A)) - Vtarget) / \
-            abs(Vtarget * np.sqrt(len(A)))
+            (Vtarget * np.sqrt(len(A)))
         if self.verbosity > 2:
             print(f'Onsite potential target={Vtarget}')
             print(f'Onsite potential normalized residue v={cv}')
@@ -576,10 +574,10 @@ class HubbardParamEqualizer(MLWF):
             if nntx is None:
                 xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
-        ct = (abs(nnt[xlinks]) - nntx) / (nntx * np.sqrt(len(xlinks)))
+        ct = (abs(nnt[xlinks]) - nntx) / (nntx * np.sqrt(np.sum(xlinks)))
         if nnty != None:
             ct = np.concatenate(
-                (ct, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(len(ylinks)))))
+                (ct, (abs(nnt[ylinks]) - nnty) / (nnty * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
             print(f'Tunneling target=({nntx}, {nnty})')
             print(f'Tunneling normalized residue t={ct}')
@@ -588,7 +586,7 @@ class HubbardParamEqualizer(MLWF):
     def u_res_func(self, U, Utarget):
         if Utarget is None:
             Utarget = np.mean(U)
-        cu = (U - Utarget) / abs(Utarget * np.sqrt(len(U)))
+        cu = (U - Utarget) / (Utarget * np.sqrt(len(U)))
         if self.verbosity > 2:
             print(f'Onsite interaction target fixed to {Utarget}')
             print(f'Onsite interaction normalized residue u={cu}')

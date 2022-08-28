@@ -140,4 +140,4 @@ class HubbardGraph(HubbardParamEqualizer):
                 j += 1
 
         self.graph.render(
-            f'{self.lattice} graph {self.dim}d {label} {self.eq_label}')
+            f'{self.lattice} graph {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')

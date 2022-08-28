@@ -78,10 +78,10 @@ write_singleband(report, G)
 write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = G.str_to_flags(eqt)
-cv = G.v_cost_func(G.A, None)
-ct = G.t_cost_func(G.A, None, None)
-cu = G.u_cost_func(G.U, None)
-cvec = np.array([cu, ct, cv])
+cv = G.v_res_func(G.A, None)
+ct = G.t_res_func(G.A, None, None)
+cu = G.u_res_func(G.U, None)
+cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
 
 if eq:
     G.eqinfo['cost'][-1] = cvec

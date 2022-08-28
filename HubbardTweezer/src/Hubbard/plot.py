@@ -137,7 +137,7 @@ class HubbardGraph(HubbardParamEqualizer):
             self.draw_node_overhead_labels(font_size=10, font_color='#FF8000')
         plt.axis('off')
         plt.savefig(
-            f'{self.lattice} graph {self.dim}d {label} {self.eq_label}.pdf')
+            f'{self.lattice} graph {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
 
     def draw_node_overhead_labels(
             self,
