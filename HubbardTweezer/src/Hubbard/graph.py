@@ -21,7 +21,7 @@ class HubbardGraph(HubbardParamEqualizer):
         self.edges = self.links.copy()
         self.Nedge = self.edges.shape[0]
 
-    def update_node_weight(self, label='param'):
+    def update_node(self, label='param'):
         if label == 'param':
             # Label onsite chemical potential
             depth = np.real(np.diag(self.A))
@@ -33,9 +33,11 @@ class HubbardGraph(HubbardParamEqualizer):
             self.node_label = list(
                 f'{v:.3g}' for v in self.Voff)
             # self.node_label[0] = f'V0 = {self.Voff[0]:.3g}'
-        self.node_size = [i * 0.3 for i in self.Voff]
+        self.node_size = [i * 0.3 for i in self.waists]
+        max_depth = np.max(abs(self.Voff))
+        self.node_alpha = (self.Voff / max_depth) ** 10
 
-    def update_edge_weight(self, label='param'):
+    def update_edge(self, label='param'):
         self.edge_weight = np.zeros(self.Nedge)
         for i in range(self.Nedge):
             edge = self.edges[i]
@@ -93,22 +95,7 @@ class HubbardGraph(HubbardParamEqualizer):
         elif label == 'adjust' and A == None:
             self.singleband_Hubbard(u=False)
 
-    def draw_graph(self, label='param', nnn=False, A=None, U=None):
-        self.singleband_params(label, A, U)
-        self.update_node_weight(label)
-        if label == 'param' and nnn:
-            self.add_nnn()
-        self.update_edge_weight(label)
-
-        if self.verbosity:
-            print('\nStart to plot graph...')
-
-        for i in range(self.Nsite):
-            pos = self.trap_centers[i, :]
-            self.graph.node(
-                f'{i}', label=self.node_label[i], pos=f'{pos[0]},{pos[1]}!',
-                width=f'{self.node_size[i]}', height=f'{self.node_size[i]}')
-
+    def plot_edge(self):
         j = 0
         for i in range(self.Nedge):
             self.graph.attr('edge', penwidth='2', fontname='Meiryo',
@@ -116,6 +103,7 @@ class HubbardGraph(HubbardParamEqualizer):
             edge = self.edges[i]
             color = '#606060' + f'{self.edge_alpha[i]:2x}'
             if i < self.links.shape[0]:
+                # Add n.n. bonds
                 self.graph.attr('edge', style='solid', splines='false')
                 self.graph.edge(f'{edge[0]}', f'{edge[1]}',
                                 alpha=f'{self.edge_alpha[i]}',
@@ -127,6 +115,7 @@ class HubbardGraph(HubbardParamEqualizer):
                 #                 alpha=f'{self.edge_alpha[i]}',
                 #                 label=self.edge_label[i],
                 #                 color=color)
+                # Add invisible node to construct longer bond edges
                 if self.edge_weight[i] > 1e-4:
                     self.graph.attr('edge', splines='true')
                     self.graph.node(
@@ -138,6 +127,26 @@ class HubbardGraph(HubbardParamEqualizer):
                                     alpha=f'{self.edge_alpha[i]}',
                                     color=color)
                 j += 1
+
+    def plot_node(self):
+        for i in range(self.Nsite):
+            pos = self.trap_centers[i, :]
+            self.graph.node(
+                f'{i}', label=self.node_label[i], pos=f'{pos[0]},{pos[1]}!',
+                width=f'{self.node_size[i][0]}', height=f'{self.node_size[i][1]}', alpha=f'{self.node_alpha[i]}')
+
+    def draw_graph(self, label='param', nnn=False, A=None, U=None):
+        self.singleband_params(label, A, U)
+        self.update_node(label)
+        if label == 'param' and nnn:
+            self.add_nnn()
+        self.update_edge(label)
+
+        if self.verbosity:
+            print('\nStart to plot graph...')
+
+        self.plot_node()
+        self.plot_edge()
 
         self.graph.render(
             f'{self.lattice} graph {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')

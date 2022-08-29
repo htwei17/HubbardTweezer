@@ -49,7 +49,7 @@ def read_equalization(report: ConfigObj, G: MLWF):
     return G
 
 
-def read_parameters(report: ConfigObj):
+def read_Hubbard(report: ConfigObj):
     """
     Read parameters from file.
     """
@@ -59,3 +59,13 @@ def read_parameters(report: ConfigObj):
     tij = rep.a(report, "Singleband_Parameters", "t_ij")
     A = np.diag(Vi) + tij
     return U, A
+
+
+def read_trap(report: ConfigObj):
+    report = rep.get_report(report)
+    Voff = rep.a(report, "Trap_Adjustments", "V_offset")
+    tc = rep.a(report, "Trap_Adjustments", "trap_centers")
+    w = rep.a(report, "Trap_Adjustments", "waist_factors")
+    return Voff, tc, w
+
+

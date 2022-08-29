@@ -31,7 +31,7 @@ class HubbardGraph(HubbardParamEqualizer):
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
             (n, self.trap_centers[n]) for n in self.graph.nodes())
 
-    def update_edge_weight(self, label='param'):
+    def update_edge(self, label='param'):
         for link in self.graph.edges:
             if label == 'param':
                 # Label bond tunneling
@@ -50,7 +50,10 @@ class HubbardGraph(HubbardParamEqualizer):
             for edge in self.graph.edges
         ])
 
-    def update_node_weight(self, label='param'):
+    def update_node(self, label='param'):
+        self.pos = dict(
+            # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
+            (n, self.trap_centers[n]) for n in self.graph.nodes())
         if label == 'param':
             # Label onsite chemical potential
             depth = np.real(np.diag(self.A))
@@ -62,7 +65,7 @@ class HubbardGraph(HubbardParamEqualizer):
                 (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
         self.node_size = [i**2 * 600 for i in gmean(self.waists, axis=1)]
         max_depth = np.max(abs(self.Voff))
-        self.node_alpha = self.Voff / max_depth
+        self.node_alpha = (self.Voff / max_depth) ** 10
 
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
@@ -89,8 +92,8 @@ class HubbardGraph(HubbardParamEqualizer):
         self.singleband_params(label, A, U)
         if label == 'param' and nnn:
             self.add_nnn()
-        self.update_edge_weight(label)
-        self.update_node_weight(label)
+        self.update_edge(label)
+        self.update_node(label)
 
         if self.verbosity:
             print('\nStart to plot graph...')
@@ -105,7 +108,7 @@ class HubbardGraph(HubbardParamEqualizer):
         nx.draw_networkx_nodes(self.graph,
                                pos=self.pos,
                                node_color='#99CCFF',
-                               alpha=self.node_alpha ** 40,
+                               alpha=self.node_alpha,
                                node_size=self.node_size)
         nx.draw_networkx_labels(self.graph,
                                 pos=self.pos,
