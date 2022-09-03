@@ -10,7 +10,7 @@ class HubbardGraph(HubbardParamEqualizer):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.graph = gv.Graph('lattice', engine='neato')
+        self.graph = gv.Graph('lattice', engine='dot')
         self.edge_fontsize = '4'
         self.edge_fontcolor = '#000066'
         self.graph.attr('node', shape='circle', style='filled', fixedsize='shape',
@@ -90,9 +90,9 @@ class HubbardGraph(HubbardParamEqualizer):
         return shifted_center
 
     def singleband_params(self, label='param', A=None, U=None):
-        if label == 'param' and (A == None or U == None):
+        if label == 'param' and (A is None or U is None):
             self.singleband_Hubbard(u=True)
-        elif label == 'adjust' and A == None:
+        elif label == 'adjust' and A is None:
             self.singleband_Hubbard(u=False)
 
     def plot_edge(self):
@@ -149,4 +149,4 @@ class HubbardGraph(HubbardParamEqualizer):
         self.plot_edge()
 
         self.graph.render(
-            f'{self.lattice} graph {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.lattice} graphviz {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
