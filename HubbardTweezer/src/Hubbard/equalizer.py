@@ -16,7 +16,8 @@ class HubbardEqualizer(MLWF):
             self,
             N,
             equalize=False,  # Homogenize trap or not
-            eqtarget='uvt',  # Equalization target
+            eqtarget='UvT',  # Equalization target
+            Ut: float = None,  # Interaction target in unit of tx
             method: str = 'trf',  # Minimize algorithm method
             nobounds: bool = False,  # Whether to use bounds or not
             waist='x',  # Waist to vary, None means no waist change
@@ -37,14 +38,122 @@ class HubbardEqualizer(MLWF):
                 self.waist_dir = 'xy'
 
             # __, __, __, self.eqinfo = self.equalize(
-            #     eqtarget, random=random, callback=False, method=method, iofile=iofile)
+            #     eqtarget, Ut, random=random, callback=False, method=method, iofile=iofile)
             __, __, __, self.eqinfo = self.equalize_lsq(
-                eqtarget, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+                eqtarget, Ut, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+
+    def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
+        u, t, v = False, False, False
+        fix_u, fix_t, fix_v = False, False, False
+        if 'u' in target or 'U' in target:
+            u = True
+            if 'U' in target:
+                # Whether to fix target in combined cost function
+                fix_u = True
+        if 't' in target or 'T' in target:
+            t = True
+            if 'T' in target:
+                fix_t = True
+        if 'v' in target or 'V' in target:
+            v = True
+            if 'V' in target:
+                fix_v = True
+        return u, t, v, fix_u, fix_t, fix_v
+
+    def eff_dof(self):
+        # Record all free DoFs in the function
+        self.Voff_dof = np.ones(self.Nindep).astype(bool)
+
+        if self.waist_dir == None:
+            self.w_dof = None
+        else:
+            wx = np.tile('x' in self.waist_dir, self.Nindep)
+            wy = np.tile('y' in self.waist_dir, self.Nindep)
+            self.w_dof = np.array([wx, wy]).T.reshape(-1)
+
+        tcx = np.array([not self.inv_coords[i, 0] for i in range(self.Nindep)])
+        if self.lattice_dim == 1:
+            tcy = np.tile(False, self.Nindep)
+        else:
+            tcy = np.array([not self.inv_coords[i, 1]
+                           for i in range(self.Nindep)])
+        self.tc_dof = np.array([tcx, tcy]).T.reshape(-1)
+
+        return self.Voff_dof, self.w_dof, self.tc_dof
+
+    def init_guess(self, random=False, nobounds=False, lsq=False) -> tuple[np.ndarray, tuple]:
+        # Trap depth variation inital guess and bounds
+        # s1 = np.inf if nobounds else 0.1
+        v01 = np.ones(self.Nindep)
+        b1 = list((0, np.inf) for i in range(self.Nindep))
+
+        # Waist variation inital guess and bounds
+        # UB from resolution limit; LB by wavelength
+        s2 = (self.l / self.w, 1.2)
+        if self.waist_dir == None:
+            v02 = np.array([])
+            b2 = []
+        else:
+            v02 = np.ones(2 * self.Nindep)
+            if lsq:
+                b2 = list(s2
+                          for i in range(2 * self.Nindep) if self.w_dof[i])
+                v02 = v02[self.w_dof]
+            else:
+                b2 = list(s2 if self.w_dof[i] else (
+                    1, 1) for i in range(2 * self.Nindep))
+
+        # Lattice spacing variation inital guess and bounds
+        # Must be separated by at least 1 waist
+        # TODO: make the bound to be xy specific
+        s3 = (1 - self.w / self.lc[0]) / 2
+        v03 = self.tc0[self.reflection[:, 0]].flatten()
+        if lsq:
+            b3 = list((v03[i] - s3, v03[i] + s3)
+                      for i in range(2 * self.Nindep) if self.tc_dof[i])
+            v03 = v03[self.tc_dof]
+        else:
+            b3 = list((v03[i] - s3, v03[i] + s3)
+                      if self.tc_dof[i] else (0, 0) for i in range(2 * self.Nindep))
+
+        bounds = tuple(b1 + b2 + b3)
+
+        if random:
+            v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
+        else:
+            v0 = np.concatenate((v01, v02, v03))
+
+        self.set_params(v0, self.verbosity or random, 'Intial')
+
+        return v0, bounds
+
+    def set_params(self, v0, cond, string):
+        trap_depth = v0[:self.Nindep]
+        if self.waist_dir != None:
+            trap_waist = np.ones((self.Nindep, 2))
+            trap_waist[self.w_dof.reshape(self.Nindep, 2)] = v0[self.Nindep:np.sum(self.w_dof) +
+                                                                self.Nindep]
+        else:
+            trap_waist = None
+        trap_center = np.zeros((self.Nindep, 2))
+        trap_center[self.tc_dof.reshape(
+            self.Nindep, 2)] = v0[-np.sum(self.tc_dof):]
+
+        if cond:
+            print("\n")
+            print(f"{string} trap depths: {trap_depth}")
+            if self.waist_dir != None:
+                print(f"{string} waists:")
+                print(trap_waist)
+            print(f"{string} trap centers:")
+            print(trap_center)
+        return trap_depth, trap_waist, trap_center
 
 # ================ TEST MINIMIZE =====================
 
     def equalize(self,
-                 target: str = 'uvt',
+                 target: str = 'UvT',
+                 Ut: float = None,
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
@@ -64,10 +173,6 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        if fix_u:
-            Utarget = np.mean(U)
-        else:
-            Utarget = None
         if t:
             nnt = self.nn_tunneling(A)
             xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
@@ -75,6 +180,16 @@ class HubbardEqualizer(MLWF):
                 txTarget, tyTarget = None, None
         else:
             nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+
+        if fix_u:
+            if Ut is None:
+                Utarget = np.mean(U)
+            else:
+                Utarget = Ut * txTarget
+        else:
+            Utarget = None
+
+        # If V is shifted to zero then fix_v has no effect
         if fix_v:
             Vtarget = np.mean(np.real(np.diag(A)))
         else:
@@ -133,108 +248,6 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
 
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
-
-    def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
-        u, t, v = False, False, False
-        fix_u, fix_t, fix_v = False, False, False
-        if 'u' in target or 'U' in target:
-            u = True
-            if 'U' in target:
-                # Whether to fix target in combined cost function
-                fix_u = True
-        if 't' in target or 'T' in target:
-            t = True
-            if 'T' in target:
-                fix_t = True
-        if 'v' in target or 'V' in target:
-            v = True
-            if 'V' in target:
-                fix_v = True
-        return u, t, v, fix_u, fix_t, fix_v
-
-    def eff_dof(self):
-        # Record all free DoFs in the function
-        self.Voff_dof = np.ones(self.Nindep).astype(bool)
-
-        if self.waist_dir == None:
-            self.w_dof = None
-        else:
-            wx = np.tile('x' in self.waist_dir, self.Nindep)
-            wy = np.tile('y' in self.waist_dir, self.Nindep)
-            self.w_dof = np.array([wx, wy]).T.reshape(-1)
-
-        tcx = np.array([not self.inv_coords[i, 0] for i in range(self.Nindep)])
-        if self.lattice_dim == 1:
-            tcy = np.tile(False, self.Nindep)
-        else:
-            tcy = np.array([not self.inv_coords[i, 1]
-                           for i in range(self.Nindep)])
-        self.tc_dof = np.array([tcx, tcy]).T.reshape(-1)
-
-        return self.Voff_dof, self.w_dof, self.tc_dof
-
-    def init_guess(self, random=False, nobounds=False, lsq=False) -> tuple[np.ndarray, tuple]:
-        # Trap depth variation inital guess and bounds
-        v01 = np.ones(self.Nindep)
-        shift = np.inf if nobounds else 0.1
-
-        b1 = list((1 - shift, 1 + shift) for i in range(self.Nindep))
-        # Waist variation inital guess and bounds
-        if self.waist_dir == None:
-            v02 = np.array([])
-            b2 = []
-        else:
-            v02 = np.ones(2 * self.Nindep)
-            if lsq:
-                b2 = list((1 - shift, 1 + shift)
-                          for i in range(2 * self.Nindep) if self.w_dof[i])
-                v02 = v02[self.w_dof]
-            else:
-                b2 = list((1 - shift, 1 + shift) if self.w_dof[i] else (
-                    1, 1) for i in range(2 * self.Nindep))
-
-        # Lattice spacing variation inital guess and bounds
-        v03 = self.tc0[self.reflection[:, 0]].flatten()
-        if lsq:
-            b3 = list((v03[i] - shift, v03[i] + shift)
-                      for i in range(2 * self.Nindep) if self.tc_dof[i])
-            v03 = v03[self.tc_dof]
-        else:
-            b3 = list((v03[i] - shift, v03[i] + shift)
-                      if self.tc_dof[i] else (0, 0) for i in range(2 * self.Nindep))
-
-        bounds = tuple(b1 + b2 + b3)
-
-        if random:
-            v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
-        else:
-            v0 = np.concatenate((v01, v02, v03))
-
-        self.set_params(v0, self.verbosity or random, 'Intial')
-
-        return v0, bounds
-
-    def set_params(self, v0, cond, string):
-        trap_depth = v0[:self.Nindep]
-        if self.waist_dir != None:
-            trap_waist = np.ones((self.Nindep, 2))
-            trap_waist[self.w_dof.reshape(self.Nindep, 2)] = v0[self.Nindep:np.sum(self.w_dof) +
-                                                                self.Nindep]
-        else:
-            trap_waist = None
-        trap_center = np.zeros((self.Nindep, 2))
-        trap_center[self.tc_dof.reshape(
-            self.Nindep, 2)] = v0[-np.sum(self.tc_dof):]
-
-        if cond:
-            print("\n")
-            print(f"{string} trap depths: {trap_depth}")
-            if self.waist_dir != None:
-                print(f"{string} waists:")
-                print(trap_waist)
-            print(f"{string} trap centers:")
-            print(trap_center)
-        return trap_depth, trap_waist, trap_center
 
     def cbd_cost_func(self,
                       point: np.ndarray,
@@ -372,10 +385,9 @@ class HubbardEqualizer(MLWF):
 
 # ================ TEST LEAST_SQUARE =====================
 
-
     def equalize_lsq(self,
-                     target: str = 'uvt',
-                     waists: str = None,
+                     target: str = 'UvT',
+                     Ut: float = None,  # Target onsite interaction in unit of tx
                      weight: np.ndarray = np.ones(3),
                      random: bool = False,
                      nobounds: bool = False,
@@ -394,10 +406,6 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        if fix_u:
-            Utarget = np.mean(U)
-        else:
-            Utarget = None
         if t:
             nnt = self.nn_tunneling(A)
             xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
@@ -405,6 +413,16 @@ class HubbardEqualizer(MLWF):
                 txTarget, tyTarget = None, None
         else:
             nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+
+        if fix_u:
+            if Ut is None:
+                Utarget = np.mean(U)
+            else:
+                Utarget = Ut * txTarget
+        else:
+            Utarget = None
+
+        # If V is shifted to zero then fix_v has no effect
         if fix_v:
             Vtarget = np.mean(np.real(np.diag(A)))
         else:

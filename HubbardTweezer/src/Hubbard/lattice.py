@@ -3,7 +3,7 @@ import numpy as np
 
 
 def lattice_graph(size: np.ndarray,
-                  shape: str = 'square') -> tuple[np.ndarray, np.ndarray]:
+                  shape: str = 'square') -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # Square lattice graph builder
     # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
