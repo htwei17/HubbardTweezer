@@ -160,9 +160,17 @@ class MLWF(DVR):
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
                 shift = self.trap_centers[i] * self.lc
-                self.wxy = self.wxy0 * self.waists[i]
+                self.update_waist(self.waists[i])
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
+
+    def update_waist(self, waists):
+        self.wxy = self.wxy0 * waists
+        self.zR = np.pi * self.w * self.wxy**2 / self.l
+        self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
+        self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
+        self.omega *= np.sqrt(self.avg * self.hb *
+                              self.V0 / self.m) / self.w
 
     def singleband_Hubbard(
         self, u=False, x0=None, output_unitary=False, eig_sol=None

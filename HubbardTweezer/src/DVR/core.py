@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Iterable
+from typing import Iterable, Literal, Union
 import numpy as np
 import sys
 import numpy as np
@@ -13,6 +13,7 @@ from time import time
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
+# micron = 1000  # Length scale micrn, in unit of nm
 # Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
 amu = 1.66053907E-27  # atomic mass, in unit of kg
 h = 6.62607015E-34  # Planck constant
@@ -104,13 +105,16 @@ class DVR:
             self,
             n: np.ndarray,
             R0: np.ndarray,
-            avg=1,
-            model='Gaussian',
-            trap=(104.52,
-                  1000),  # 2nd entry in array is (wx, wy), in number is (w, w)
-            atom=6.015122,  # Atom mass, in amu. Default Lithium-6
-            laser=780,  # 780nm, laser wavelength
-            zR=None,  # Rayleigh range input by hand
+            avg: float = 1,
+            model: str = 'Gaussian',
+            # 2nd entry in array is (wx, wy) in unit of nm
+            # if given in single number w it is (w, w)
+            trap: tuple[float, Union[float, tuple[float, float]]] = (
+                104.52, 1000),
+            atom: float = 6.015122,  # Atom mass, in amu. Default Lithium-6
+            laser: float = 780,  # 780nm, laser wavelength in unit of nm
+            # Rayleigh range input by hand, in unit of nm
+            zR: Union[None, float] = None,
             symmetry: bool = False,
             absorber: bool = False,
             ab_param: tuple[float, float] = (57.04, 1),
@@ -118,7 +122,7 @@ class DVR:
             verbosity: int = 2  # How much information to print
     ) -> None:
         self.n = n.copy()
-        self.R0 = R0.copy()  # Physical region size, In unit of waist
+        self.R0 = R0.copy()  # Physical region size, In unit of wx
         self.R = R0.copy()  # Total region size, R = R0 + LI
         self.avg = avg
         self.model = model
@@ -129,7 +133,7 @@ class DVR:
         self.verbosity = verbosity
 
         self.dx = np.zeros(n.shape)
-        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of waist
+        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of wx
         if self.absorber:
             self.VI, self.LI = ab_param
         else:
@@ -151,20 +155,23 @@ class DVR:
         if model == 'Gaussian':
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
-            self.m: float = atom * amu  # Atom mass, in unit of electron mass
-            self.l = laser * 1E-9  # Laser wavelength, in unit of Bohr radius
-            self.kHz = 1E3  # Make in the frequency unit of kHz
-            self.kHz_2p = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
+            self.m: Literal = atom * amu  # Atom mass, in unit of electron mass
+            self.l: Literal = laser * 1E-9  # Laser wavelength, in unit of Bohr radius
+            self.kHz: Literal = 1E3  # Make in the frequency unit of kHz
+            self.kHz_2p: Literal = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
             self.V0: float = trap[
                 0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
 
             # Input in unit of nm, converted to m
+            wx: Literal = 1E-6
             if isinstance(trap[1], Iterable):  # Convert to np.array
-                self.w = np.array(trap[1][0]) * 1E-9
-                self.wxy: np.ndarray = np.array(trap[1]) / trap[1][0]  # wi/wx
+                wx = trap[1][0]  # In unit of nm
+                self.wxy: np.ndarray = np.array(
+                    trap[1]) / wx  # wi in unit of wx
             elif isinstance(trap[1], Number):  # Number convert to np.array
-                self.w = np.array([trap[1]]) * 1E-9
-                self.wxy = np.ones(2)
+                wx = trap[1]  # In unit of nm
+                self.wxy: np.ndarray = np.ones(2)
+            self.w: Literal = wx * 1E-9  # Convert micron to m
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
@@ -172,15 +179,16 @@ class DVR:
             self.zR = np.pi * self.w * self.wxy**2 / self.l
             # Rayleigh range input by hand, in unit of wx
             if isinstance(zR, Number):
-                self.zR: np.ndarray = zR * np.ones(2) / self.w
+                self.zR: np.ndarray = zR * np.ones(2) / wx
             elif isinstance(zR, Iterable):
-                self.zR: np.ndarray = np.array(zR) / self.w
+                self.zR: np.ndarray = np.array(zR) / wx
             # "Effective" Rayleigh range
             self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
 
             # Trap frequencies
             self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-            self.omega *= np.sqrt(avg * self.hb * self.V0 / self.m) / self.w
+            self.omega *= np.sqrt(self.avg * self.hb *
+                                  self.V0 / self.m) / self.w
             # Trap harmonic lengths
             self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
 
@@ -189,18 +197,19 @@ class DVR:
                     f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
         elif model == 'sho':
             # Harmonic parameters
-            self.hb = 1.0  # Reduced Planck constant
+            self.hb: Literal = 1.0  # Reduced Planck constant
             self.omega = np.ones(dim)  # Harmonic frequencies
-            self.m = 1.0
-            self.w = 1.0
+            self.m: Literal = 1.0
+            self.w: Literal = 1.0
             self.mtV0 = self.m
             self.V0 = 1.0
-            self.kHz = 1.0
-            self.kHz_2p = 1.0
+            self.kHz: Literal = 1.0
+            self.kHz_2p: Literal = 1.0
             self.hl: np.ndarray = np.sqrt(self.hb /
                                           (self.m * self.omega))  # Harmonic lengths
 
-            print(f"param_set: trap parameter V0={avg * self.V0} w={self.w}")
+            print(
+                f"param_set: trap parameter V0={avg * self.V0} w0={self.w}")
 
         self.R0 *= self.nd
         self.R *= self.nd
@@ -257,7 +266,7 @@ def Vmat(dvr: DVR):
     x = []
     for i in range(dim):
         x.append(np.arange(dvr.init[i], dvr.n[i] + 1) *
-                 dvr.dx[i])  # In unit of w
+                 dvr.dx[i])  # In unit of micron
     X = np.meshgrid(*x, indexing='ij')
     # 3 index tensor V(x, y, z)
     V = dvr.avg * dvr.Vfun(*X)
