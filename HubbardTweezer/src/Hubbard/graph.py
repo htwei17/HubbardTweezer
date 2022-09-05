@@ -6,7 +6,7 @@ import matplotlib as mpl
 from .equalizer import *
 
 
-class HubbardGraph(HubbardParamEqualizer):
+class HubbardGraph(HubbardEqualizer):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

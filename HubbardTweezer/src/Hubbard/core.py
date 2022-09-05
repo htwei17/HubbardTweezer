@@ -173,7 +173,7 @@ class MLWF(DVR):
                               self.V0 / self.m) / self.w
 
     def singleband_Hubbard(
-        self, u=False, x0=None, output_unitary=False, eig_sol=None
+        self, u=False, x0=None, offset=True, output_unitary=False, eig_sol=None
     ):
 
         # Calculate single band tij matrix and U matrix
@@ -187,6 +187,10 @@ class MLWF(DVR):
         W = W[0]
         p = p[0]
         self.A, V = singleband_optimize(self, E, W, p, x0)
+        if offset:
+            # Shift onsite potential to zero average
+            self.A -= np.mean(np.real(np.diag(self.A))) * np.eye(self.A.shape[0])
+
         if u:
             if self.verbosity:
                 print("Calculate U.")
@@ -393,18 +397,25 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     return o.real
 
 
-def optimize(dvr: MLWF, E, W, parity):
+def optimize(dvr: MLWF, E, W, parity, offset=True):
     # Multiband optimization
     A = []
     w = []
     for b in range(dvr.bands):
         t_ij, w_mu = singleband_optimize(dvr, E[b], W[b], parity[b])
-        A.append(t_ij)
+        if b == 0:
+            # Shift onsite potential to zero average
+            # Multi-band can only be shifted globally by 1st band
+            if offset:
+                zero = np.mean(np.real(np.diag(t_ij)))
+            else:
+                zero = 0
+        A.append(t_ij - zero * np.eye(t_ij.shape[0]))
         w.append(w_mu)
     return A, w
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
+def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, np.ndarray]:
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
@@ -437,7 +448,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None):
     return A, U
 
 
-def riemann_optimize(dvr: MLWF, x0, R: list):
+def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
@@ -457,7 +468,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list):
 # =============================================================================
 
 
-def site_order(dvr: MLWF, W, U, p):
+def site_order(dvr: MLWF, W, U: np.ndarray, p) -> np.ndarray:
     # Order Wannier functions by lattice site label
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
@@ -477,12 +488,12 @@ def site_order(dvr: MLWF, W, U, p):
     return U[:, order]
 
 
-def tight_binding(dvr: MLWF):
-    E, W, parity = eigen_basis(dvr)
-    A, w = optimize(dvr, E, W, parity)
-    mu = np.diag(A)  # Diagonals are mu_i
-    t = -(A - np.diag(mu))  # Off-diagonals are t_ij
-    return np.real(mu), abs(t)
+# def tight_binding(dvr: MLWF):
+#     E, W, parity = eigen_basis(dvr)
+#     A, w = optimize(dvr, E, W, parity)
+#     mu = np.diag(A)  # Diagonals are mu_i
+#     t = -(A - np.diag(mu))  # Off-diagonals are t_ij
+#     return np.real(mu), abs(t)
 
 
 def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
