@@ -1,5 +1,3 @@
-import textwrap
-from tkinter import E
 import numpy as np
 import numpy.linalg as la
 from typing import Iterable, Union
@@ -342,7 +340,9 @@ class HubbardEqualizer(MLWF):
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
         if Vfactor is None:
-            Vfactor = Vtarget
+            Vfactor = abs(Vtarget)
+            if Vfactor < 1e-2:  # Avoid division by zero
+                Vfactor = 0.2
         cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vfactor**2
         if self.verbosity:
             if self.verbosity > 1:
@@ -353,13 +353,14 @@ class HubbardEqualizer(MLWF):
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
                     target: tuple[float, ...]) -> float:
         nnt = self.nn_tunneling(A)
-        # if target is None:
-        #     xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-        # elif isinstance(target, Iterable):
-        xlinks, ylinks = links
-        nntx, nnty = target
-        # if nntx is None:
-        #     xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        # Mostly not usable if not directly call this function
+        if target is None:
+            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        elif isinstance(target, Iterable):
+            xlinks, ylinks = links
+            nntx, nnty = target
+            if nntx is None:
+                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
         ct = np.mean((abs(nnt[xlinks]) / nntx - 1)**2)
         if nnty != None:
@@ -384,6 +385,7 @@ class HubbardEqualizer(MLWF):
 
 
 # ================ TEST LEAST_SQUARE =====================
+
 
     def equalize_lsq(self,
                      target: str = 'UvT',
@@ -584,7 +586,9 @@ class HubbardEqualizer(MLWF):
         if Vtarget is None:
             Vtarget = np.mean(np.real(np.diag(A)))
         if Vfactor is None:
-            Vfactor = Vtarget
+            Vfactor = abs(Vtarget)
+            if Vfactor < 1e-2:  # Avoid division by zero
+                Vfactor = 0.2
         cv = (np.real(np.diag(A)) - Vtarget) / \
             (Vfactor * np.sqrt(len(A)))
         if self.verbosity > 2:
@@ -595,13 +599,14 @@ class HubbardEqualizer(MLWF):
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
                    target: tuple[float, ...]):
         nnt = self.nn_tunneling(A)
-        # if target is None:
-        #     xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
-        # elif isinstance(target, Iterable):
-        xlinks, ylinks = links
-        txTarget, tyTarget = target
-        # if nntx is None:
-        #     xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        # Mostly not usable if not directly call this function
+        if target is None:
+            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+        elif isinstance(target, Iterable):
+            xlinks, ylinks = links
+            txTarget, tyTarget = target
+            if nntx is None:
+                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
 
         ct = (abs(nnt[xlinks]) - txTarget) / \
             (txTarget * np.sqrt(np.sum(xlinks)))

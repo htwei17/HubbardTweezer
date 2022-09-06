@@ -10,13 +10,13 @@ class HubbardGraph(HubbardEqualizer):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.graph = gv.Graph('lattice', engine='dot')
+        self.graph = gv.Graph('lattice', engine='neato')
         self.edge_fontsize = '4'
         self.edge_fontcolor = '#000066'
-        self.graph.attr('node', shape='circle', style='filled', fixedsize='shape',
+        self.graph.attr('node', shape='circle', pin='true', style='filled', fixedsize='shape',
                         color='#99CCFF',
                         fontname='Meiryo', fontcolor='#FF8000', fontsize='6')
-        self.graph.attr('edge', penwidth='2',
+        self.graph.attr('edge', penwidth='2', spline='true',
                         fontname='Meiryo', fontcolor=self.edge_fontcolor, fontsize=self.edge_fontsize)
         self.edges = self.links.copy()
         self.Nedge = self.edges.shape[0]
@@ -24,10 +24,10 @@ class HubbardGraph(HubbardEqualizer):
     def update_node(self, label='param'):
         if label == 'param':
             # Label onsite chemical potential
-            depth = np.real(np.diag(self.A))
+            depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
             self.node_label = list(
-                f'{depth[i]:.3g}\n{self.U[i]:.3g}' for i in range(self.Nsite))
-            self.node_label[0] = f'V = {depth[0]:.3g}\n U = {self.U[0]:.3g}'
+                f'{depth[i]:.4g}\n{self.U[i] * 1e3:.4g}' for i in range(self.Nsite))
+            self.node_label[0] = f'V = {depth[0]:.4g}\n U = {self.U[0] * 1e3:.4g}'
         elif label == 'adjust':
             # Label trap offset
             self.node_label = list(
@@ -43,7 +43,7 @@ class HubbardGraph(HubbardEqualizer):
             edge = self.edges[i]
             if label == 'param':
                 # Label bond tunneling
-                length = abs(self.A[edge[0], edge[1]])
+                length = abs(self.A[edge[0], edge[1]]) * 1e3  # Convert to kHz
             elif label == 'adjust':
                 # Label bond length
                 length = la.norm(np.diff(self.trap_centers[edge, :], axis=0))

@@ -61,11 +61,18 @@ def read_Hubbard(report: ConfigObj):
     return U, A
 
 
+def update_saved_data(report: ConfigObj, G: MLWF):
+    G.U, G.A = read_Hubbard(report)
+    G.A = G.A - np.eye(G.A.shape[0]) * np.mean(np.diag(G.A))
+    Vi = np.real(np.diag(G.A))
+    tij = abs(np.real(G.A - np.diag(Vi)))
+    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U}
+    rep.create_report(report, "Singleband_Parameters", **values)
+
+
 def read_trap(report: ConfigObj):
     report = rep.get_report(report)
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
     return Voff, tc, w
-
-
