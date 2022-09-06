@@ -152,7 +152,7 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-# ================ TEST MINIMIZE =====================
+# ================= GENERAL MINIMIZATION =================
 
     def equalize(self,
                  target: str = 'UvT',
@@ -162,7 +162,8 @@ class HubbardEqualizer(MLWF):
                  nobounds: bool = False,
                  method: str = 'Nelder-Mead',
                  callback: bool = False,
-                 iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+                 iofile: ConfigObj = None
+                 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
         print(f"Equalization method: {method}")
         print(f"Equalization target: {target}\n")
@@ -186,6 +187,7 @@ class HubbardEqualizer(MLWF):
         if fix_u:
             if Ut is None:
                 Utarget = np.mean(U)
+                Ut = Utarget / txTarget
             else:
                 Utarget = Ut * txTarget
         else:
@@ -201,7 +203,8 @@ class HubbardEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
         self.eff_dof()
-        v0, bounds = self.init_guess(random=random, nobounds=nobounds, lsq=True)
+        v0, bounds = self.init_guess(
+            random=random, nobounds=nobounds, lsq=True)
 
         self.eqinfo = {'Nfeval': 0,
                        'cost': np.array([]).reshape(0, 3),
@@ -298,6 +301,7 @@ class HubbardEqualizer(MLWF):
         Vtarget, Utarget, txTarget, tyTarget = target
 
         w = weight.copy()
+
         cu = 0
         if u:
             # U is different, as calculating U costs time
@@ -387,8 +391,7 @@ class HubbardEqualizer(MLWF):
             print(f'Onsite interaction normalized distance u={cu}')
         return cu
 
-
-# ================ TEST LEAST_SQUARE =====================
+# ==================== LEAST SQUARES ====================
 
     def equalize_lsq(self,
                      target: str = 'UvT',
@@ -398,7 +401,8 @@ class HubbardEqualizer(MLWF):
                      nobounds: bool = False,
                      method: str = 'trf',
                      callback: bool = False,
-                     iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+                     iofile: ConfigObj = None
+                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
         print(f"Equalization method: {method}")
         print(f"Equalization target: {target}\n")
@@ -440,6 +444,7 @@ class HubbardEqualizer(MLWF):
         self.eff_dof()
         v0, bounds = self.init_guess(
             random=random, nobounds=nobounds, lsq=True)
+        # Convert to tuple of (lb, ub)
         ba = np.array(bounds)
         bounds = (ba[:, 0], ba[:, 1])
 
@@ -479,8 +484,8 @@ class HubbardEqualizer(MLWF):
         self.eqinfo['termination_reason'] = res.message
         self.eqinfo['exit_status'] = res.status
 
-        trap_depth, trap_waist, trap_center = self.set_params(res.x,
-                                                              self.verbosity, 'Final')
+        trap_depth, trap_waist, trap_center = self.set_params(
+            res.x, self.verbosity, 'Final')
         self.symm_unfold(self.Voff, trap_depth)
         if self.waist_dir != None:
             self.symm_unfold(self.waists, trap_waist)
@@ -627,5 +632,3 @@ class HubbardEqualizer(MLWF):
             print(f'Onsite interaction target fixed to {Utarget}')
             print(f'Onsite interaction normalized residue u={cu}')
         return cu
-
-# ================ TEST OVER =====================
