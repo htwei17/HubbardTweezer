@@ -35,10 +35,15 @@ class HubbardEqualizer(MLWF):
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
-            # __, __, __, self.eqinfo = self.equalize(
-            #     eqtarget, Ut, random=random, callback=False, method=method, iofile=iofile)
-            __, __, __, self.eqinfo = self.equalize_lsq(
-                eqtarget, Ut, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+            if method in ['trf', 'dogbox']:
+                __, __, __, self.eqinfo = self.equalize_lsq(
+                    eqtarget, Ut, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+            elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
+                __, __, __, self.eqinfo = self.equalize(
+                    eqtarget, Ut, random=random, callback=False, method=method, iofile=iofile)
+            else:
+                raise ValueError(
+                    f'Unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
 
     def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
         u, t, v = False, False, False
@@ -79,7 +84,7 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_guess(self, random=False, nobounds=False, lsq=False) -> tuple[np.ndarray, tuple]:
+    def init_guess(self, random=False, nobounds=False, lsq=True) -> tuple[np.ndarray, tuple]:
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
         v01 = np.ones(self.Nindep)
@@ -156,7 +161,6 @@ class HubbardEqualizer(MLWF):
                  random: bool = False,
                  nobounds: bool = False,
                  method: str = 'Nelder-Mead',
-                 lsq: bool = True,
                  callback: bool = False,
                  iofile: ConfigObj = None) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
@@ -197,7 +201,7 @@ class HubbardEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
         self.eff_dof()
-        v0, bounds = self.init_guess(random=random, nobounds=nobounds, lsq=lsq)
+        v0, bounds = self.init_guess(random=random, nobounds=nobounds, lsq=True)
 
         self.eqinfo = {'Nfeval': 0,
                        'cost': np.array([]).reshape(0, 3),
@@ -355,19 +359,19 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
-            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         elif isinstance(target, Iterable):
             xlinks, ylinks = links
-            nntx, nnty = target
-            if nntx is None:
-                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+            txTarget, tyTarget = target
+            if txTarget is None:
+                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
 
-        ct = np.mean((abs(nnt[xlinks]) / nntx - 1)**2)
-        if nnty != None:
-            ct += np.mean((abs(nnt[ylinks]) / nnty - 1)**2)
+        ct = np.mean((abs(nnt[xlinks]) / txTarget - 1)**2)
+        if tyTarget != None:
+            ct += np.mean((abs(nnt[ylinks]) / tyTarget - 1)**2)
         if self.verbosity:
             if self.verbosity > 1:
-                print(f'Tunneling target=({nntx}, {nnty})')
+                print(f'Tunneling target=({txTarget}, {tyTarget})')
             print(f'Tunneling normalized distance t={ct}')
         return ct
 
@@ -385,7 +389,6 @@ class HubbardEqualizer(MLWF):
 
 
 # ================ TEST LEAST_SQUARE =====================
-
 
     def equalize_lsq(self,
                      target: str = 'UvT',
@@ -461,11 +464,6 @@ class HubbardEqualizer(MLWF):
             c = self.cbd_res_func(point, info, (xlinks, ylinks),
                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
             return c
-
-        # def rho(offset: np.ndarray):
-        #     sqrt = np.sqrt(offset)
-        #     r = np.array([sqrt, 1/(2*sqrt), -1/(4*sqrt**3)])
-        #     return r
 
         # if nobounds:
         #     method = 'lm'
@@ -602,12 +600,12 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
-            xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         elif isinstance(target, Iterable):
             xlinks, ylinks = links
             txTarget, tyTarget = target
-            if nntx is None:
-                xlinks, ylinks, nntx, nnty = self.xy_links(nnt)
+            if txTarget is None:
+                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
 
         ct = (abs(nnt[xlinks]) - txTarget) / \
             (txTarget * np.sqrt(np.sum(xlinks)))
