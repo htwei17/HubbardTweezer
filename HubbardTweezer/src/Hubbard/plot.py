@@ -58,7 +58,7 @@ class HubbardGraph(HubbardEqualizer):
             # Label onsite chemical potential
             depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
             self.node_label = dict(
-                (n, f'{depth[n]:.2f}') for n in self.graph.nodes)
+                (n, f'{depth[n]:.0f}') for n in self.graph.nodes)
         elif label == 'adjust':
             # Label trap offset
             self.node_label = dict(
@@ -154,15 +154,15 @@ class HubbardGraph(HubbardEqualizer):
                                    alpha=np.sqrt(self.edge_alpha[i]),
                                    width=3)
         self.draw_edge_labels(self.pos,
-                         self.nn_edge_label,
-                         nnn=False,
-                         font_size=14,
-                         font_color=[0.256, 0.439, 0.588])
+                              self.nn_edge_label,
+                              nnn=False,
+                              font_size=14,
+                              font_color=[0.256, 0.439, 0.588])
         self.draw_edge_labels(self.pos,
-                         self.nnn_edge_label,
-                         nnn=True,
-                         font_size=14,
-                         font_color=[0.256, 0.439, 0.588])
+                              self.nnn_edge_label,
+                              nnn=True,
+                              font_size=14,
+                              font_color=[0.256, 0.439, 0.588])
 
         plt.axis('off')
         plt.savefig(
@@ -189,7 +189,7 @@ class HubbardGraph(HubbardEqualizer):
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
         self.overhead_label = dict(
-            (n, f'{self.U[n]*1e3:.4g}') for n in self.graph.nodes)
+            (n, f'{self.U[n]*1e3:.0f}') for n in self.graph.nodes)
 
         nx.draw_networkx_labels(self.graph,
                                 pos=self.overhead_pos,
