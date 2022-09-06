@@ -419,6 +419,7 @@ class HubbardEqualizer(MLWF):
         if fix_u:
             if Ut is None:
                 Utarget = np.mean(U)
+                Ut = Utarget / txTarget
             else:
                 Utarget = Ut * txTarget
         else:

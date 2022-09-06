@@ -31,6 +31,7 @@ avg = rep.f(report, "Parameters", "average", 1)
 
 eq = rep.b(report, "Parameters", "equalize", False)
 eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
+ut = rep.f(report, "Parameters", "U/t", None)
 wd = rep.s(report, "Parameters", "waist_direction", None)
 band = rep.i(report, "Parameters", "band", 1)
 
@@ -61,6 +62,7 @@ G = HubbardGraph(
     sparse=s,  # Sparse matrix
     equalize=eq,
     eqtarget=eqt,
+    Ut=ut,
     random=r,
     method=meth,
     nobounds=nb,
