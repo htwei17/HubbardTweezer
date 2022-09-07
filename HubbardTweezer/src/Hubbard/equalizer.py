@@ -176,13 +176,8 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        if t:
-            nnt = self.nn_tunneling(A)
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-            if not fix_t:
-                txTarget, tyTarget = None, None
-        else:
-            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+        nnt = self.nn_tunneling(A)
+        xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
 
         if fix_u:
             if Ut is None:
@@ -296,7 +291,6 @@ class HubbardEqualizer(MLWF):
         xlinks, ylinks = links
         # Vtarget = None
         # Utarget = None
-        # nntx, nnty = None, None
         # if isinstance(target, Iterable):
         Vtarget, Utarget, txTarget, tyTarget = target
 
@@ -415,13 +409,8 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        if t:
-            nnt = self.nn_tunneling(A)
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-            if not fix_t:
-                txTarget, tyTarget = None, None
-        else:
-            nnt, xlinks, ylinks, txTarget, tyTarget = None, None, None, None, None
+        nnt = self.nn_tunneling(A)
+        xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
 
         if fix_u:
             if Ut is None:
@@ -536,7 +525,6 @@ class HubbardEqualizer(MLWF):
         xlinks, ylinks = links
         # Vtarget = None
         # Utarget = None
-        # nntx, nnty = None, None
         # if isinstance(target, Iterable):
         Vtarget, Utarget, txTarget, tyTarget = target
 
