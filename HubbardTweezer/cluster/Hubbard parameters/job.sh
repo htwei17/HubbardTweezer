@@ -12,6 +12,7 @@ STATUS=neq
 PARTITION=scavenge
 TIME="4:00:00"
 SUFFIX=""
+METHOD="trf"
 # DVR
 d=3
 N=20
@@ -36,6 +37,7 @@ while :; do
         echo "-e, --eq: determine which parameter to equalize (Default: $STATUS)"
         echo "          it can be 'neq' for no equalization,"
         echo "          'L'('N') for varying L(N) to check convergence ('neq' implied)"
+        echo "-m, --method: method used to minimize cost function (Default: $METHOD)"
         exit
         ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
@@ -84,6 +86,14 @@ while :; do
             shift
         else
             die 'ERROR: "--eq" requires a non-empty option argument.'
+        fi
+        ;;
+    -m | --method)
+        if [ "$2" ]; then
+            METHOD=$2
+            shift
+        else
+            die 'ERROR: "--method" requires a non-empty option argument.'
         fi
         ;;
     --) # End of all options.
@@ -210,7 +220,8 @@ dimension = $d
 waist_direction = $WAIST
 equalize = $EQ_FLAG
 equalize_target = $STATUS
-no_bounds = True
+method = $METHOD
+no_bounds = False
 verbosity = 1
 job_id = \$SLURM_JOB_ID\" >>\$FN
 fi

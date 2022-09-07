@@ -35,6 +35,8 @@ class HubbardEqualizer(MLWF):
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
+            method = 'Nelder-Mead' if method == 'NM' else method
+
             if method in ['trf', 'dogbox']:
                 __, __, __, self.eqinfo = self.equalize_lsq(
                     eqtarget, Ut, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
@@ -227,7 +229,7 @@ class HubbardEqualizer(MLWF):
         # Method-specific options
         if method == 'Nelder-Mead':
             options = {
-                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-9}
+                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-9, 'maxiter': 500 * self.Nindep}
         elif method == 'SLSQP':
             options = {'disp': True, 'ftol': np.finfo(float).eps}
 
@@ -313,6 +315,8 @@ class HubbardEqualizer(MLWF):
 
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
+        cvec = np.sqrt(cvec)
+        fval = la.norm(w @ cvec)
         if self.verbosity:
             print(f"Current total distance: {c}\n")
 
@@ -321,10 +325,10 @@ class HubbardEqualizer(MLWF):
             info['Nfeval'] += 1
             info['x'] = np.append(info['x'], point[None], axis=0)
             info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            ctot = np.sum(cvec)
+            ctot = la.norm(cvec)
             info['ctot'] = np.append(info['ctot'], ctot)
-            info['fval'] = np.append(info['fval'], c)
-            diff = info['fval'][len(info['fval'])//2] - c
+            info['fval'] = np.append(info['fval'], fval)
+            diff = info['fval'][len(info['fval'])//2] - fval
             info['diff'] = np.append(info['diff'], diff)
             # display information
             if info['Nfeval'] % 10 == 0:
@@ -546,7 +550,8 @@ class HubbardEqualizer(MLWF):
             w[2] = 0
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
-        cw = [w[0] * cu, w[1] * ct, w[2] * cv]
+        # Weighted cost function, weight is in front of each squared term
+        cw = [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv]
         c = np.concatenate(cw)
         ctot = la.norm(cvec)
         fval = la.norm(c)

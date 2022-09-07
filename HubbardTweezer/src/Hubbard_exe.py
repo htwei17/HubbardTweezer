@@ -72,30 +72,33 @@ G = HubbardGraph(
 
 eig_sol = eigen_basis(G)
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-# G.draw_graph('adjust', A, U)
-# G.draw_graph(A=A, U=U)
+G.draw_graph('adjust', G.A, G.U)
+G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
 write_singleband(report, G)
 write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = G.str_to_flags(eqt)
-cv = G.v_res_func(G.A, None)
-ct = G.t_res_func(G.A, None, None)
-cu = G.u_res_func(G.U, None)
-cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
+nnt = G.nn_tunneling(G.A)
+xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
+ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
+cv = G.v_cost_func(G.A, None, txTarget)
+cu = G.u_cost_func(G.U, None, txTarget)
+cvec = np.sqrt(np.array((cu, ct, cv)))
+w = np.array([u, t, v])
 
 if eq:
     G.eqinfo['cost'][-1] = cvec
-    G.eqinfo['fval'][-1] = np.array([u, t, v]) @ cvec
-    G.eqinfo['ctot'][-1] = np.sum(cvec)
+    G.eqinfo['fval'][-1] = la.norm(w @ cvec)
+    G.eqinfo['ctot'][-1] = la.norm(cvec)
 else:
     v0, __ = G.init_guess(random=False)
     G.eqinfo['x'] = v0[None]
     G.eqinfo['Nfeval'] = 0
     G.eqinfo['cost'] = cvec[None]
-    G.eqinfo['fval'] = np.array([np.array([u, t, v]) @ cvec])
-    G.eqinfo['ctot'] = np.array([np.sum(cvec)])
+    G.eqinfo['fval'] = np.array([la.norm(w @ cvec)])
+    G.eqinfo['ctot'] = np.array([la.norm(cvec)])
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"
 write_equalize_log(report, G.eqinfo, final=True)
