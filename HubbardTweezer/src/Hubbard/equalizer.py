@@ -3,6 +3,7 @@ import numpy.linalg as la
 from typing import Iterable, Union
 from scipy.optimize import minimize, least_squares
 from configobj import ConfigObj
+from time import time
 
 from .core import *
 from .output import *
@@ -21,6 +22,7 @@ class HubbardEqualizer(MLWF):
             waist='x',  # Waist to vary, None means no waist change
             random: bool = False,  # Random initial guess
             iofile=None,  # Input/output file
+            x0: np.ndarray = None,  # Initial value for minimization to start from
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -36,13 +38,16 @@ class HubbardEqualizer(MLWF):
                 self.waist_dir = 'xy'
 
             method = 'Nelder-Mead' if method == 'NM' else method
+            if not isinstance(x0, np.ndarray):
+                print('Illegal x0 provided. Use no initial guess.')
+                x0 = None
 
             if method in ['trf', 'dogbox']:
                 __, __, __, self.eqinfo = self.equalize_lsq(
-                    eqtarget, Ut, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+                    eqtarget, Ut, x0=x0, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
             elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
                 __, __, __, self.eqinfo = self.equalize(
-                    eqtarget, Ut, random=random, callback=False, method=method, iofile=iofile)
+                    eqtarget, Ut, x0=x0, random=random, callback=False, method=method, iofile=iofile)
             else:
                 raise ValueError(
                     f'Unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
@@ -159,6 +164,7 @@ class HubbardEqualizer(MLWF):
     def equalize(self,
                  target: str = 'UvT',
                  Ut: float = None,
+                 x0: np.ndarray = None,
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
@@ -202,6 +208,13 @@ class HubbardEqualizer(MLWF):
         self.eff_dof()
         v0, bounds = self.init_guess(
             random=random, nobounds=nobounds, lsq=True)
+        if isinstance(x0, np.ndarray):
+            try:
+                if len(x0) == len(v0):
+                    v0 = x0  # Use passed initial guess
+            except:
+                print("External initial guess is not passed.")
+                pass
 
         self.eqinfo = {'Nfeval': 0,
                        'cost': np.array([]).reshape(0, 3),
@@ -222,7 +235,7 @@ class HubbardEqualizer(MLWF):
 
         def cost_func(point: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(point, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, x0, report=iofile)
             return c
 
         t0 = time()
@@ -257,6 +270,7 @@ class HubbardEqualizer(MLWF):
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
                       utv: tuple[bool] = (False, False, False),
+                      fix_t: bool = True,
                       weight: np.ndarray = np.ones(3),
                       unitary: Union[list, None] = None,
                       report: ConfigObj = None) -> float:
@@ -303,15 +317,17 @@ class HubbardEqualizer(MLWF):
             # U is different, as calculating U costs time
             cu = self.u_cost_func(U, Utarget, txTarget)
 
-        ct = self.t_cost_func(A, (xlinks, ylinks), (txTarget, tyTarget))
-        if not t:
-            # Force t to have no effect on cost function
-            w[1] = 0
-
         cv = self.v_cost_func(A, Vtarget, txTarget)
         if not v:
             # Force V to have no effect on cost function
             w[2] = 0
+
+        if not fix_t:
+            txTarget, tyTarget = None, None
+        ct = self.t_cost_func(A, (xlinks, ylinks), (txTarget, tyTarget))
+        if not t:
+            # Force t to have no effect on cost function
+            w[1] = 0
 
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
@@ -394,6 +410,7 @@ class HubbardEqualizer(MLWF):
     def equalize_lsq(self,
                      target: str = 'UvT',
                      Ut: float = None,  # Target onsite interaction in unit of tx
+                     x0: np.ndarray = None,
                      weight: np.ndarray = np.ones(3),
                      random: bool = False,
                      nobounds: bool = False,
@@ -437,6 +454,13 @@ class HubbardEqualizer(MLWF):
         self.eff_dof()
         v0, bounds = self.init_guess(
             random=random, nobounds=nobounds, lsq=True)
+        if isinstance(x0, np.ndarray):
+            try:
+                if len(x0) == len(v0):
+                    v0 = x0  # Use passed initial guess
+            except:
+                print("External initial guess is not passed.")
+                pass
         # Convert to tuple of (lb, ub)
         ba = np.array(bounds)
         bounds = (ba[:, 0], ba[:, 1])
@@ -460,7 +484,7 @@ class HubbardEqualizer(MLWF):
 
         def res_func(point: np.ndarray, info: Union[dict, None]):
             c = self.cbd_res_func(point, info, (xlinks, ylinks),
-                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), weight, x0, report=iofile)
+                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, x0, report=iofile)
             return c
 
         # if nobounds:
@@ -493,6 +517,7 @@ class HubbardEqualizer(MLWF):
                      links: tuple[np.ndarray, np.ndarray],
                      target: tuple[float, ...],
                      utv: tuple[bool] = (False, False, False),
+                     fix_t: bool = True,
                      weight: np.ndarray = np.ones(3),
                      unitary: Union[list, None] = None,
                      report: ConfigObj = None) -> float:
@@ -539,15 +564,17 @@ class HubbardEqualizer(MLWF):
             # U is different, as calculating U costs time
             cu = self.u_res_func(U, Utarget, txTarget)
 
-        ct = self.t_res_func(A, (xlinks, ylinks), (txTarget, tyTarget))
-        if not t:
-            # Force t to have no effect on cost function
-            w[1] = 0
-
         cv = self.v_res_func(A, Vtarget, txTarget)
         if not v:
             # Force V to have no effect on cost function
             w[2] = 0
+
+        if not fix_t:
+            txTarget, tyTarget = None, None
+        ct = self.t_res_func(A, (xlinks, ylinks), (txTarget, tyTarget))
+        if not t:
+            # Force t to have no effect on cost function
+            w[1] = 0
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term

@@ -12,15 +12,18 @@ inFile = sys.argv[1]
 # ====== Read parameters ======
 report = rep.get_report(inFile)
 
+# ====== DVR parameters ======
 N = rep.i(report, "Parameters", "N", 20)
 L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
 dim = rep.i(report, "Parameters", "dimension", 1)
 
+# ====== Create lattice ======
 lattice = rep.a(report, "Parameters", "lattice", np.array([4])).astype(int)
 lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520,
                                                                   1690])))
 shape = rep.s(report, "Parameters", "shape", 'square')
 
+# ====== Physical parameters ======
 a_s = rep.f(report, "Parameters", "scattering_length", 1000)
 V0 = rep.f(report, "Parameters", "V_0", 104.52)
 w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
@@ -29,17 +32,20 @@ zR = rep.f(report, "Parameters", "zR", None)
 l = rep.f(report, "Parameters", "laser_wavelength", 780)
 avg = rep.f(report, "Parameters", "average", 1)
 
+# ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
 eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
 ut = rep.f(report, "Parameters", "U/t", None)
 wd = rep.s(report, "Parameters", "waist_direction", None)
 band = rep.i(report, "Parameters", "band", 1)
-
-s = rep.b(report, "Parameters", "sparse", True)
-symm = rep.b(report, "Parameters", "symmetry", True)
-r = rep.b(report, "Parameters", "random_init_guess", False)
 meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
+r = rep.b(report, "Parameters", "random_init_guess", False)
+x0 = rep.a(report, "Equalization_Info", "x", None)
+
+# ====== DVR settings ======
+s = rep.b(report, "Parameters", "sparse", True)
+symm = rep.b(report, "Parameters", "symmetry", True)
 verb = rep.i(report, "Parameters", "verbosity", 0)
 
 # ====== Equalize ======
@@ -64,6 +70,7 @@ G = HubbardGraph(
     eqtarget=eqt,
     Ut=ut,
     random=r,
+    x0=x0,
     method=meth,
     nobounds=nb,
     symmetry=symm,
