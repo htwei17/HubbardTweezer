@@ -33,9 +33,9 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size)
     elif shape == 'zigzag':
-        # TODO: implement zigzag lattice
+        # TODO: implement zigzag, and other assymmetric lattice
         # FIXME: zigzag has no y-axis symmetry
-        #        we need to add indicator for such cases
+        #        one way to do is to copy the chain to be mirrored on y-axis
         # NOTE: the code below is not runnable as size-2 will be forced to be 3
         nodes, links, __ = tri_lattice(np.array([size[0], 2]))
     elif shape == 'honeycomb':

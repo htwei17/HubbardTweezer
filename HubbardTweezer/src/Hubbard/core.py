@@ -189,7 +189,8 @@ class MLWF(DVR):
         self.A, V = singleband_optimize(self, E, W, p, x0)
         if offset:
             # Shift onsite potential to zero average
-            self.A -= np.mean(np.real(np.diag(self.A))) * np.eye(self.A.shape[0])
+            self.A -= np.mean(np.real(np.diag(self.A))) * \
+                np.eye(self.A.shape[0])
 
         if u:
             if self.verbosity:
@@ -267,7 +268,7 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
         W_sb = [W_sb[i] for i in idx]
         p_sb = p_sb[idx, :]
     else:
-        E_sb, W_sb = H_solver(dvr, k)
+        E_sb, W_sb = dvr.H_solver(k)
         W_sb = [W_sb[:, i] for i in range(k)]
         p_sb = np.zeros((k, 2))
 
@@ -313,7 +314,7 @@ def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     p[: len(sector)] = sector
     dvr.update_p(p)
 
-    Em, Wm = H_solver(dvr, k)
+    Em, Wm = dvr.H_solver(k)
     E = np.append(E, Em)
     W += [Wm[:, i].reshape(dvr.n + 1 - dvr.init) for i in range(k)]
     # Parity sector marker
@@ -321,7 +322,7 @@ def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     return E, W, parity
 
 
-def locality_mat(dvr: MLWF, W, parity):
+def loc_mat(dvr: MLWF, W, parity):
     # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
     # and position operator x, y, z
 
@@ -377,7 +378,7 @@ def locality_mat(dvr: MLWF, W, parity):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
+def _cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Cost function to Wannier optimize
     o = 0
     for i in range(len(R)):
@@ -422,7 +423,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, n
     t0 = time()
 
     if dvr.Nsite > 1:
-        R = locality_mat(dvr, W, parity)
+        R = loc_mat(dvr, W, parity)
         if dvr.lattice_dim == 1:
             # If only one R given, the problem is simply diagonalization
             # solution is eigenstates of operator X
@@ -433,7 +434,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, n
             # In high dimension, X, Y, Z don't commute
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
-            solution = riemann_optimize(dvr, x0, R)
+            solution = _riemann_optimize(dvr, x0, R)
             U = site_order(dvr, W, solution, parity)
     else:
         U = np.ones((1, 1))
@@ -448,16 +449,16 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, n
     return A, U
 
 
-def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
+def _riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
 
     @pymanopt.function.pytorch(manifold)
-    def cost(point: torch.Tensor) -> torch.Tensor:
-        return cost_func(point, R)
+    def cost_func(point: torch.Tensor) -> torch.Tensor:
+        return _cost_func(point, R)
 
-    problem = pymanopt.Problem(manifold=manifold, cost=cost)
+    problem = pymanopt.Problem(manifold=manifold, cost=cost_func)
     optimizer = pymanopt.optimizers.ConjugateGradient(
         max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity-1 if dvr.verbosity > 0 else 0)
     result = optimizer.run(

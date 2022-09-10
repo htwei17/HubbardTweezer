@@ -26,6 +26,68 @@ dim = 3  # space dimension
 #          z direction zRx, zRy are also in unit of wx.
 
 
+def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
+    init = -n
+    init[p == 1] = 0
+    init[p == -1] = 1
+    return init
+
+
+def psi(n: np.ndarray, dx: np.ndarray,
+        W: np.ndarray,
+        x: list[np.ndarray, np.ndarray, np.ndarray],
+        p: np.ndarray = np.zeros(dim,
+                                 dtype=int)) -> np.ndarray:
+    init = get_init(n, p)
+    # V = np.sum(
+    #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
+    # )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
+    deltax = dx.copy()
+    nd = deltax == 0
+    deltax[nd] = 1
+    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(dim)]
+    x = [x[i] / deltax[i] for i in range(dim)]
+    # map object itself is not a list, but we can unpacked it by *V
+    V = map(delta, p, x, xn)
+    # ufunc of list of different length of arrays are not supported by numpy
+    # vd = np.vectorize(delta, signature='(),(m),(n)->(m,n)')
+    # V = vd(p, x, xn)
+    # V = delta(p, x, xn)
+    if W.ndim == 3:
+        W = W[..., None]
+    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmno', *V, W)
+    return psi
+
+
+def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:
+    # Symmetrized sinc DVR basis funciton, x in unit of dx
+    Wx = np.sinc(x[:, None] - xn[None])
+    if p != 0:
+        Wx += p * np.sinc(x[:, None] + xn[None])
+        Wx /= np.sqrt(2)
+        if p == 1:
+            Wx[:, 0] /= np.sqrt(2)
+    return Wx
+# @guvectorize([(int64, float64[:], float64[:], float64[:, :])], '(),(m),(n)->(m,n)', target='parallel')
+# def delta(p: int, x: np.ndarray, xn: np.ndarray, Wx):
+#     # Symmetrized sinc DVR basis funciton, x in unit of dx
+#     x = x.copy()
+#     xn = xn.copy()
+#     Wx = np.sinc(x.reshape(-1, 1) - xn.reshape(1, -1))
+#     if p != 0:
+#         Wx += p * np.sinc(x.reshape(-1, 1) + xn.reshape(1, -1))
+#         Wx /= np.sqrt(2)
+#         if p == 1:
+#             Wx[:, 0] /= np.sqrt(2)
+
+
+def _kinetic_offdiag(T: np.ndarray) -> np.ndarray:
+    # Kinetic energy matrix off-diagonal elements
+    non0 = T != 0  # To avoid warning on 0-divide-0
+    T[non0] = 2 * np.power(-1., T[non0]) / T[non0]**2
+    return T
+
+
 class DVR:
     """DVR base class
 
@@ -124,8 +186,12 @@ class DVR:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of wx
         self.R = R0.copy()  # Total region size, R = R0 + LI
+
         self.avg = avg
         self.model = model
+        if self.avg == 0:
+            self.model = "free"
+
         self.absorber = absorber
         self.symmetry = symmetry
         self.nd: np.ndarray = n != 0  # Nonzero dimensions
@@ -238,261 +304,187 @@ class DVR:
     def Vabs(self, x, y, z):
         r = np.array([x, y, z]).transpose(1, 2, 3, 0)
         np.set_printoptions(threshold=sys.maxsize)
-        d = abs(r) - self.R0
+        d: np.ndarray = abs(r) - self.R0
         d = (d > 0) * d
-        L = self.R - self.R0
+        L: np.ndarray = self.R - self.R0
         L[L == 0] = np.inf
         # if __debug__:
         #     print(self.R)
         #     print(self.R0)
         #     print(L)
-        Vi = np.sum(d / L, axis=3)
+        Vi: np.ndarray = np.sum(d / L, axis=3)
         if Vi.any() != 0.0:
             V = -1j * self.VIdV0 * Vi  # Energy in unit of V0
         return V
 
-
-def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
-    init = -n
-    init[p == 1] = 0
-    init[p == -1] = 1
-    return init
-
-
-def Vmat(dvr: DVR):
-    # Potential energy tensor, index order [x y z x' y' z']
-    # NOTE: here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
-    #       potential(x, y, z) is a function handle to be processed as potential function for solving
-    x = []
-    for i in range(dim):
-        x.append(np.arange(dvr.init[i], dvr.n[i] + 1) *
-                 dvr.dx[i])  # In unit of micron
-    X = np.meshgrid(*x, indexing='ij')
-    # 3 index tensor V(x, y, z)
-    V = dvr.avg * dvr.Vfun(*X)
-    if dvr.absorber:  # add absorber
-        V = V.astype(complex) + dvr.Vabs(*X)
-    no = dvr.n + 1 - dvr.init
-    # V * identity rank-6 tensor
-    if not dvr.sparse:
-        V = np.diag(V.reshape(-1))
-        V = V.reshape(*no, *no)
-    return V, no
-
-
-def psi(n: np.ndarray, dx: np.ndarray,
-        W: np.ndarray,
-        x: list[np.ndarray, np.ndarray, np.ndarray],
-        p: np.ndarray = np.zeros(dim,
-                                 dtype=int)) -> np.ndarray:
-    init = get_init(n, p)
-    # V = np.sum(
-    #     W.reshape(*(np.append(n + 1 - init, -1))), axis=1
-    # )  # Sum over y, z index to get y=z=0 cross section of the wavefunction
-    deltax = dx.copy()
-    nd = deltax == 0
-    deltax[nd] = 1
-    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(dim)]
-    x = [x[i] / deltax[i] for i in range(dim)]
-    # map object itself is not a list, but we can unpacked it by *V
-    V = map(delta, p, x, xn)
-    # ufunc of list of different length of arrays are not supported by numpy
-    # vd = np.vectorize(delta, signature='(),(m),(n)->(m,n)')
-    # V = vd(p, x, xn)
-    # V = delta(p, x, xn)
-    if W.ndim == 3:
-        W = W[..., None]
-    psi = 1 / np.sqrt(np.prod(deltax)) * contract('il,jm,kn,lmno', *V, W)
-    return psi
-
-
-def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:
-    # Symmetrized sinc DVR basis funciton, x in unit of dx
-    Wx = np.sinc(x[:, None] - xn[None])
-    if p != 0:
-        Wx += p * np.sinc(x[:, None] + xn[None])
-        Wx /= np.sqrt(2)
-        if p == 1:
-            Wx[:, 0] /= np.sqrt(2)
-    return Wx
-# @guvectorize([(int64, float64[:], float64[:], float64[:, :])], '(),(m),(n)->(m,n)', target='parallel')
-# def delta(p: int, x: np.ndarray, xn: np.ndarray, Wx):
-#     # Symmetrized sinc DVR basis funciton, x in unit of dx
-#     x = x.copy()
-#     xn = xn.copy()
-#     Wx = np.sinc(x.reshape(-1, 1) - xn.reshape(1, -1))
-#     if p != 0:
-#         Wx += p * np.sinc(x.reshape(-1, 1) + xn.reshape(1, -1))
-#         Wx /= np.sqrt(2)
-#         if p == 1:
-#             Wx[:, 0] /= np.sqrt(2)
-
-
-def kinetic_offdiag(T: np.ndarray) -> np.ndarray:
-    # Kinetic energy matrix off-diagonal elements
-    non0 = T != 0  # To avoid warning on 0-divide-0
-    T[non0] = 2 * np.power(-1., T[non0]) / T[non0]**2
-    return T
-
-
-def Tmat_1d(dvr: DVR, i: int):
-    # Kinetic energy matrix for 1-dim
-    n = dvr.n[i]
-    # dx is dimensionless by dividing w,
-    # to restore unit we need to multiply w
-    dx = dvr.dx[i] * dvr.w
-    p = dvr.p[i]
-
-    init = get_init(np.array([n]), np.array([p]))[0]
-
-    # Off-diagonal part
-    T0 = np.arange(init, n + 1, dtype=float)[None]
-    T = kinetic_offdiag(T0 - T0.T)
-
-    # Diagonal part
-    T[np.diag_indices(n + 1 - init)] = np.pi**2 / 3
-    if p != 0:
-        T += p * kinetic_offdiag(T0 + T0.T)
-        if p == 1:
-            T[:, 0] /= np.sqrt(2)
-            T[0, :] /= np.sqrt(2)
-            T[0, 0] = np.pi**2 / 3
-    # get kinetic energy in unit of V0, hb is cancelled as V0 is in unit of angular freq, mtV0 = m * V0
-    T *= dvr.hb / (2 * dx**2 * dvr.mtV0)
-    return T
-
-
-def Tmat(dvr: DVR):
-    # Kinetic energy tensor, index order [x y z x' y' z']
-    # NOTE: 1. here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
-    #       2. p=0, d=-1 means no symmetry applied
-    delta = []
-    T0 = []
-    for i in range(dim):
-        delta.append(np.eye(dvr.n[i] + 1 - dvr.init[i]))  # eg. delta_xx'
-        if dvr.n[i]:
-            T0.append(Tmat_1d(dvr, i))  # append p-sector
-        # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
-        else:
-            T0.append(None)
-
-    if dvr.sparse:
+    def Vmat(self) -> tuple[np.ndarray, np.ndarray]:
+        # Potential energy tensor, index order [x y z x' y' z']
+        # NOTE: here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
+        #       potential(x, y, z) is a function handle to be processed as potential function for solving
+        x = []
         for i in range(dim):
-            if not isinstance(T0[i], np.ndarray):
-                T0[i] = np.zeros((1, 1))
-        return T0
-    else:
-        # delta_xx' delta_yy' T_zz'
-        # delta_xx' T_yy' delta_zz'
-        # T_xx' delta_yy' delta_zz'
-        T = 0
-        for i in range(dim):
-            if isinstance(T0[i], np.ndarray):
-                T += contract('ij,kl,mn->ikmjln', *delta[:i], T0[i],
-                              *delta[i + 1:])
+            x.append(np.arange(self.init[i], self.n[i] + 1) *
+                     self.dx[i])  # In unit of micron
+        X = np.meshgrid(*x, indexing='ij')
+        # 3 index tensor V(x, y, z)
+        V: np.ndarray = self.avg * self.Vfun(*X)
+        if self.absorber:  # add absorber
+            V = V.astype(complex) + self.Vabs(*X)
+        no = self.n + 1 - self.init
+        # V * identity rank-6 tensor
+        if not self.sparse:
+            V = np.diag(V.reshape(-1))
+            V = V.reshape(*no, *no)
+        return V, no
+
+    def _Tmat_1d(self, i: int):
+        # Kinetic energy matrix for 1-dim
+        n = self.n[i]
+        # dx is dimensionless by dividing w,
+        # to restore unit we need to multiply w
+        dx = self.dx[i] * self.w
+        p = self.p[i]
+
+        init = get_init(np.array([n]), np.array([p]))[0]
+
+        # Off-diagonal part
+        T0 = np.arange(init, n + 1, dtype=float)[None]
+        T = _kinetic_offdiag(T0 - T0.T)
+
+        # Diagonal part
+        T[np.diag_indices(n + 1 - init)] = np.pi**2 / 3
+        if p != 0:
+            T += p * _kinetic_offdiag(T0 + T0.T)
+            if p == 1:
+                T[:, 0] /= np.sqrt(2)
+                T[0, :] /= np.sqrt(2)
+                T[0, 0] = np.pi**2 / 3
+        # get kinetic energy in unit of V0, hb is cancelled as V0 is in unit of angular freq, mtV0 = m * V0
+        T *= self.hb / (2 * dx**2 * self.mtV0)
         return T
 
+    def Tmat(self):
+        # Kinetic energy tensor, index order [x y z x' y' z']
+        # NOTE: 1. here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
+        #       2. p=0, d=-1 means no symmetry applied
+        delta = []
+        T0 = []
+        for i in range(dim):
+            delta.append(np.eye(self.n[i] + 1 - self.init[i]))  # eg. delta_xx'
+            if self.n[i]:
+                T0.append(self._Tmat_1d(i))  # append p-sector
+            # If the systems is set to have only 1 grid point (N = 0) in this direction, ie. no such dimension
+            else:
+                T0.append(None)
 
-def H_op(dvr: DVR, T: list, V, no, psi0: np.ndarray):
-    # Define Hamiltonian operator for sparse solver
-
-    dvr.p *= dvr.n != 0
-    dvr.dx *= dvr.n != 0
-
-    psi0 = psi0.reshape(*no)
-    psi = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
-    psi += np.einsum('ij,jkl->ikl', T[0], psi0)  # T_xx' delta_yy' delta_zz'
-    psi += np.einsum('jl,ilk->ijk', T[1], psi0)  # delta_xx' T_yy' delta_zz'
-    psi += np.einsum('ij,klj->kli', T[2], psi0)  # delta_xx' delta_yy' T_zz'
-    return psi.reshape(-1)
-
-
-def H_mat(dvr: DVR):
-    # Construct Hamiltonian matrix
-
-    dvr.p *= dvr.n != 0
-    dvr.dx *= dvr.n != 0
-
-    # np.set_printoptions(precision=2, suppress=True)
-    if dvr.verbosity:
-        print("H_mat: n={} dx={}w p={} {} diagonalization starts.".format(dvr.n[dvr.nd],
-                                                                          dvr.dx[dvr.nd],
-                                                                          dvr.p[dvr.nd],
-                                                                          dvr.model))
-    T = Tmat(dvr)
-    V, no = Vmat(dvr)
-    H = T + V
-    del T, V
-    N = np.prod(no)
-    H = H.reshape((N, N))
-    if not dvr.absorber:
-        H = (H + H.T.conj()) / 2
-    if dvr.verbosity:
-        print("H_mat: H matrix memory usage: {:.2f} MiB.".format(
-            H.nbytes / 2**20))
-    return H
-
-
-def H_solver(dvr: DVR, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
-    # Solve Hamiltonian matrix
-
-    if dvr.sparse:
-        if dvr.verbosity:
-            print(
-                "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated."
-                .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
-                        k))
-
-        T = Tmat(dvr)
-        V, no = Vmat(dvr)
-        if dvr.verbosity > 2:
-            print("H_op: n={} dx={}w p={} {} operator constructed.".format(
-                dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model))
-
-        def applyH(psi):
-            return H_op(dvr, T, V, no, psi)
-
-        t0 = time()
-        N = np.product(no)
-        H = LinearOperator((N, N), matvec=applyH)
-
-        if k <= 0:
-            k = 10
-        if dvr.absorber:
-            if dvr.verbosity > 2:
-                print('H_solver: diagonalize sparse non-hermitian matrix.')
-            E, W = sla.eigs(H, k, which='SA')
+        if self.sparse:
+            for i in range(dim):
+                if not isinstance(T0[i], np.ndarray):
+                    T0[i] = np.zeros((1, 1))
+            return T0
         else:
-            if dvr.verbosity > 2:
-                print('H_solver: diagonalize sparse hermitian matrix.')
-            E, W = sla.eigsh(H, k, which='SA')
-    else:
-        # avg factor is used to control the time average potential strength
-        H = H_mat(dvr)
-        t0 = time()
-        if dvr.absorber:
-            if dvr.verbosity > 2:
-                print('H_solver: diagonalize non-hermitian matrix.')
-            E, W = la.eig(H)
-        else:
-            if dvr.verbosity > 2:
-                print('H_solver: diagonalize hermitian matrix.')
-            E, W = la.eigh(H)
-        if k > 0:
-            E = E[:k]
-            W = W[:, :k]
+            # delta_xx' delta_yy' T_zz'
+            # delta_xx' T_yy' delta_zz'
+            # T_xx' delta_yy' delta_zz'
+            T = 0
+            for i in range(dim):
+                if isinstance(T0[i], np.ndarray):
+                    T += contract('ij,kl,mn->ikmjln', *delta[:i], T0[i],
+                                  *delta[i + 1:])
+            return T
 
-    t1 = time()
+    def H_op(self, T: list, V, no, psi0: np.ndarray):
+        # Define Hamiltonian operator for sparse solver
 
-    if dvr.verbosity:
-        if dvr.avg > 0:
-            print('H_solver: {} Hamiltonian solved. Time spent: {:.2f}s.'.format(
-                dvr.model, t1 - t0))
-        elif dvr.avg == 0:
+        self.p *= self.n != 0
+        self.dx *= self.n != 0
+
+        psi0 = psi0.reshape(*no)
+        psi: np.ndarray = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
+        # T_xx' delta_yy' delta_zz'
+        psi += np.einsum('ij,jkl->ikl', T[0], psi0)
+        # delta_xx' T_yy' delta_zz'
+        psi += np.einsum('jl,ilk->ijk', T[1], psi0)
+        # delta_xx' delta_yy' T_zz'
+        psi += np.einsum('ij,klj->kli', T[2], psi0)
+        return psi.reshape(-1)
+
+    def H_mat(self):
+        # Construct Hamiltonian matrix
+        self.p *= self.n != 0
+        self.dx *= self.n != 0
+
+        # np.set_printoptions(precision=2, suppress=True)
+        if self.verbosity:
             print(
-                'H_solver: free particle Hamiltonian solved. Time spent: {:.2f}s.'.
-                format(t1 - t0))
-        print("H_solver: eigenstates memory usage: {:.2f} MiB.".format(W.nbytes /
-                                                                       2**20))
-    # No absorber, all eigenstates are real
-    return E, W
+                f"H_mat: n={self.n[self.nd]} dx={self.dx[self.nd]}w p={self.p[self.nd]} {self.model} diagonalization starts.")
+        T = self.Tmat()
+        V, no = self.Vmat()
+        H = T + V
+        del T, V
+        N = np.prod(no)
+        H = H.reshape((N, N))
+        if not self.absorber:
+            H = (H + H.T.conj()) / 2
+        if self.verbosity:
+            print(f"H_mat: H matrix memory usage: {H.nbytes / 2**20:.2f} MiB.")
+        return H
+
+    def H_solver(self, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
+        # Solve Hamiltonian matrix
+
+        if self.sparse:
+            if self.verbosity:
+                print(
+                    "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated."
+                    .format(self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model,
+                            k))
+
+            T = self.Tmat()
+            V, no = self.Vmat()
+            if self.verbosity > 2:
+                print("H_op: n={} dx={}w p={} {} operator constructed.".format(
+                    self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
+
+            def applyH(psi) -> np.ndarray:
+                return self.H_op(T, V, no, psi)
+
+            t0 = time()
+            N = np.product(no)
+            H = LinearOperator((N, N), matvec=applyH)
+
+            if k <= 0:
+                k = 10
+            if self.absorber:
+                if self.verbosity > 2:
+                    print('H_solver: diagonalize sparse non-hermitian matrix.')
+                E, W = sla.eigs(H, k, which='SA')
+            else:
+                if self.verbosity > 2:
+                    print('H_solver: diagonalize sparse hermitian matrix.')
+                E, W = sla.eigsh(H, k, which='SA')
+        else:
+            # avg factor is used to control the time average potential strength
+            H = self.H_mat()
+            t0 = time()
+            if self.absorber:
+                if self.verbosity > 2:
+                    print('H_solver: diagonalize non-hermitian matrix.')
+                E, W = la.eig(H)
+            else:
+                if self.verbosity > 2:
+                    print('H_solver: diagonalize hermitian matrix.')
+                E, W = la.eigh(H)
+            if k > 0:
+                E = E[:k]
+                W = W[:, :k]
+
+        t1 = time()
+
+        if self.verbosity:
+            print(
+                f'H_solver: {self.model} Hamiltonian solved. Time spent: {t1 - t0:.2f}s.')
+            print(
+                f"H_solver: eigenstates memory usage: {W.nbytes/2**20: .2f} MiB.")
+        # No absorber, all eigenstates are real
+        return E, W

@@ -9,6 +9,25 @@ from .core import *
 from .output import *
 
 
+def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
+    u, t, v = False, False, False
+    fix_u, fix_t, fix_v = False, False, False
+    if 'u' in target or 'U' in target:
+        u = True
+        if 'U' in target:
+            # Whether to fix target in combined cost function
+            fix_u = True
+    if 't' in target or 'T' in target:
+        t = True
+        if 'T' in target:
+            fix_t = True
+    if 'v' in target or 'V' in target:
+        v = True
+        if 'V' in target:
+            fix_v = True
+    return u, t, v, fix_u, fix_t, fix_v
+
+
 class HubbardEqualizer(MLWF):
 
     def __init__(
@@ -42,33 +61,18 @@ class HubbardEqualizer(MLWF):
                 print('Illegal x0 provided. Use no initial guess.')
                 x0 = None
 
-            if method in ['trf', 'dogbox']:
-                __, __, __, self.eqinfo = self.equalize_lsq(
-                    eqtarget, Ut, x0=x0, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
-            elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
-                __, __, __, self.eqinfo = self.equalize(
-                    eqtarget, Ut, x0=x0, random=random, callback=False, method=method, iofile=iofile)
-            else:
-                raise ValueError(
-                    f'Unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
+            self.equalize(eqtarget, Ut, method, nobounds, random, iofile, x0)
 
-    def str_to_flags(self, target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
-        u, t, v = False, False, False
-        fix_u, fix_t, fix_v = False, False, False
-        if 'u' in target or 'U' in target:
-            u = True
-            if 'U' in target:
-                # Whether to fix target in combined cost function
-                fix_u = True
-        if 't' in target or 'T' in target:
-            t = True
-            if 'T' in target:
-                fix_t = True
-        if 'v' in target or 'V' in target:
-            v = True
-            if 'V' in target:
-                fix_v = True
-        return u, t, v, fix_u, fix_t, fix_v
+    def equalize(self, eqtarget, Ut, method, nobounds, random, iofile, x0):
+        if method in ['trf', 'dogbox']:
+            __, __, __, self.eqinfo = self._equalize_lsq(
+                eqtarget, Ut, x0=x0, random=random, nobounds=nobounds, callback=False, method=method, iofile=iofile)
+        elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
+            __, __, __, self.eqinfo = self._equalize_min(
+                eqtarget, Ut, x0=x0, random=random, callback=False, method=method, iofile=iofile)
+        else:
+            raise ValueError(
+                f'Unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
 
     def eff_dof(self):
         # Record all free DoFs in the function
@@ -95,11 +99,17 @@ class HubbardEqualizer(MLWF):
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
         v01 = np.ones(self.Nindep)
-        b1 = list((0, np.inf) for i in range(self.Nindep))
+        if nobounds:
+            b1 = list((-np.inf, np.inf) for i in range(self.Nindep))
+        else:
+            b1 = list((0, np.inf) for i in range(self.Nindep))
 
         # Waist variation inital guess and bounds
         # UB from resolution limit; LB by wavelength
-        s2 = (self.l / self.w, 1.2)
+        if nobounds:
+            s2 = (-np.inf, np.inf)
+        else:
+            s2 = (self.l / self.w, 1.2)
         if self.waist_dir == None:
             v02 = np.array([])
             b2 = []
@@ -116,7 +126,10 @@ class HubbardEqualizer(MLWF):
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
         # TODO: make the bound to be xy specific
-        s3 = (1 - self.w / self.lc[0]) / 2
+        if nobounds:
+            s3 = (-np.inf, np.inf)
+        else:
+            s3 = (1 - 1 / self.lc[0]) / 2
         v03 = self.tc0[self.reflection[:, 0]].flatten()
         if lsq:
             b3 = list((v03[i] - s3, v03[i] + s3)
@@ -161,21 +174,21 @@ class HubbardEqualizer(MLWF):
 
 # ================= GENERAL MINIMIZATION =================
 
-    def equalize(self,
-                 target: str = 'UvT',
-                 Ut: float = None,
-                 x0: np.ndarray = None,
-                 weight: np.ndarray = np.ones(3),
-                 random: bool = False,
-                 nobounds: bool = False,
-                 method: str = 'Nelder-Mead',
-                 callback: bool = False,
-                 iofile: ConfigObj = None
-                 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    def _equalize_min(self,
+                      target: str = 'UvT',
+                      Ut: float = None,
+                      x0: np.ndarray = None,
+                      weight: np.ndarray = np.ones(3),
+                      random: bool = False,
+                      nobounds: bool = False,
+                      method: str = 'Nelder-Mead',
+                      callback: bool = False,
+                      iofile: ConfigObj = None
+                      ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
         print(f"Equalization method: {method}")
         print(f"Equalization target: {target}\n")
-        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
+        u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, offset=True, output_unitary=True)
         if u:
@@ -228,14 +241,14 @@ class HubbardEqualizer(MLWF):
         # But since unitary optimize time cost is not large in larger systems
         # it is not recommended
         if callback:
-            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
-            x0 = [V]
+            # Pack U0 to be mutable, thus can be updated in each iteration of minimize
+            U0 = [V]
         else:
-            x0 = None
+            U0 = None
 
         def cost_func(point: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(point, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, x0, report=iofile)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, unitary=U0, report=iofile)
             return c
 
         t0 = time()
@@ -407,21 +420,21 @@ class HubbardEqualizer(MLWF):
 
 # ==================== LEAST SQUARES ====================
 
-    def equalize_lsq(self,
-                     target: str = 'UvT',
-                     Ut: float = None,  # Target onsite interaction in unit of tx
-                     x0: np.ndarray = None,
-                     weight: np.ndarray = np.ones(3),
-                     random: bool = False,
-                     nobounds: bool = False,
-                     method: str = 'trf',
-                     callback: bool = False,
-                     iofile: ConfigObj = None
-                     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
+    def _equalize_lsq(self,
+                      target: str = 'UvT',
+                      Ut: float = None,  # Target onsite interaction in unit of tx
+                      x0: np.ndarray = None,
+                      weight: np.ndarray = np.ones(3),
+                      random: bool = False,
+                      nobounds: bool = False,
+                      method: str = 'trf',
+                      callback: bool = False,
+                      iofile: ConfigObj = None
+                      ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Varying waist direction: {self.waist_dir}.")
         print(f"Equalization method: {method}")
         print(f"Equalization target: {target}\n")
-        u, t, v, fix_u, fix_t, fix_v = self.str_to_flags(target)
+        u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, offset=True, output_unitary=True)
         if u:
@@ -477,14 +490,14 @@ class HubbardEqualizer(MLWF):
         # But since unitary optimize time cost is not large in larger systems
         # it is not recommended
         if callback:
-            # Pack x0 to be mutable, thus can be updated in each iteration of minimize
-            x0 = [V]
+            # Pack U0 to be mutable, thus can be updated in each iteration of minimize
+            U0 = [V]
         else:
-            x0 = None
+            U0 = None
 
         def res_func(point: np.ndarray, info: Union[dict, None]):
             c = self.cbd_res_func(point, info, (xlinks, ylinks),
-                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, x0, report=iofile)
+                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, unitary=U0, report=iofile)
             return c
 
         # if nobounds:

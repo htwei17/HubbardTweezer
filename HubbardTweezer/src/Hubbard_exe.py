@@ -86,7 +86,7 @@ G.draw_graph(A=G.A, U=G.U)
 write_singleband(report, G)
 write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
-u, t, v, __, __, __ = G.str_to_flags(eqt)
+u, t, v, __, __, __ = str_to_flags(eqt)
 nnt = G.nn_tunneling(G.A)
 xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
 ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))

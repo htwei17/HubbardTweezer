@@ -29,7 +29,7 @@ def N_convergence(N: int, R, avg=1, dim=3, level=1):
         print('dx= {}w'.format(dx))
         print('R= {}w'.format(R))
         print('n=', n)
-        V, W = H_solver(D)
+        V, W = D.H_solver()
         E = np.append(E, V[:k].reshape(1, -1), axis=0)
         p.append(
             psi(n, dx, W.reshape(*(D.n + 1 - D.init), k), x, y, z)[:, 0,
@@ -47,7 +47,7 @@ def R_convergence(N: int, dx):
         Nlist = i * np.array([1, 1, 2]) + np.array([0, 0, 1])
         R = Nlist * dx
         D = DVR(Nlist, R)
-        V, W = H_solver(D)
+        V, W = D.H_solver()
         E = np.append(E, V[:k].reshape(1, -1), axis=0)
     dE = np.diff(E, axis=0)
     R = np.array(N) * dx[0] / D.w
