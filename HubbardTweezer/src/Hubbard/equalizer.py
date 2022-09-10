@@ -199,6 +199,10 @@ class HubbardEqualizer(MLWF):
 
         nnt = self.nn_tunneling(A)
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+        # Energy scale factor, set to be of avg initial tx
+        self.sf = abs(txTarget)
+        if not fix_t:
+            txTarget, tyTarget = None, None
 
         if fix_u:
             if Ut is None:
@@ -248,7 +252,7 @@ class HubbardEqualizer(MLWF):
 
         def cost_func(point: np.ndarray, info: Union[dict, None]) -> float:
             c = self.cbd_cost_func(point, info, (xlinks, ylinks),
-                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, unitary=U0, report=iofile)
+                                   (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), self.sf, weight, unitary=U0, report=iofile)
             return c
 
         t0 = time()
@@ -283,7 +287,7 @@ class HubbardEqualizer(MLWF):
                       links: tuple[np.ndarray, np.ndarray],
                       target: tuple[float, ...],
                       utv: tuple[bool] = (False, False, False),
-                      fix_t: bool = True,
+                      scale_factor: float = None,
                       weight: np.ndarray = np.ones(3),
                       unitary: Union[list, None] = None,
                       report: ConfigObj = None) -> float:
@@ -318,25 +322,24 @@ class HubbardEqualizer(MLWF):
             unitary[0] = x0
 
         xlinks, ylinks = links
-        # Vtarget = None
-        # Utarget = None
-        # if isinstance(target, Iterable):
-        Vtarget, Utarget, txTarget, tyTarget = target
+        Vtarget = None
+        Utarget = None
+        txTarget, tyTarget = None, None
+        if isinstance(target, Iterable):
+            Vtarget, Utarget, txTarget, tyTarget = target
 
         w = weight.copy()
 
         cu = 0
         if u:
             # U is different, as calculating U costs time
-            cu = self.u_cost_func(U, Utarget, txTarget)
+            cu = self.u_cost_func(U, Utarget, scale_factor)
 
-        cv = self.v_cost_func(A, Vtarget, txTarget)
+        cv = self.v_cost_func(A, Vtarget, scale_factor)
         if not v:
             # Force V to have no effect on cost function
             w[2] = 0
 
-        if not fix_t:
-            txTarget, tyTarget = None, None
         ct = self.t_cost_func(A, (xlinks, ylinks), (txTarget, tyTarget))
         if not t:
             # Force t to have no effect on cost function
@@ -445,13 +448,17 @@ class HubbardEqualizer(MLWF):
 
         nnt = self.nn_tunneling(A)
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+        # Energy scale factor, set to be of avg initial tx
+        self.sf = abs(txTarget)
+        if not fix_t:
+            txTarget, tyTarget = None, None
 
         if fix_u:
             if Ut is None:
                 Utarget = np.mean(U)
-                Ut = Utarget / txTarget
+                Ut = Utarget / self.sf
             else:
-                Utarget = Ut * txTarget
+                Utarget = Ut * self.sf
         else:
             Utarget = None
 
@@ -497,7 +504,7 @@ class HubbardEqualizer(MLWF):
 
         def res_func(point: np.ndarray, info: Union[dict, None]):
             c = self.cbd_res_func(point, info, (xlinks, ylinks),
-                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), fix_t, weight, unitary=U0, report=iofile)
+                                  (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), self.sf, weight, unitary=U0, report=iofile)
             return c
 
         # if nobounds:
@@ -530,7 +537,7 @@ class HubbardEqualizer(MLWF):
                      links: tuple[np.ndarray, np.ndarray],
                      target: tuple[float, ...],
                      utv: tuple[bool] = (False, False, False),
-                     fix_t: bool = True,
+                     scale_factor: float = None,
                      weight: np.ndarray = np.ones(3),
                      unitary: Union[list, None] = None,
                      report: ConfigObj = None) -> float:
@@ -565,25 +572,24 @@ class HubbardEqualizer(MLWF):
             unitary[0] = x0
 
         xlinks, ylinks = links
-        # Vtarget = None
-        # Utarget = None
-        # if isinstance(target, Iterable):
-        Vtarget, Utarget, txTarget, tyTarget = target
+        Vtarget = None
+        Utarget = None
+        txTarget, tyTarget = None, None
+        if isinstance(target, Iterable):
+            Vtarget, Utarget, txTarget, tyTarget = target
 
         w = weight.copy()
 
         cu = np.zeros(self.Nsite)
         if u:
             # U is different, as calculating U costs time
-            cu = self.u_res_func(U, Utarget, txTarget)
+            cu = self.u_res_func(U, Utarget, scale_factor)
 
-        cv = self.v_res_func(A, Vtarget, txTarget)
+        cv = self.v_res_func(A, Vtarget, scale_factor)
         if not v:
             # Force V to have no effect on cost function
             w[2] = 0
 
-        if not fix_t:
-            txTarget, tyTarget = None, None
         ct = self.t_res_func(A, (xlinks, ylinks), (txTarget, tyTarget))
         if not t:
             # Force t to have no effect on cost function
@@ -594,6 +600,7 @@ class HubbardEqualizer(MLWF):
         cw = [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv]
         c = np.concatenate(cw)
         ctot = la.norm(cvec)
+        # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
         if self.verbosity:
             print(f"Current total distance: {fval}\n")
