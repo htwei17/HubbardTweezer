@@ -13,13 +13,13 @@ def write_equalize_log(report: ConfigObj, info: dict, final: bool = False):
               "cost_func_terms": info['cost'][-1],
               "min_target_value": info["fval"][-1],
               "total_cost_func": info["ctot"][-1],
-              "func_evals": info["Nfeval"],
-              "final_scale_factor": info["sf"],
-              "final_U/t": info["Ut"],
+              "func_evals": info["Nfeval"]
               }
     if final:
         values["equalize_status"] = info["exit_status"]
         values["termination_reason"] = info["termination_reason"]
+        values["final_scale_factor"] = info["sf"]
+        values["final_U/t"] = info["Ut"]
     rep.create_report(report, "Equalization_Info", **values)
 
 
