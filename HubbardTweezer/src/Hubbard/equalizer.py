@@ -281,6 +281,7 @@ class HubbardEqualizer(MLWF):
         self.symm_unfold(self.trap_centers, trap_center, graph=True)
         self.update_lattice(self.trap_centers)
 
+        # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
             x0 = unitary[0]
         else:
@@ -288,8 +289,6 @@ class HubbardEqualizer(MLWF):
 
         u, t, v = utv
 
-        # A, U, x0 = self.singleband_Hubbard(
-        #     u=True, x0=x0, output_unitary=True)
         res = self.singleband_Hubbard(
             u=u, x0=x0, offset=True, output_unitary=True)
         if u:
@@ -297,10 +296,6 @@ class HubbardEqualizer(MLWF):
         else:
             A, x0 = res
             U = None
-
-        # By accessing element of a list, x0 is mutable and can be updated
-        if unitary != None and self.lattice_dim > 1:
-            unitary[0] = x0
 
         xlinks, ylinks = links
         Vtarget = None
