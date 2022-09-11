@@ -41,6 +41,7 @@ band = rep.i(report, "Parameters", "band", 1)
 meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
 r = rep.b(report, "Parameters", "random_init_guess", False)
+sf = rep.f(report, "Parameters", "scale_factor", None)
 x0 = rep.a(report, "Equalization_Info", "x", None)
 
 # ====== DVR settings ======
@@ -71,6 +72,7 @@ G = HubbardGraph(
     Ut=ut,
     random=r,
     x0=x0,
+    scale_factor=sf,
     method=meth,
     nobounds=nb,
     symmetry=symm,
@@ -85,6 +87,8 @@ G.draw_graph(A=G.A, U=G.U)
 # ====== Write output ======
 write_singleband(report, G)
 write_trap_params(report, G)
+
+G.eqinfo['sf'] = G.sf
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 nnt = G.nn_tunneling(G.A)
