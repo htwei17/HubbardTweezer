@@ -88,15 +88,16 @@ G.draw_graph(A=G.A, U=G.U)
 write_singleband(report, G)
 write_trap_params(report, G)
 
-G.eqinfo['sf'] = G.sf
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 nnt = G.nn_tunneling(G.A)
 xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
 ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
-cv = G.v_cost_func(G.A, None, txTarget)
-cu = G.u_cost_func(G.U, None, txTarget)
+cv = G.v_cost_func(G.A, None, G.sf)
+cu = G.u_cost_func(G.U, None, G.sf)
 cvec = np.sqrt(np.array((cu, ct, cv)))
+G.eqinfo['Ut'] = np.mean(G.U) / txTarget
+G.eqinfo['sf'] = G.sf
 w = np.array([u, t, v])
 
 if eq:

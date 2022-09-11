@@ -14,7 +14,8 @@ def write_equalize_log(report: ConfigObj, info: dict, final: bool = False):
               "min_target_value": info["fval"][-1],
               "total_cost_func": info["ctot"][-1],
               "func_evals": info["Nfeval"],
-              "scale_factor": info["sf"],
+              "final_scale_factor": info["sf"],
+              "final_U/t": info["Ut"],
               }
     if final:
         values["equalize_status"] = info["exit_status"]
@@ -65,7 +66,7 @@ def read_trap(report: ConfigObj):
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
-    sf = rep.f(report, "Equalization_Info", "scale_factor")
+    sf = rep.f(report, "Equalization_Info", "final_scale_factor")
     return Voff, tc, w, sf
 
 
