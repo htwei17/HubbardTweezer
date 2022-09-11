@@ -134,6 +134,11 @@ R=$R
 Rz=$Rz"
 fi
 
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
+    PARTITION=commons
+    TIME="8:00:00"
+fi
+
 # if [ $WAIST != "None" ]; then
 #     EQ_FLAG=True
 #     PARTITION=commons
@@ -171,7 +176,7 @@ V_0 = 50
 waist = 930, 1250"
 fi
 
-JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS
+JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS"_"$METHOD
 
 SLURM_FN=$JOB_NAME.slurm
 rm $SLURM_FN
@@ -206,11 +211,12 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$SUFFIX.ini
-if [ -s \$FN ]; then
-    echo \"\$FN is not empty. No parameter section writen.\"
-else
-    echo \"\$FN is empty. Start writing parameters.\"
-    echo \"[Parameters]
+# if [ -s \$FN ]; then
+#     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
+# else
+#     echo \"\$FN is empty. Start writing parameters.\"
+#     echo \"[Parameters]
+echo \"[Parameters]
 N = \$N
 L0 = \$R, \$R, \$Rz
 $DIM_PARAM
@@ -224,7 +230,7 @@ method = $METHOD
 no_bounds = False
 verbosity = 1
 job_id = \$SLURM_JOB_ID\" >>\$FN
-fi
+# fi
 
 WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$SUFFIX
 
