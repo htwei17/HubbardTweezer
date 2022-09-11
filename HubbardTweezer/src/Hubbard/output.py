@@ -39,17 +39,6 @@ def write_singleband(report, G: MLWF):
     rep.create_report(report, "Singleband_Parameters", **values)
 
 
-def read_equalization(report: ConfigObj, G: MLWF):
-    """
-    Read equalization parameters from file.
-    """
-    report = rep.get_report(report)
-    G.Voff = rep.a(report, "Trap_Adjustments", "V_offset")
-    G.trap_centers = rep.a(report, "Trap_Adjustments", "trap_centers")
-    G.waists = rep.a(report, "Trap_Adjustments", "waist_factors")
-    return G
-
-
 def read_Hubbard(report: ConfigObj):
     """
     Read parameters from file.
@@ -76,4 +65,14 @@ def read_trap(report: ConfigObj):
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
-    return Voff, tc, w
+    sf = rep.f(report, "Equalization_Info", "scale_factor")
+    return Voff, tc, w, sf
+
+
+def read_equalization(report: ConfigObj, G: MLWF):
+    """
+    Read equalization parameters from file.
+    """
+    report = rep.get_report(report)
+    G.Voff, G.trap_centers, G.waists, G.sf = read_trap(report)
+    return G
