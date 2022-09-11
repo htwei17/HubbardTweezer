@@ -81,7 +81,7 @@ G = HubbardGraph(
 
 eig_sol = eigen_basis(G)
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-G.draw_graph('adjust', G.A, G.U)
+G.draw_graph('adjust', A=G.A, U=G.U)
 G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
@@ -102,14 +102,14 @@ w = np.array([u, t, v])
 
 if eq:
     G.eqinfo['cost'][-1] = cvec
-    G.eqinfo['fval'][-1] = la.norm(w @ cvec)
+    G.eqinfo['fval'][-1] = la.norm(w * cvec)
     G.eqinfo['ctot'][-1] = la.norm(cvec)
 else:
     v0, __ = G.init_guess(random=False)
     G.eqinfo['x'] = v0[None]
     G.eqinfo['Nfeval'] = 0
     G.eqinfo['cost'] = cvec[None]
-    G.eqinfo['fval'] = np.array([la.norm(w @ cvec)])
+    G.eqinfo['fval'] = np.array([la.norm(w * cvec)])
     G.eqinfo['ctot'] = np.array([la.norm(cvec)])
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"

@@ -19,7 +19,7 @@ def write_equalize_log(report: ConfigObj, info: dict, final: bool = False):
         values["equalize_status"] = info["exit_status"]
         values["termination_reason"] = info["termination_reason"]
         values["final_scale_factor"] = info["sf"]
-        values["final_U/t"] = info["Ut"]
+        values["final_U_over_t"] = info["Ut"]
     rep.create_report(report, "Equalization_Info", **values)
 
 

@@ -376,9 +376,9 @@ class HubbardEqualizer(MLWF):
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
         cvec = np.sqrt(cvec)
-        fval = la.norm(w @ cvec)
+        fval = np.sqrt(c)
         if self.verbosity:
-            print(f"Current total distance: {c}\n")
+            print(f"Current total distance: {fval}\n")
 
         # Keep revcord
         if info != None:
@@ -513,8 +513,8 @@ class HubbardEqualizer(MLWF):
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term
-        cw = [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv]
-        c = np.concatenate(cw)
+        c = np.concatenate(
+            [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
         ctot = la.norm(cvec)
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
