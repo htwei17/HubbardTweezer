@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as la
 from numbers import Number
 from typing import Iterable, Union
-from scipy.optimize import minimize, least_squares
+from scipy.optimize import minimize, least_squares, OptimizeResult
 from configobj import ConfigObj
 from time import time
 
@@ -235,11 +235,11 @@ class HubbardEqualizer(MLWF):
         else:
             v0 = np.concatenate((v01, v02, v03))
 
-        self.set_params(v0, self.verbosity or random, 'Intial')
+        self._set_trap_params(v0, self.verbosity or random, 'Intial')
 
         return v0, bounds
 
-    def set_params(self, v0, cond, string):
+    def _set_trap_params(self, v0: np.ndarray, cond, string):
         trap_depth = v0[:self.Nindep]
         if self.waist_dir != None:
             trap_waist = np.ones((self.Nindep, 2))
@@ -261,6 +261,21 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
+    def _param_unfold(self, point: np.ndarray, status: str = 'Current'):
+        trap_depth, trap_waist, trap_center = self._set_trap_params(point,
+                                                                    self.verbosity, status)
+        self.symm_unfold(self.Voff, trap_depth)
+        if self.waist_dir != None:
+            self.symm_unfold(self.waists, trap_waist)
+        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+        self.update_lattice(self.trap_centers)
+        return self.Voff, self.waists, self.trap_centers, self.eqinfo
+
+    def _update_info_final(self, res: OptimizeResult):
+        self.eqinfo['termination_reason'] = res.message
+        self.eqinfo['exit_status'] = res.status
+        self.eqinfo['success'] = res.success
+
     def cbd_func(self,
                  point: np.ndarray,
                  info: Union[dict, None],
@@ -272,14 +287,7 @@ class HubbardEqualizer(MLWF):
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
-
-        trap_depth, trap_waist, trap_center = self.set_params(point,
-                                                              self.verbosity, 'Current')
-        self.symm_unfold(self.Voff, trap_depth)
-        if self.waist_dir != None:
-            self.symm_unfold(self.waists, trap_waist)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
-        self.update_lattice(self.trap_centers)
+        self._param_unfold(point, 'Current')
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
@@ -313,7 +321,7 @@ class HubbardEqualizer(MLWF):
         else:
             raise ValueError(f"Mode {mode} not supported.")
 
-    def update_info(self, point, info, report, cvec, fval, io_freq=10):
+    def _update_info(self, point, info, report, cvec, fval, io_freq=10):
         info['Nfeval'] += 1
         info['x'] = np.append(info['x'], point[None], axis=0)
         info['cost'] = np.append(info['cost'], cvec[None], axis=0)
@@ -334,6 +342,7 @@ class HubbardEqualizer(MLWF):
 
 
 # ================= GENERAL MINIMIZATION =================
+
 
     def _eq_min(self, utv, links, target, V, init_guess, weight, method, U0, iofile):
         u, t, v = utv
@@ -359,19 +368,9 @@ class HubbardEqualizer(MLWF):
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
-        self.eqinfo['termination_reason'] = res.message
-        self.eqinfo['exit_status'] = res.status
-        self.eqinfo['suceess'] = res.success
+        self._update_info_final(res)
 
-        trap_depth, trap_waist, trap_center = self.set_params(
-            res.x, self.verbosity, 'Final')
-        self.symm_unfold(self.Voff, trap_depth)
-        if self.waist_dir != None:
-            self.symm_unfold(self.waists, trap_waist)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
-        self.update_lattice(self.trap_centers)
-
-        return self.Voff, self.waists, self.trap_centers, self.eqinfo
+        return self._param_unfold(res.x, 'Final')
 
     def _cost_func(self, point, info, scale_factor, report, utv, res, links, target, w):
         u, t, v = utv
@@ -403,7 +402,7 @@ class HubbardEqualizer(MLWF):
 
         # Keep revcord
         if info != None:
-            self.update_info(point, info, report, cvec, fval)
+            self._update_info(point, info, report, cvec, fval)
 
         return c
 
@@ -482,19 +481,9 @@ class HubbardEqualizer(MLWF):
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
-        self.eqinfo['termination_reason'] = res.message
-        self.eqinfo['exit_status'] = res.status
-        self.eqinfo['suceess'] = res.success
+        self._update_info_final(res)
 
-        trap_depth, trap_waist, trap_center = self.set_params(
-            res.x, self.verbosity, 'Final')
-        self.symm_unfold(self.Voff, trap_depth)
-        if self.waist_dir != None:
-            self.symm_unfold(self.waists, trap_waist)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
-        self.update_lattice(self.trap_centers)
-
-        return self.Voff, self.waists, self.trap_centers, self.eqinfo
+        return self._param_unfold(res.x, 'Final')
 
     def _res_func(self, point, info, scale_factor, report, utv, res, links, target, w):
         u, t, v = utv
@@ -528,7 +517,7 @@ class HubbardEqualizer(MLWF):
 
         # Keep revcord
         if info != None:
-            self.update_info(point, info, report, cvec, fval)
+            self._update_info(point, info, report, cvec, fval)
 
         return c
 

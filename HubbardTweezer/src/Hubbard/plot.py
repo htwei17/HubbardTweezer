@@ -41,7 +41,7 @@ class HubbardGraph(HubbardEqualizer):
                 length = la.norm(np.diff(self.trap_centers[link, :], axis=0))
             self.graph[link[0]][link[1]]['weight'] = length
         self.edge_label = dict(
-            (edge, f'{self.graph[edge[0]][edge[1]]["weight"]:.3g}')
+            (edge, f'{self.graph[edge[0]][edge[1]]["weight"]:.0f}')
             for edge in self.graph.edges)
         max_len = max(dict(self.graph.edges).items(),
                       key=lambda x: x[1]["weight"])[-1]["weight"]
