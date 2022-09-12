@@ -120,7 +120,7 @@ class MLWF(DVR):
         lattice: np.ndarray = np.array(
             [2], dtype=int),  # Square lattice dimensions
         lc=(1520, 1690),  # Lattice constant, in unit of nm
-        ascatt=1600,  # Scattering length, in unit of Bohr radius
+        ascatt=1600,  # Scattering length, in unit of Bohr radius, default 1770
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
         dim: int = 3,

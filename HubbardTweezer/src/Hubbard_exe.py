@@ -90,27 +90,32 @@ write_trap_params(report, G)
 
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
+w = np.array([u, t, v])
 nnt = G.nn_tunneling(G.A)
 xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
 ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
 cv = G.v_cost_func(G.A, None, G.sf)
 cu = G.u_cost_func(G.U, None, G.sf)
-cvec = np.sqrt(np.array((cu, ct, cv)))
+cvec = np.array((cu, ct, cv))
+c = w @ cvec
+cvec = np.sqrt(cvec)
+fval = np.sqrt(c)
+ctot = la.norm(cvec)
 G.eqinfo['Ut'] = np.mean(G.U) / txTarget
 G.eqinfo['sf'] = G.sf
-w = np.array([u, t, v])
 
 if eq:
-    G.eqinfo['cost'][-1] = cvec
-    G.eqinfo['fval'][-1] = la.norm(w * cvec)
-    G.eqinfo['ctot'][-1] = la.norm(cvec)
+    G.eqinfo['cost'] = np.append(G.eqinfo['cost'], cvec[None], axis=0)
+    G.eqinfo['fval'] = np.append(G.eqinfo['fval'], fval)
+    G.eqinfo['ctot'] = np.append(G.eqinfo['ctot'], ctot)
 else:
     v0, __ = G.init_guess(random=False)
     G.eqinfo['x'] = v0[None]
     G.eqinfo['Nfeval'] = 0
     G.eqinfo['cost'] = cvec[None]
-    G.eqinfo['fval'] = np.array([la.norm(w * cvec)])
-    G.eqinfo['ctot'] = np.array([la.norm(cvec)])
+    G.eqinfo['fval'] = np.array([fval])
+    G.eqinfo['ctot'] = np.array([ctot])
+    G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"
 write_equalize_log(report, G.eqinfo, final=True)

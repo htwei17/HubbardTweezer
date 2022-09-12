@@ -11,7 +11,7 @@ WAIST=xy
 STATUS=neq
 PARTITION=scavenge
 TIME="4:00:00"
-SUFFIX=""
+LN_SUFFIX=""
 METHOD="trf"
 # DVR
 d=3
@@ -109,17 +109,21 @@ while :; do
     shift
 done
 
+METHOD_SUFFIX="_"$METHOD
+
 if [ $STATUS = "neq" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
+    METHOD_SUFFIX=""
     TIME="0:05:00"
 elif [ $STATUS = "L" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
     TIME="0:05:00"
-    SUFFIX="_\$SLURM_ARRAY_TASK_ID"
+    METHOD_SUFFIX=""
+    LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=$N
 R=\$(echo \"scale=20; \$SLURM_ARRAY_TASK_ID*3/20\" | bc)
 Rz=\$(echo \"scale=20;\$R*2.4\" | bc)"
@@ -128,7 +132,7 @@ elif [ $STATUS = "N" ]; then
     WAIST=None
     PARTITION=scavenge
     TIME="0:05:00"
-    SUFFIX="_\$SLURM_ARRAY_TASK_ID"
+    LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=$R
 Rz=$Rz"
@@ -176,7 +180,7 @@ V_0 = 50
 waist = 930, 1250"
 fi
 
-JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS"_"$METHOD
+JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
 
 SLURM_FN=$JOB_NAME.slurm
 rm $SLURM_FN
@@ -210,7 +214,7 @@ conda activate ~/env
 
 $NL_DEFINITION
 
-FN=$JOB_NAME$SUFFIX.ini
+FN=$JOB_NAME$LN_SUFFIX.ini
 # if [ -s \$FN ]; then
 #     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
 # else
@@ -232,7 +236,7 @@ verbosity = 1
 job_id = \$SLURM_JOB_ID\" >>\$FN
 # fi
 
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR

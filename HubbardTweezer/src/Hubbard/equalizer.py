@@ -313,6 +313,26 @@ class HubbardEqualizer(MLWF):
         else:
             raise ValueError(f"Mode {mode} not supported.")
 
+    def update_info(self, point, info, report, cvec, fval, io_freq=10):
+        info['Nfeval'] += 1
+        info['x'] = np.append(info['x'], point[None], axis=0)
+        info['cost'] = np.append(info['cost'], cvec[None], axis=0)
+        ctot = la.norm(cvec)
+        info['ctot'] = np.append(info['ctot'], ctot)
+        info['fval'] = np.append(info['fval'], fval)
+        diff = info['fval'][len(info['fval'])//2] - fval
+        info['diff'] = np.append(info['diff'], diff)
+        # display information
+        if info['Nfeval'] % io_freq == 0:
+            if isinstance(report, ConfigObj):
+                write_equalize_log(report, info, final=False)
+                write_trap_params(report, self)
+                write_singleband(report, self)
+            if self.verbosity:
+                print(
+                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+
+
 # ================= GENERAL MINIMIZATION =================
 
     def _eq_min(self, utv, links, target, V, init_guess, weight, method, U0, iofile):
@@ -341,6 +361,7 @@ class HubbardEqualizer(MLWF):
 
         self.eqinfo['termination_reason'] = res.message
         self.eqinfo['exit_status'] = res.status
+        self.eqinfo['suceess'] = res.success
 
         trap_depth, trap_waist, trap_center = self.set_params(
             res.x, self.verbosity, 'Final')
@@ -382,23 +403,7 @@ class HubbardEqualizer(MLWF):
 
         # Keep revcord
         if info != None:
-            info['Nfeval'] += 1
-            info['x'] = np.append(info['x'], point[None], axis=0)
-            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            ctot = la.norm(cvec)
-            info['ctot'] = np.append(info['ctot'], ctot)
-            info['fval'] = np.append(info['fval'], fval)
-            diff = info['fval'][len(info['fval'])//2] - fval
-            info['diff'] = np.append(info['diff'], diff)
-            # display information
-            if info['Nfeval'] % 10 == 0:
-                if isinstance(report, ConfigObj):
-                    write_equalize_log(report, info, final=False)
-                    write_trap_params(report, self)
-                    write_singleband(report, self)
-                if self.verbosity:
-                    print(
-                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={c}\tc_i//2-c_i={diff}')
+            self.update_info(point, info, report, cvec, fval)
 
         return c
 
@@ -479,6 +484,7 @@ class HubbardEqualizer(MLWF):
 
         self.eqinfo['termination_reason'] = res.message
         self.eqinfo['exit_status'] = res.status
+        self.eqinfo['suceess'] = res.success
 
         trap_depth, trap_waist, trap_center = self.set_params(
             res.x, self.verbosity, 'Final')
@@ -515,7 +521,6 @@ class HubbardEqualizer(MLWF):
         # Weighted cost function, weight is in front of each squared term
         c = np.concatenate(
             [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
-        ctot = la.norm(cvec)
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
         if self.verbosity:
@@ -523,22 +528,7 @@ class HubbardEqualizer(MLWF):
 
         # Keep revcord
         if info != None:
-            info['Nfeval'] += 1
-            info['x'] = np.append(info['x'], point[None], axis=0)
-            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            info['ctot'] = np.append(info['ctot'], ctot)
-            info['fval'] = np.append(info['fval'], fval)
-            diff = info['fval'][len(info['fval'])//2] - fval
-            info['diff'] = np.append(info['diff'], diff)
-            # display information
-            if info['Nfeval'] % 10 == 0:
-                if isinstance(report, ConfigObj):
-                    write_equalize_log(report, info, final=False)
-                    write_trap_params(report, self)
-                    write_singleband(report, self)
-                if self.verbosity:
-                    print(
-                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+            self.update_info(point, info, report, cvec, fval)
 
         return c
 

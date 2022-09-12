@@ -16,6 +16,7 @@ def write_equalize_log(report: ConfigObj, info: dict, final: bool = False):
               "func_evals": info["Nfeval"]
               }
     if final:
+        values["success"] = info["success"]
         values["equalize_status"] = info["exit_status"]
         values["termination_reason"] = info["termination_reason"]
         values["final_scale_factor"] = info["sf"]
