@@ -478,7 +478,7 @@ class HubbardEqualizer(MLWF):
         t0 = time()
         res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
-                            xtol=None, ftol=1e-12, gtol=1e-8, max_nfev=500 * self.Nindep)
+                            xtol=None, ftol=1e-9, gtol=1e-8, max_nfev=500 * self.Nindep)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
