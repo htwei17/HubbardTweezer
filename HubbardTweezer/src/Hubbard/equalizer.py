@@ -288,8 +288,6 @@ class HubbardEqualizer(MLWF):
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
-        if info != None:
-            print(f"Equalize: {info['Nfeval']+1}-th evaluations")
         self._param_unfold(point, 'current')
 
         # By accessing element of a list, x0 is mutable and can be updated
@@ -325,9 +323,6 @@ class HubbardEqualizer(MLWF):
             raise ValueError(f"Equalize: mode {mode} not supported.")
 
     def _update_log(self, point, info, report, cvec, fval, io_freq=10):
-        if self.verbosity:
-            print(f"Cost function by terms: {cvec}")
-            print(f"Total cost function value fval={fval}\n")
         # Keep revcord
         if info != None:
             info['Nfeval'] += 1
@@ -349,9 +344,12 @@ class HubbardEqualizer(MLWF):
                         report, info, self.log, final=False)
                     write_trap_params(report, self)
                     write_singleband(report, self)
-                if self.verbosity:
-                    print(
-                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+        if self.verbosity:
+            print(f"Cost function by terms: {cvec}")
+            print(f"Total cost function value fval={fval}\n")
+            if info != None:
+                print(
+                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 
     def _update_log_final(self, res: OptimizeResult):
         self.eqinfo['sf'] = self.sf
