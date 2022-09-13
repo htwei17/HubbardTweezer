@@ -22,7 +22,8 @@ def write_equalization(report: ConfigObj, info: dict, write_log: bool = False, f
         values["U_over_t"] = info["Ut"]
     rep.create_report(report, "Equalization_Result", **values)
     if write_log:
-        values = {"cost_func_by_terms": info['cost'],
+        values = {"x": info["x"],
+                  "cost_func_by_terms": info['cost'],
                   "cost_func_value": info["fval"],
                   "total_cost_func": info["ctot"]}
         rep.create_report(report, "Equalization_Log", **values)
