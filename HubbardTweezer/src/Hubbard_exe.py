@@ -102,7 +102,6 @@ cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo['Ut'] = np.mean(G.U) / txTarget
-G.eqinfo['sf'] = G.sf
 
 if eq:
     G.eqinfo['cost'] = np.append(G.eqinfo['cost'], cvec[None], axis=0)
