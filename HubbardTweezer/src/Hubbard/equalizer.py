@@ -85,9 +85,9 @@ class HubbardEqualizer(MLWF):
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 
-        print(f"Varying waist direction: {self.waist_dir}.")
-        print(f"Equalization method: {method}")
-        print(f"Equalization target: {target}\n")
+        print(f"Equalize: varying waist direction: {self.waist_dir}.")
+        print(f"Equalize: method: {method}")
+        print(f"Equalize: target: {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
 
         res = self.singleband_Hubbard(u=u, offset=True, output_unitary=True)
@@ -105,7 +105,7 @@ class HubbardEqualizer(MLWF):
         elif isinstance(scale_factor, Number):
             self.sf = scale_factor
         else:
-            raise TypeError('scale_factor must be a number.')
+            raise TypeError('Equalize: scale_factor must be a number.')
         if not fix_t:
             txTarget, tyTarget = None, None
 
@@ -133,7 +133,7 @@ class HubbardEqualizer(MLWF):
                 if len(x0) == len(v0):
                     v0 = x0  # Use passed initial guess
             except:
-                print("External initial guess is not passed.")
+                print("Equalize: external initial guess is not passed.")
                 pass
 
         self.eqinfo = {'Nfeval': 0,
@@ -158,11 +158,11 @@ class HubbardEqualizer(MLWF):
                                txTarget, tyTarget), V, (v0, bounds), weight, method, U0, iofile)
         else:
             raise ValueError(
-                f'Unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
+                f'Equalize: unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
 
         self._update_info_final(res)
 
-        return self._param_unfold(res.x, 'Final')
+        return self._param_unfold(res.x, 'final')
 
     def _eff_dof(self):
         # Record all free DoFs in the function
@@ -243,7 +243,7 @@ class HubbardEqualizer(MLWF):
 
         return v0, bounds
 
-    def _set_trap_params(self, v0: np.ndarray, cond, string):
+    def _set_trap_params(self, v0: np.ndarray, cond, status):
         trap_depth = v0[:self.Nindep]
         if self.waist_dir != None:
             trap_waist = np.ones((self.Nindep, 2))
@@ -257,15 +257,15 @@ class HubbardEqualizer(MLWF):
 
         if cond:
             print("\n")
-            print(f"{string} trap depths: {trap_depth}")
+            print(f"Equalize: {status} trap depths: {trap_depth}")
             if self.waist_dir != None:
-                print(f"{string} waists:")
+                print(f"Equalize: {status} waists:")
                 print(trap_waist)
-            print(f"{string} trap centers:")
+            print(f"Equalize: {status} trap centers:")
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-    def _param_unfold(self, point: np.ndarray, status: str = 'Current'):
+    def _param_unfold(self, point: np.ndarray, status: str = 'current'):
         trap_depth, trap_waist, trap_center = self._set_trap_params(point,
                                                                     self.verbosity, status)
         self.symm_unfold(self.Voff, trap_depth)
@@ -286,7 +286,7 @@ class HubbardEqualizer(MLWF):
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
-        self._param_unfold(point, 'Current')
+        self._param_unfold(point, 'current')
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:
@@ -318,7 +318,7 @@ class HubbardEqualizer(MLWF):
         elif mode == 'res':
             return self._res_func(point, info, scale_factor, report, (u, t, v), (A, U), (xlinks, ylinks), (Vtarget, Utarget, txTarget, tyTarget), w)
         else:
-            raise ValueError(f"Mode {mode} not supported.")
+            raise ValueError(f"Equalize: mode {mode} not supported.")
 
     def _update_log(self, point, info, report, cvec, fval, io_freq=10):
         info['Nfeval'] += 1
