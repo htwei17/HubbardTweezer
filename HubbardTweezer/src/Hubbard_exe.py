@@ -42,6 +42,7 @@ meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
 r = rep.b(report, "Parameters", "random_init_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
+log = rep.b(report, "Parameters", "write_log", False)
 x0 = rep.a(report, "Equalization_Info", "x", None)
 
 # ====== DVR settings ======
@@ -77,6 +78,7 @@ G = HubbardGraph(
     nobounds=nb,
     symmetry=symm,
     iofile=report,
+    write_log=log,
     verbosity=verb)
 
 eig_sol = eigen_basis(G)
@@ -117,7 +119,7 @@ else:
     G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"
-write_equalize_log(report, G.eqinfo, final=True)
+write_equalization(report, G.eqinfo, write_log=log, final=True)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

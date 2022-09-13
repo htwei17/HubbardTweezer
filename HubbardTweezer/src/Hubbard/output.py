@@ -5,22 +5,27 @@ import numpy as np
 from .core import MLWF
 
 
-def write_equalize_log(report: ConfigObj, info: dict, final: bool = False):
+def write_equalization(report: ConfigObj, info: dict, write_log: bool = False, final: bool = False):
     """
-    Overwrite equalization log to the report.
+    Record equalization results to the report.
     """
     values = {"x": info["x"][-1],
-              "cost_func_terms": info['cost'][-1],
-              "min_target_value": info["fval"][-1],
+              "cost_func_by_terms": info['cost'][-1],
+              "cost_func_value": info["fval"][-1],
               "total_cost_func": info["ctot"][-1],
-              "func_evals": info["Nfeval"],
+              "func_eval_number": info["Nfeval"],
               "scale_factor": info["sf"],
               "success": info["success"],
-              "equalize_status": info["status"],
+              "equalize_status": info["exit_status"],
               "termination_reason": info["termination_reason"]}
     if final:
         values["U_over_t"] = info["Ut"]
-    rep.create_report(report, "Equalization_Info", **values)
+    rep.create_report(report, "Equalization_Result", **values)
+    if write_log:
+        values = {"cost_func_by_terms": info['cost'],
+                  "cost_func_value": info["fval"],
+                  "total_cost_func": info["ctot"]}
+        rep.create_report(report, "Equalization_Log", **values)
 
 
 def write_trap_params(report, G: MLWF):

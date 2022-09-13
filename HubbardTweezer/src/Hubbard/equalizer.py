@@ -43,6 +43,7 @@ class HubbardEqualizer(MLWF):
             waist='x',  # Waist to vary, None means no waist change
             random: bool = False,  # Random initial guess
             iofile=None,  # Input/output file
+            write_log: bool = False,  # Whether to write detailed log into iofile
             x0: np.ndarray = None,  # Initial value for minimization to start from
             *args,
             **kwargs):
@@ -52,6 +53,7 @@ class HubbardEqualizer(MLWF):
         self.eq_label = eqtarget
         self.waist_dir = waist
         self.eqinfo = {}
+        self.log = write_log
 
         if equalize:
             if self.lattice_dim > 1 and self.waist_dir != None \
@@ -152,15 +154,15 @@ class HubbardEqualizer(MLWF):
 
         if method in ['trf', 'dogbox']:
             res = self._eq_lsq((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
-                               txTarget, tyTarget), V, (v0, bounds), weight, method, U0, iofile)
+                               txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
         elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
             res = self._eq_min((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
-                               txTarget, tyTarget), V, (v0, bounds), weight, method, U0, iofile)
+                               txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
         else:
             raise ValueError(
                 f'Equalize: unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
 
-        self._update_info_final(res)
+        self._update_log_final(res)
 
         return self._param_unfold(res.x, 'final')
 
@@ -286,6 +288,8 @@ class HubbardEqualizer(MLWF):
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
+        if info != None:
+            print(f"Equalize: {info['Nfeval']+1}-th evaluations")
         self._param_unfold(point, 'current')
 
         # By accessing element of a list, x0 is mutable and can be updated
@@ -321,29 +325,35 @@ class HubbardEqualizer(MLWF):
             raise ValueError(f"Equalize: mode {mode} not supported.")
 
     def _update_log(self, point, info, report, cvec, fval, io_freq=10):
-        info['Nfeval'] += 1
-        info['x'] = np.append(info['x'], point[None], axis=0)
-        info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-        ctot = la.norm(cvec)
-        info['ctot'] = np.append(info['ctot'], ctot)
-        info['fval'] = np.append(info['fval'], fval)
-        diff = info['fval'][len(info['fval'])//2] - fval
-        info['diff'] = np.append(info['diff'], diff)
-        # display information
-        if info['Nfeval'] % io_freq == 0:
-            if isinstance(report, ConfigObj):
-                info['sf'] = self.sf
-                info['success'] = False
-                info['exit_status'] = -1
-                info['termination_reason'] = "Not terminated yet"
-                write_equalize_log(report, info, final=False)
-                write_trap_params(report, self)
-                write_singleband(report, self)
-            if self.verbosity:
-                print(
-                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+        if self.verbosity:
+            print(f"Cost function by terms: {cvec}")
+            print(f"Total cost function value fval={fval}\n")
+        # Keep revcord
+        if info != None:
+            info['Nfeval'] += 1
+            info['x'] = np.append(info['x'], point[None], axis=0)
+            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
+            ctot = la.norm(cvec)
+            info['ctot'] = np.append(info['ctot'], ctot)
+            info['fval'] = np.append(info['fval'], fval)
+            diff = info['fval'][len(info['fval'])//2] - fval
+            info['diff'] = np.append(info['diff'], diff)
+            # display information
+            if info['Nfeval'] % io_freq == 0:
+                if isinstance(report, ConfigObj):
+                    info['sf'] = self.sf
+                    info['success'] = False
+                    info['exit_status'] = -1
+                    info['termination_reason'] = "Not terminated yet"
+                    write_equalization(
+                        report, info, self.log, final=False)
+                    write_trap_params(report, self)
+                    write_singleband(report, self)
+                if self.verbosity:
+                    print(
+                        f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 
-    def _update_info_final(self, res: OptimizeResult):
+    def _update_log_final(self, res: OptimizeResult):
         self.eqinfo['sf'] = self.sf
         self.eqinfo['success'] = res.success
         self.eqinfo['exit_status'] = res.status
@@ -351,7 +361,7 @@ class HubbardEqualizer(MLWF):
 
 # ================= GENERAL MINIMIZATION =================
 
-    def _eq_min(self, utv, links, target, V, init_guess, weight, method, U0, iofile) -> OptimizeResult:
+    def _eq_min(self, utv, links, target, init_guess, weight, method, U0, iofile) -> OptimizeResult:
         u, t, v = utv
         xlinks, ylinks = links
         Vtarget, Utarget, txTarget, tyTarget = target
@@ -401,12 +411,7 @@ class HubbardEqualizer(MLWF):
         c = w @ cvec
         cvec = np.sqrt(cvec)
         fval = np.sqrt(c)
-        if self.verbosity:
-            print(f"Current total distance: {fval}\n")
-
-        # Keep revcord into info
-        if info != None:
-            self._update_log(point, info, report, cvec, fval)
+        self._update_log(point, info, report, cvec, fval)
         return c
 
     def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
@@ -417,10 +422,9 @@ class HubbardEqualizer(MLWF):
             if Vfactor < 1e-2:  # Avoid division by zero
                 Vfactor = 0.2
         cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vfactor**2
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential normalized distance v={cv}')
+        if self.verbosity > 1:
+            print(f'Onsite potential target={Vtarget}')
+            print(f'Onsite potential cost cv={cv}')
         return cv
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -438,10 +442,9 @@ class HubbardEqualizer(MLWF):
         ct = np.mean((abs(nnt[xlinks]) / txTarget - 1)**2)
         if tyTarget != None:
             ct += np.mean((abs(nnt[ylinks]) / tyTarget - 1)**2)
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling normalized distance t={ct}')
+        if self.verbosity > 1:
+            print(f'Tunneling target=({txTarget}, {tyTarget})')
+            print(f'Tunneling cost ct={ct}')
         return ct
 
     def u_cost_func(self, U, Utarget: float, Ufactor: float = None) -> float:
@@ -450,15 +453,14 @@ class HubbardEqualizer(MLWF):
         if Ufactor is None:
             Ufactor = Utarget
         cu = np.mean((U - Utarget)**2) / Ufactor**2
-        if self.verbosity:
-            if self.verbosity > 1:
-                print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction normalized distance u={cu}')
+        if self.verbosity > 1:
+            print(f'Onsite interaction target fixed to {Utarget}')
+            print(f'Onsite interaction cost cu={cu}')
         return cu
 
 # ==================== LEAST SQUARES ====================
 
-    def _eq_lsq(self, utv, links, target, V, init_guess, weight, method, U0, iofile) -> OptimizeResult:
+    def _eq_lsq(self, utv, links, target, init_guess, weight, method, U0, iofile) -> OptimizeResult:
         u, t, v = utv
         xlinks, ylinks = links
         Vtarget, Utarget, txTarget, tyTarget = target
@@ -512,12 +514,7 @@ class HubbardEqualizer(MLWF):
             [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
-        if self.verbosity:
-            print(f"Current total distance: {fval}\n")
-
-        # Keep revcord
-        if info != None:
-            self._update_log(point, info, report, cvec, fval)
+        self._update_log(point, info, report, cvec, fval)
         return c
 
     def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
@@ -531,7 +528,7 @@ class HubbardEqualizer(MLWF):
             (Vfactor * np.sqrt(len(A)))
         if self.verbosity > 2:
             print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential normalized residue v={cv}')
+            print(f'Onsite potential residue cv={cv}')
         return cv
 
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -553,7 +550,7 @@ class HubbardEqualizer(MLWF):
                 (ct, (abs(nnt[ylinks]) - tyTarget) / (tyTarget * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
             print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling normalized residue t={ct}')
+            print(f'Tunneling residue ct={ct}')
         return ct
 
     def u_res_func(self, U, Utarget: float, Ufactor: float = None):
@@ -564,5 +561,5 @@ class HubbardEqualizer(MLWF):
         cu = (U - Utarget) / (Ufactor * np.sqrt(len(U)))
         if self.verbosity > 2:
             print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction normalized residue u={cu}')
+            print(f'Onsite interaction residue cu={cu}')
         return cu
