@@ -309,8 +309,7 @@ class HubbardEqualizer(MLWF):
         if self.verbosity > 1:
             print(f'scale_factor = {scale_factor}')
             print(f'V = {np.diag(A)}')
-            t = abs(self.nn_tunneling(A))
-            print(f't = {t}')
+            print(f't = {abs(self.nn_tunneling(A))}')
             if u:
                 print(f'U = {U}')
 
