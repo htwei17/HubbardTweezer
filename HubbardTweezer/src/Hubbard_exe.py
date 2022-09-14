@@ -9,6 +9,63 @@ import sys
 inFile = sys.argv[1]
 # outFile = sys.argv[2]
 
+if inFile == '--help' or inFile == '-h':
+    print('''
+    Usage: python Hubbard_exe.py <input ini file name>
+    
+    Items in the input file:
+    ----------------------------------------
+    
+    [Parameters]
+    DVR hyperparameters:
+    N:  DVR half grid point number (default: 20)
+    L0: DVR grid half-size in unit of x_waist (default: 3, 3, 7.2)
+    dimensin:   DVR dimension (default: 1)
+
+    DVR calculation settings:
+    sparse: (optional) use sparse matrix or not (default: True)
+    symmetry:   (optional) use symmetry in DVR calculation or not (default: True)
+
+    Lattice parameters:
+    lattice_size:   lattice size (default: 4,)
+    lattice_constant:   lattice spacing in unit of nm
+                        if one number eg. 1500, means a_x=a_y (default: 1520, 1690)
+    shape:  lattice shape (default: square)
+    lattice_symmetry:   use lattice reflection symmetry or not (default: True)
+    
+    Physical parameters:
+    scattering_length:  scattering length in unit of a_0 (default: 1770)
+    V_0:    trap depth in unit of kHz (default: 104.52)
+    waist: xy waist in unit of nm (default: 1000, 1000)
+    atom_mass:  atom mass in unit of amu (default: 6.015122)
+    zR:    (optional) Rayleigh range in unit of nm
+            None means calculated from laser wavelength (default: None)
+    laser_wavelength:   laser wavelength in unit of nm (default: 780)
+    average:    coefficient in front of trap depth, used for strobed trap (default: 1)
+    
+    Hubbard parameter calculation:
+    band:   number of bands to calculate Hubbard parameters (default: 1)
+    U_over_t:   Hubbard U/t ratio (default: None)
+                None means avg U / avg t_x calculated in initial guess
+
+    Hubbard parameter equalization:
+    equalize:   equalize Hubbard parameters or not (default: False)
+    equalize_target:    target Hubbard parameters to be equalized (default: vT)
+                        see Hubbard.equalizer for more details
+    method:     optimization algorithm to equalize Hubbard parameters (default: 'trf')
+                see scipy.optimize.minimize and least_squares for more details
+    no_bounds:  (optional) do not use bounds in optimization (default: False)
+    random_initial_guess:   (optional) use random initial guess (default: False)
+    scale_factor:   (optional) energy scale factor used in cost function
+                    None means avg t_x calculated in initial guess
+                    in unit of kHz (default: None)
+    write_log:  (optional) print parameters of every step to log file or not (default: False)
+    plot:   plot Hubbard parameter graphs or not (default: False)
+
+    verbosity:  (optional) 0~3, print more information or not (default: 0)
+    ''')
+    sys.exit()
+
 # ====== Read file ======
 report = rep.get_report(inFile)
 
@@ -23,6 +80,7 @@ lattice = rep.a(report, "Parameters", "lattice_size",
 lc = tuple(rep.a(report, "Parameters", "lattice_const",
                  np.array([1520, 1690])))
 shape = rep.s(report, "Parameters", "shape", 'square')
+ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
 a_s = rep.f(report, "Parameters", "scattering_length", 1000)
@@ -39,7 +97,7 @@ ut = rep.f(report, "Parameters", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
-eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
+eqt = rep.s(report, "Parameters", "equalize_target", 'vT')
 wd = rep.s(report, "Parameters", "waist_direction", None)
 meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
@@ -76,6 +134,7 @@ G = HubbardGraph(
     sparse=s,  # Sparse matrix
     equalize=eq,
     eqtarget=eqt,
+    lattice_symmetry=ls,
     Ut=ut,
     random=r,
     x0=x0,

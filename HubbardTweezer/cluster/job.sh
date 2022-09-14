@@ -43,6 +43,7 @@ while :; do
         echo "          it can be 'neq' for no equalization,"
         echo "          'L'('N') for varying L(N) to check convergence ('neq' implied)"
         echo "-u, --Ut:  Hubbard parameter U/t (Default: $Ut)"
+        echo "-v, --symmetry: to use lattice symmetry or not (DefaultL $SYMMETRY)"
         echo "-m, --method: method used to minimize cost function (Default: $METHOD)"
         exit
         ;;
@@ -109,6 +110,14 @@ while :; do
             shift
         else
             die 'ERROR: "--Ut" requires a non-empty option argument.'
+        fi
+        ;;
+    -v | --symmetry)
+        if [ "$2" ]; then
+            SYMMETRY=$2
+            shift
+        else
+            die 'ERROR: "--symmetry" requires a non-empty option argument.'
         fi
         ;;
     -m | --method)
@@ -183,9 +192,8 @@ if [ $SHAPE != "square" ]; then
 fi
 
 if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
-    SYMMETRY=False
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1450,
+lattice_const = 1550,
 laser_wavelength = 780
 V_0 = 73.0219
 waist = 1000, 1000"
@@ -260,7 +268,7 @@ shape = $SHAPE
 scattering_length = 1770
 dimension = $d
 waist_direction = $WAIST
-symmetry = $SYMMETRY
+lattice_symmetry = $SYMMETRY
 equalize = $EQ_FLAG
 equalize_target = $STATUS
 U_over_t = $Ut
