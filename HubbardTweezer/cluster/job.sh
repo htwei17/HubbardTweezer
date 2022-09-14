@@ -13,6 +13,7 @@ STATUS=neq
 PARTITION=scavenge
 TIME="0:20:00"
 LN_SUFFIX=""
+LOG=True
 METHOD="trf"
 # DVR
 d=3
@@ -128,6 +129,7 @@ if [ $STATUS = "neq" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
+    LOG=False
     METHOD_SUFFIX=""
     if [ $SYMMETRY = "True" ]; then
         TIME="0:05:00"
@@ -172,13 +174,13 @@ fi
 
 if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     SYMMETRY=False
-    DIM_PARAM="lattice = $Lx, $Ly
+    DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1450,
 laser_wavelength = 780
 V_0 = 73.0219
 waist = 1000, 1000"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
-    DIM_PARAM="lattice = $Lx, $Ly
+    DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1520, 1690
 laser_wavelength = 780
 V_0 = 52.26
@@ -186,7 +188,7 @@ waist = 1000, 1000"
 elif [ $SHAPE = 'ring' ]; then
     # Build a perfect ring s.t. no equalization needed
     Ly=1
-    DIM_PARAM="lattice = $Lx, $Ly
+    DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1520, 1520
 laser_wavelength = 780
 V_0 = 52.26
@@ -194,7 +196,7 @@ waist = 1000, 1000"
 else
     Lx=$L
     Ly=1
-    DIM_PARAM="lattice = $Lx,
+    DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1350, 1550
 laser_wavelength = 770
 V_0 = 50
@@ -252,7 +254,7 @@ symmetry = $SYMMETRY
 equalize = $EQ_FLAG
 equalize_target = $STATUS
 method = $METHOD
-write_log = True
+write_log = $LOG
 no_bounds = False
 verbosity = 3
 job_id = \$SLURM_JOB_ID\" >>\$FN

@@ -54,6 +54,11 @@ class HubbardEqualizer(MLWF):
         self.waist_dir = waist
         self.eqinfo = {}
         self.log = write_log
+        if isinstance(scale_factor, Number):
+            self.sf = scale_factor
+        else:
+            print('Equalize: scale_factor is not a number. Set to None.')
+            self.sf = None
 
         if equalize:
             if self.lattice_dim > 1 and self.waist_dir != None \
@@ -67,7 +72,6 @@ class HubbardEqualizer(MLWF):
 
             self.equalize(target=eqtarget,
                           Ut=Ut, x0=x0,
-                          scale_factor=scale_factor,
                           random=random,
                           nobounds=nobounds,
                           method=method,
@@ -78,7 +82,6 @@ class HubbardEqualizer(MLWF):
                  target: str = 'UvT',
                  Ut: float = None,  # Target onsite interaction in unit of tx
                  x0: np.ndarray = None,
-                 scale_factor: float = None,
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
@@ -102,12 +105,8 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         # Energy scale factor, set to be of avg initial tx
-        if scale_factor is None:
+        if not isinstance(self.sf, Number):
             self.sf = abs(txTarget)
-        elif isinstance(scale_factor, Number):
-            self.sf = scale_factor
-        else:
-            raise TypeError('Equalize: scale_factor must be a number.')
         if not fix_t:
             txTarget, tyTarget = None, None
 

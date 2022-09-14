@@ -9,7 +9,7 @@ import sys
 inFile = sys.argv[1]
 # outFile = sys.argv[2]
 
-# ====== Read parameters ======
+# ====== Read file ======
 report = rep.get_report(inFile)
 
 # ====== DVR parameters ======
@@ -18,9 +18,10 @@ L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
 dim = rep.i(report, "Parameters", "dimension", 1)
 
 # ====== Create lattice ======
-lattice = rep.a(report, "Parameters", "lattice", np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520,
-                                                                  1690])))
+lattice = rep.a(report, "Parameters", "lattice_size",
+                np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Parameters", "lattice_const",
+                 np.array([1520, 1690])))
 shape = rep.s(report, "Parameters", "shape", 'square')
 
 # ====== Physical parameters ======
@@ -32,18 +33,23 @@ zR = rep.f(report, "Parameters", "zR", None)
 l = rep.f(report, "Parameters", "laser_wavelength", 780)
 avg = rep.f(report, "Parameters", "average", 1)
 
+# ====== Hubbard parameters ======
+band = rep.i(report, "Parameters", "band", 1)
+ut = rep.f(report, "Parameters", "U/t", None)
+
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
 eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
-ut = rep.f(report, "Parameters", "U/t", None)
 wd = rep.s(report, "Parameters", "waist_direction", None)
-band = rep.i(report, "Parameters", "band", 1)
 meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
-r = rep.b(report, "Parameters", "random_init_guess", False)
+r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
 x0 = rep.a(report, "Equalization_Info", "x", None)
+
+# ====== Plotting ======
+plot = rep.b(report, "Parameters", "plot", False)
 
 # ====== DVR settings ======
 s = rep.b(report, "Parameters", "sparse", True)
@@ -83,8 +89,9 @@ G = HubbardGraph(
 
 eig_sol = eigen_basis(G)
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-G.draw_graph('adjust', A=G.A, U=G.U)
-G.draw_graph(A=G.A, U=G.U)
+if plot:
+    G.draw_graph('adjust', A=G.A, U=G.U)
+    G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
 write_singleband(report, G)
@@ -95,6 +102,8 @@ u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 nnt = G.nn_tunneling(G.A)
 xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
+if G.sf == None:
+    G.sf = txTarget
 ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
 cv = G.v_cost_func(G.A, None, G.sf)
 cu = G.u_cost_func(G.U, None, G.sf)
@@ -103,6 +112,7 @@ c = w @ cvec
 cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
+G.eqinfo['sf'] = G.sf
 G.eqinfo['Ut'] = np.mean(G.U) / txTarget
 
 if eq:
