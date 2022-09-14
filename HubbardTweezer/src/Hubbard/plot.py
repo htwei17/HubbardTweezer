@@ -69,8 +69,11 @@ class HubbardGraph(HubbardEqualizer):
 
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
-        # NOTE: explicit square lattice geometry somewhat assumed
+        # NOTE: explicit square lattice geometry assumed
         # FIXME: 3x2 lattice error as this gives an index 6
+        if not self.lattice_shape == 'square':
+            print('WARNING: nnn only supported for square lattices. Nothing doen.')
+            return
         if limit + 2 > self.Nsite:
             limit = self.Nsite - 2
         if center >= self.Nsite:
