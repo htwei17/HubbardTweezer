@@ -1,32 +1,120 @@
 import numpy as np
-from Hubbard.plot import (HubbardGraph, eigen_basis, optimize, interaction)
+from Hubbard.output import *
+from Hubbard.plot import HubbardGraph
+from Hubbard.equalizer import *
 import tools.reportIO as rep
 import sys
 
+# ====== Read arguments ======
 inFile = sys.argv[1]
 # outFile = sys.argv[2]
 
+if inFile == '--help' or inFile == '-h':
+    print('''
+    Usage: python Hubbard_exe.py <input ini file name>
+    
+    Items in the input file:
+    ----------------------------------------
+    
+    [Parameters]
+    DVR hyperparameters:
+    N:  DVR half grid point number (default: 20)
+    L0: DVR grid half-size in unit of x_waist (default: 3, 3, 7.2)
+    dimensin:   DVR dimension (default: 1)
+
+    DVR calculation settings:
+    sparse: (optional) use sparse matrix or not (default: True)
+    symmetry:   (optional) use symmetry in DVR calculation or not (default: True)
+
+    Lattice parameters:
+    lattice_size:   lattice size (default: 4,)
+    lattice_constant:   lattice spacing in unit of nm
+                        if one number eg. 1500, means a_x=a_y (default: 1520, 1690)
+    shape:  lattice shape (default: square)
+    lattice_symmetry:   use lattice reflection symmetry or not (default: True)
+    
+    Physical parameters:
+    scattering_length:  scattering length in unit of a_0 (default: 1770)
+    V_0:    trap depth in unit of kHz (default: 104.52)
+    waist: xy waist in unit of nm (default: 1000, 1000)
+    atom_mass:  atom mass in unit of amu (default: 6.015122)
+    zR:    (optional) Rayleigh range in unit of nm
+            None means calculated from laser wavelength (default: None)
+    laser_wavelength:   laser wavelength in unit of nm (default: 780)
+    average:    coefficient in front of trap depth, used for strobed trap (default: 1)
+    
+    Hubbard parameter calculation:
+    band:   number of bands to calculate Hubbard parameters (default: 1)
+    U_over_t:   Hubbard U/t ratio (default: None)
+                None means avg U / avg t_x calculated in initial guess
+
+    Hubbard parameter equalization:
+    equalize:   equalize Hubbard parameters or not (default: False)
+    equalize_target:    target Hubbard parameters to be equalized (default: vT)
+                        see Hubbard.equalizer for more details
+    method:     optimization algorithm to equalize Hubbard parameters (default: 'trf')
+                see scipy.optimize.minimize and least_squares for more details
+    no_bounds:  (optional) do not use bounds in optimization (default: False)
+    random_initial_guess:   (optional) use random initial guess (default: False)
+    scale_factor:   (optional) energy scale factor used in cost function
+                    None means avg t_x calculated in initial guess
+                    in unit of kHz (default: None)
+    write_log:  (optional) print parameters of every step to log file or not (default: False)
+    plot:   plot Hubbard parameter graphs or not (default: False)
+
+    verbosity:  (optional) 0~3, print more information or not (default: 0)
+    ''')
+    sys.exit()
+
+# ====== Read file ======
 report = rep.get_report(inFile)
 
+# ====== DVR parameters ======
 N = rep.i(report, "Parameters", "N", 20)
 L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
-lattice = rep.a(report, "Parameters", "lattice", np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520,
-                                                                  1690])))
+dim = rep.i(report, "Parameters", "dimension", 1)
+
+# ====== Create lattice ======
+lattice = rep.a(report, "Parameters", "lattice_size",
+                np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Parameters", "lattice_const",
+                 np.array([1520, 1690])))
+shape = rep.s(report, "Parameters", "shape", 'square')
+ls = rep.b(report, "Parameters", "lattice_symmetry", True)
+
+# ====== Physical parameters ======
 a_s = rep.f(report, "Parameters", "scattering_length", 1000)
-V0 = rep.f(report, "Parameters", "V0", 104.52)
+V0 = rep.f(report, "Parameters", "V_0", 104.52)
 w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
 m = rep.f(report, "Parameters", "atom_mass", 6.015122)
 zR = rep.f(report, "Parameters", "zR", None)
 l = rep.f(report, "Parameters", "laser_wavelength", 780)
-band = rep.i(report, "Parameters", "band", 1)
-dim = rep.i(report, "Parameters", "dimension", 1)
-avg = rep.i(report, "Parameters", "average", 1)
-sp = rep.b(report, "Parameters", "sparse", True)
-eq = rep.b(report, "Parameters", "equalize", False)
-eqt = rep.s(report, "Parameters", "equalize_target", 'vt')
-symm = rep.b(report, "Parameters", "symmetry", True)
+avg = rep.f(report, "Parameters", "average", 1)
 
+# ====== Hubbard parameters ======
+band = rep.i(report, "Parameters", "band", 1)
+ut = rep.f(report, "Parameters", "U_over_t", None)
+
+# ====== Equalization ======
+eq = rep.b(report, "Parameters", "equalize", False)
+eqt = rep.s(report, "Parameters", "equalize_target", 'vT')
+wd = rep.s(report, "Parameters", "waist_direction", None)
+meth = rep.s(report, "Parameters", "method", 'trf')
+nb = rep.b(report, "Parameters", "no_bounds", False)
+r = rep.b(report, "Parameters", "random_initial_guess", False)
+sf = rep.f(report, "Parameters", "scale_factor", None)
+log = rep.b(report, "Parameters", "write_log", False)
+x0 = rep.a(report, "Equalization_Info", "x", None)
+
+# ====== Plotting ======
+plot = rep.b(report, "Parameters", "plot", False)
+
+# ====== DVR settings ======
+s = rep.b(report, "Parameters", "sparse", True)
+symm = rep.b(report, "Parameters", "symmetry", True)
+verb = rep.i(report, "Parameters", "verbosity", 0)
+
+# ====== Equalize ======
 G = HubbardGraph(
     N,
     R0=L0,
@@ -40,36 +128,76 @@ G = HubbardGraph(
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
-    zR=zR,  # Rayleigh range input by han
-    sparse=sp,
+    zR=zR,  # Rayleigh range input by hand
+    shape=shape,  # lattice geometries
+    waist=wd,  # Waist varying directions
+    sparse=s,  # Sparse matrix
     equalize=eq,
     eqtarget=eqt,
-    symmetry=symm)
+    lattice_symmetry=ls,
+    Ut=ut,
+    random=r,
+    x0=x0,
+    scale_factor=sf,
+    method=meth,
+    nobounds=nb,
+    symmetry=symm,
+    iofile=report,
+    write_log=log,
+    verbosity=verb)
+
 eig_sol = eigen_basis(G)
-A, U = G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-# G.draw_graph('adjust', A, U)
-# G.draw_graph(A=A, U=U)
-Vi = np.diag(A)
-tij = A - np.diag(Vi)
+G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+if plot:
+    G.draw_graph('adjust', A=G.A, U=G.U)
+    G.draw_graph(A=G.A, U=G.U)
 
-values = {"t_ij": np.real(tij), "V_i": np.real(Vi), "U": U}
-rep.create_report(report, "Singleband_Parameters", **values)
+# ====== Write output ======
+write_singleband(report, G)
+write_trap_params(report, G)
 
-values = {
-    "V_offset": G.Voff,
-    "trap_centers": G.trap_centers,
-    # "edge_lengths": G.edge_label
-}
-rep.create_report(report, "Trap_Adjustments", **values)
+eqt = 'uvt' if eqt == 'neq' else eqt
+u, t, v, __, __, __ = str_to_flags(eqt)
+w = np.array([u, t, v])
+nnt = G.nn_tunneling(G.A)
+xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
+if G.sf == None:
+    G.sf = txTarget
+ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
+cv = G.v_cost_func(G.A, None, G.sf)
+cu = G.u_cost_func(G.U, None, G.sf)
+cvec = np.array((cu, ct, cv))
+c = w @ cvec
+cvec = np.sqrt(cvec)
+fval = np.sqrt(c)
+ctot = la.norm(cvec)
+G.eqinfo['sf'] = G.sf
+G.eqinfo['Ut'] = np.mean(G.U) / txTarget
 
-if band > 1:
+if eq:
+    G.eqinfo['cost'] = np.append(G.eqinfo['cost'], cvec[None], axis=0)
+    G.eqinfo['fval'] = np.append(G.eqinfo['fval'], fval)
+    G.eqinfo['ctot'] = np.append(G.eqinfo['ctot'], ctot)
+else:
+    v0, __ = G.init_guess(random=False)
+    G.eqinfo['x'] = v0[None]
+    G.eqinfo['Nfeval'] = 0
+    G.eqinfo['cost'] = cvec[None]
+    G.eqinfo['fval'] = np.array([fval])
+    G.eqinfo['ctot'] = np.array([ctot])
+    G.eqinfo["success"] = False
+    G.eqinfo["exit_status"] = -1
+    G.eqinfo["termination_reason"] = "Not equalized"
+write_equalization(report, G.eqinfo, write_log=log, final=True)
+
+if G.bands > 1:
     A, U = optimize(G, *eig_sol)
     values = {}
     for i in range(band):
-        Vi = np.diag(A[i])
-        tij = A[i] - np.diag(Vi)
-        values[f"t_{i+1}_ij"] = np.real(tij)
-        values[f"V_{i+1}_i"] = np.real(Vi)
+        Vi = np.real(np.diag(A[i]))
+        tij = abs(np.real(A[i] - np.diag(Vi)))
+        values[f"t_{i+1}_ij"] = tij
+        values[f"V_{i+1}_i"] = Vi
 
     V = interaction(G, U, *eig_sol[1:])
     for i in range(band):

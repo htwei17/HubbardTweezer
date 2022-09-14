@@ -73,7 +73,7 @@ class DVRdynamics(DVR):
         print('init_state: initial state of T+%.1fV is calculated.' % self.avg)
         ab = copy.copy(self.absorber)
         self.absorber = False
-        __, W = H_solver(self)
+        __, W = self.H_solver()
         psi = W[:, 0]
         del W
         self.absorber = ab
@@ -123,7 +123,7 @@ class DVRdynamics(DVR):
     def filename_gen(self, t_step):
         # Generate filename for output
         rt_str = add_str(self.realtime, 'rt')
-        sym_str = add_str(self.symmetry, 'sym')
+        sym_str = add_str(self.dvr_symm, 'sym')
         ab_str = add_str(self.absorber, 'ab', (self.LI, self.VI))
         sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
@@ -277,7 +277,7 @@ def one_period_evo_smooth(dvr: DVRdynamics):
 
     def H_mat_w_f(dvr: DVRdynamics, f):
         dvr.avg = f
-        return H_mat(dvr)
+        return dvr.H_mat()
 
     dt = dvr.T / dvr.Nslice
     n = np.arange(0, dvr.T, dt) / dvr.T
@@ -297,8 +297,8 @@ def one_period_evo_smooth(dvr: DVRdynamics):
     return U
 
 
-def mem_eff_int_ops(t1, DVR):
-    E1, W1 = H_solver(DVR)
+def mem_eff_int_ops(t1, DVR: DVR):
+    E1, W1 = DVR.H_solver()
     if DVR.absorber:
         Winv = la.inv(W1)
     else:
@@ -421,7 +421,7 @@ def coherent_state(n, dx, x0):
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 
-    E, W = H_solver(n, dx, potential=firstfun, model='sho')
+    E, W = DVR.H_solver(n, dx, potential=firstfun, model='sho')
     psi = W[:, 0]
     return psi
 
@@ -458,10 +458,10 @@ def wavepocket_dynamics(psi0, U0, U1, step_count, step_no):
 
 def eigen_list(dvr: DVRdynamics):
     dvr.avg = 1
-    E1, W1 = H_solver(dvr)
+    E1, W1 = dvr.H_solver()
     # NOTE: this potential indication is needed to determine what parameters are used in kinetic energy
     dvr.avg = 0
-    E2, W2 = H_solver(dvr)
+    E2, W2 = dvr.H_solver()
     E_list = [E1, E2]
     W_list = [W1, W2]
     print(
@@ -508,7 +508,7 @@ def dynamics_period(dvr: DVRdynamics, t_step, cond_str, psi1, psi, time6, fn,
             rho_trap, psi_w = None, None
 
         io = DVRdynaOutput(t, rho_gs, dvr.wavefunc, (rho_trap, psi_w))
-        io.write_to_file(fn)
+        io.write_file(fn)
 
         dvr.step_count += 1
 
@@ -527,7 +527,7 @@ def dynamics_realtime(dvr: DVRdynamics, t_step, cond_str, psi, psi1, time6, fn,
             psi
         )**2  # Roughly estimate state proportion remaining within DVR space
         io = DVRdynaOutput(t, rho_gs, dvr.wavefunc, (rho_trap, psi))
-        io.write_to_file(fn)
+        io.write_file(fn)
 
         print_progress(cond_str, dvr.step_count, time6)
 
@@ -554,7 +554,7 @@ def one_period_mem_eff(t1, t2, dynamics):
 def init_save(dvr: DVRdynamics, t_step, psi0):
     fn = dvr.filename_gen(t_step)
     io = DVRdynaOutput(0, 1, dvr.wavefunc, (1, psi0))
-    io.write_to_file(fn)
+    io.write_file(fn)
     return fn
 
 

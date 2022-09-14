@@ -607,7 +607,7 @@ def plot_wavefunction(N_list, R0_list, dvr: DVRplot, length=1):
     N_list = list(N_list)
     dvr.wavefunc = True
     p = 0
-    if dvr.symmetry:
+    if dvr.dvr_symm:
         p = 1
 
     for fi in range(dvr.freq_list_len):

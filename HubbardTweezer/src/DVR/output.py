@@ -16,7 +16,7 @@ class DVRdynaOutput:
             self.rho_trap = trap[0]
             self.psi = trap[1]
 
-    def write_to_file(self, fn: str):
+    def write_file(self, fn: str):
         with h5py.File(fn, "a") as f:
             append_to_table(f, 't', self.t)
             # if __debug__:
