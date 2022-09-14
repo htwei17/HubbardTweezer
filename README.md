@@ -12,7 +12,7 @@
 
 * [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch) (or [`autograd`](https://github.com/HIPS/autograd) by your preference)
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
-* [`graphviz`](https://github.com/xflr6/graphviz) and [`networkx`](https://github.com/networkx/networkx)
+* [`networkx`](https://github.com/networkx/networkx) (or [`graphviz`](https://github.com/xflr6/graphviz))
 * `numpy`
 * `scipy`
 * `matplotlib`
