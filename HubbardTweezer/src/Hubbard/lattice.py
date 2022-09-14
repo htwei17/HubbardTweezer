@@ -3,7 +3,8 @@ import numpy as np
 
 
 def lattice_graph(size: np.ndarray,
-                  shape: str = 'square') -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+                  shape: str = 'square',
+                  symmetry: bool = True) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     # Square lattice graph builder
     # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
     # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
@@ -31,13 +32,13 @@ def lattice_graph(size: np.ndarray,
         nodes = nodes[~hole, :]
         links = shift_links(links, hole_idx)
     elif shape == 'triangular':
-        nodes, links, __ = tri_lattice(size)
+        nodes, links, __ = tri_lattice(size, symmetry)
     elif shape == 'zigzag':
         # TODO: implement zigzag, and other assymmetric lattice
         # FIXME: zigzag has no y-axis symmetry
         #        one way to do is to copy the chain to be mirrored on y-axis
-        # NOTE: the code below is not runnable as size-2 will be forced to be 3
-        nodes, links, __ = tri_lattice(np.array([size[0], 2]))
+        # NOTE: the code below is not finished
+        nodes, links, __ = tri_lattice(np.array([size[0], 2]), symmetry=False)
     elif shape == 'honeycomb':
         # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
         size[size < 3] == 3
@@ -79,8 +80,10 @@ def lattice_graph(size: np.ndarray,
         nodes = nodes[~hole, :]
         links = shift_links(links, hole_idx)
 
-    reflection, inv_coords = build_reflection(nodes, shape)
-    # TODO: consider what we can do with multi-fold rotations
+    reflection, inv_coords = None, None
+    if symmetry:
+        reflection, inv_coords = build_reflection(nodes, shape)
+        # TODO: consider what we can do with multi-fold rotations
     return nodes, links, reflection, inv_coords
 
 
@@ -153,7 +156,7 @@ def sqr_lattice(size: np.ndarray):
     return nodes, links, node_idx_pair
 
 
-def tri_lattice(size: np.ndarray):
+def tri_lattice(size: np.ndarray, symmetry: bool = True):
     # Triangular lattice graph builder
     # NOTE: lc = (ax, ay) is given by hand.
     #       For equilateral triangle,
@@ -162,16 +165,24 @@ def tri_lattice(size: np.ndarray):
     #       Other case is isosceles triangle.
     #       In this function, length unit is (ax, ay).
     # NOTE: In this case, indexing is ROW-MAJOR.
-    # NOTE that the triangular lattice is made to he reflection symmetric.
+    # NOTE that if given symmetry=True,
+    # the triangular lattice is made to he reflection symmetric.
     # E.g. * * * * *
     #     * * * * * *
     #      * * * * *
+    # If given symmetry=False, the lattice is in the parallelogram shape.
+    # E.g. * * * * *
+    #       * * * * *
 
-    # Smallest reflection-symmetric triangular lattice plaquette has size 3
-    size[size < 3] == 3
-    # Make sure y dimension size is odd
-    if size[1] % 2 == 0:
-        size[1] += 1
+    if symmetry:
+        # Smallest reflection-symmetric triangular lattice plaquette has size 3
+        size[size < 3] == 3
+        # Make sure y dimension size is odd
+        if size[1] % 2 == 0:
+            size[1] += 1
+    else:
+        # Smallest triangular lattice plaquette has size 2 on each direction
+        size[size < 2] == 2
     print(f'Triangular lattice size adjust to: {size}')
 
     edge = []
@@ -184,42 +195,51 @@ def tri_lattice(size: np.ndarray):
         edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
         edge_idx.append(np.arange(1, size[i] + 1, dtype=int))
 
-    # Minor rows that have smaller size than major rows
-    edge.append(np.arange(-size[0] / 2 + 1, size[0] / 2))
-    edge_idx.append(np.arange(1, size[0], dtype=int))
+    if symmetry:  # For reflection symmetry, add minor rows w/ L-1 sites
+        edge.append(np.arange(-size[0] / 2 + 1, size[0] / 2))
+        edge_idx.append(np.arange(1, size[0], dtype=int))
+    else:  # For no symmetry, add shifted majro rows w/ L sites
+        edge.append(edge[0] - 0.25)
+        edge[0] += 0.25
+        edge_idx.append(np.arange(1, size[0] + 1, dtype=int))
 
     node_idx = 0  # Linear index is row (x) prefered
     for j in range(len(edge[1])):
-        if j % 2 == 1:
-            edge_i = edge[0]
-            edge_idx_i = edge_idx[0]
-        else:
-            edge_i = edge[-1]
-            edge_idx_i = edge_idx[-1]
+        # Major row & minor row
+        edge_i, edge_idx_i = (edge[0], edge_idx[0]) if j % 2 == 1 else (
+            edge[-1], edge_idx[-1])
         for i in range(len(edge_i)):
             nodes = np.append(nodes, [[edge_i[i], edge[1][j]]], axis=0)
-
             node_idx_pair = np.append(node_idx_pair,
                                       [[edge_idx_i[i], edge_idx[1][j]]],
                                       axis=0)
             if i > 0:  # Row link
                 links = np.append(links, [[node_idx - 1, node_idx]], axis=0)
-            if j > 0:  # Column linke
-                if j % 2 == 1:
-                    if i > 0:
+            if j > 0:  # Column link
+                if symmetry:
+                    if j % 2 == 1:  # Major row
+                        if i > 0:  # Leftward link
+                            links = np.append(links,
+                                              [[node_idx - size[0], node_idx]],
+                                              axis=0)
+                        if i < len(edge[0]) - 1:  # Righttward link
+                            links = np.append(links,
+                                              [[node_idx - size[0] + 1, node_idx]],
+                                              axis=0)
+                    else:  # Minor row
+                        links = np.append(links, [[node_idx - size[0], node_idx]],
+                                          axis=0)  # Leftward link
                         links = np.append(links,
-                                          [[node_idx - size[0], node_idx]],
-                                          axis=0)
-                    if i < len(edge[0]) - 1:
+                                          [[node_idx - size[0] + 1, node_idx]],
+                                          axis=0)  # Righttward link
+                else:
+                    links = np.append(links,
+                                      [[node_idx - size[0], node_idx]],
+                                      axis=0)  # Leftward link
+                    if i < len(edge[0]) - 1:  # Righttward link
                         links = np.append(links,
                                           [[node_idx - size[0] + 1, node_idx]],
                                           axis=0)
-                else:
-                    links = np.append(links, [[node_idx - size[0], node_idx]],
-                                      axis=0)
-                    links = np.append(links,
-                                      [[node_idx - size[0] + 1, node_idx]],
-                                      axis=0)
             node_idx += 1
 
     return nodes, links, node_idx_pair

@@ -123,7 +123,7 @@ class DVRdynamics(DVR):
     def filename_gen(self, t_step):
         # Generate filename for output
         rt_str = add_str(self.realtime, 'rt')
-        sym_str = add_str(self.symmetry, 'sym')
+        sym_str = add_str(self.dvr_symm, 'sym')
         ab_str = add_str(self.absorber, 'ab', (self.LI, self.VI))
         sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)

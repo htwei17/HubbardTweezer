@@ -120,6 +120,7 @@ class DVR:
     def update_n(self, n: np.ndarray, R0: np.ndarray):
         # Change n by fixed R0
         self.n = n.copy()
+        self.init[self.nd] = get_init(self.n[self.nd], self.p[self.nd])
         self.R0 = R0.copy()
         self.dx = np.zeros(n.shape)
         self.nd = n != 0
@@ -134,6 +135,7 @@ class DVR:
         self.n[self.nd == 0] = 0
         self.dx[self.nd == 0] = 0
         self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
+        self.init[self.nd] = get_init(self.n[self.nd], self.p[self.nd])
         self.update_ab()
 
     def update_ab(self):
@@ -178,6 +180,8 @@ class DVR:
             # Rayleigh range input by hand, in unit of nm
             zR: Union[None, float] = None,
             symmetry: bool = False,
+            # Parity of each dimension, used when symmetry is True
+            parity: Union[None, np.ndarray] = None,
             absorber: bool = False,
             ab_param: tuple[float, float] = (57.04, 1),
             sparse: bool = False,
@@ -193,7 +197,7 @@ class DVR:
             self.model = "free"
 
         self.absorber = absorber
-        self.symmetry = symmetry
+        self.dvr_symm = symmetry
         self.nd: np.ndarray = n != 0  # Nonzero dimensions
         self.sparse = sparse
         self.verbosity = verbosity
@@ -211,11 +215,14 @@ class DVR:
         #     print(self.R0)
 
         self.p = np.zeros(dim, dtype=int)
-        if symmetry:
-            self.p[self.nd] = 1
+        if self.dvr_symm:
+            if parity is None:
+                self.p[self.nd] = 1
+            else:
+                self.p[self.nd] = parity[self.nd].astype(int)
             if self.verbosity:
                 axis = np.array(['x', 'y', 'z'])
-                print('{}-reflection symmetry is used.'.format(axis[self.nd]))
+                print(f'{axis[self.nd]}-reflection symmetry is used.')
         self.init = get_init(self.n, self.p)
 
         if model == 'Gaussian':

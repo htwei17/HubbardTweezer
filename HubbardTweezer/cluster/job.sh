@@ -2,7 +2,8 @@
 
 # ====== Default values ======
 # Lattice
-L=3
+Lx=3
+Ly=$Lx
 LATTICE_DIM=2
 SHAPE=square
 # Equalization
@@ -10,7 +11,7 @@ EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="4:00:00"
+TIME="0:20:00"
 LN_SUFFIX=""
 METHOD="trf"
 # DVR
@@ -18,6 +19,7 @@ d=3
 N=20
 R=3
 Rz=7.2
+SYMMETRY=True
 NL_DEFINITION="N=$N
 R=$R
 Rz=$Rz"
@@ -28,7 +30,8 @@ while :; do
     -h | -\? | --help)
         # Display a usage synopsis.
         echo "HELP: Hubbard parameter job submission"
-        echo "-l, --L:  lattice grid size (Default: $L)"
+        echo "-l, --L:  lattice grid x size (Default: $Lx)"
+        echo "-y, --Ly:  lattice grid y size (Default: $Ly)"
         echo "-t, --lattice-dim:    lattice dimension (Default: $LATTICE_DIM)"
         echo "-d, --D:  DVR dimension (Default: $d)"
         echo "-s, --shape:  lattice shape (Default: $s)"
@@ -42,10 +45,19 @@ while :; do
         ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
         if [ "$2" ]; then
-            L=$2
+            Lx=$2
+            Ly=$Lx
             shift
         else
             die 'ERROR: "--L" requires a non-empty option argument.'
+        fi
+        ;;
+    -y | --Ly) # Takes an option argument; ensure it has been specified.
+        if [ "$2" ]; then
+            Ly=$2
+            shift
+        else
+            die 'ERROR: "--Ly" requires a non-empty option argument.'
         fi
         ;;
     -t | --lattice-dim)
@@ -109,6 +121,7 @@ while :; do
     shift
 done
 
+echo "Lattice size is: $Lx,$Ly"
 METHOD_SUFFIX="_"$METHOD
 
 if [ $STATUS = "neq" ]; then
@@ -116,7 +129,11 @@ if [ $STATUS = "neq" ]; then
     WAIST=None
     PARTITION=scavenge
     METHOD_SUFFIX=""
-    TIME="0:05:00"
+    if [ $SYMMETRY = "True" ]; then
+        TIME="0:05:00"
+    else
+        TIME="0:20:00"
+    fi
 elif [ $STATUS = "L" ]; then
     EQ_FLAG=False
     WAIST=None
@@ -153,9 +170,14 @@ if [ $SHAPE != "square" ]; then
     LATTICE_DIM=2
 fi
 
-if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
-    Lx=$L
-    Ly=$L
+if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
+    SYMMETRY=False
+    DIM_PARAM="lattice = $Lx, $Ly
+lattice_const = 1450,
+laser_wavelength = 780
+V_0 = 73.0219
+waist = 1000, 1000"
+elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     DIM_PARAM="lattice = $Lx, $Ly
 lattice_const = 1520, 1690
 laser_wavelength = 780
@@ -163,7 +185,6 @@ V_0 = 52.26
 waist = 1000, 1000"
 elif [ $SHAPE = 'ring' ]; then
     # Build a perfect ring s.t. no equalization needed
-    Lx=$L
     Ly=1
     DIM_PARAM="lattice = $Lx, $Ly
 lattice_const = 1520, 1520
@@ -215,26 +236,27 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-# if [ -s \$FN ]; then
-#     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
-# else
-#     echo \"\$FN is empty. Start writing parameters.\"
-#     echo \"[Parameters]
-echo \"[Parameters]
+if [ -s \$FN ]; then
+    echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
+else
+    echo \"\$FN is empty. Start writing parameters.\"
+    echo \"[Parameters]
 N = \$N
 L0 = \$R, \$R, \$Rz
 $DIM_PARAM
 shape = $SHAPE
-scattering_length = 1000
+scattering_length = 1770
 dimension = $d
 waist_direction = $WAIST
+symmetry = $SYMMETRY
 equalize = $EQ_FLAG
 equalize_target = $STATUS
 method = $METHOD
+write_log = True
 no_bounds = False
-verbosity = 1
+verbosity = 3
 job_id = \$SLURM_JOB_ID\" >>\$FN
-# fi
+fi
 
 WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$LN_SUFFIX
 

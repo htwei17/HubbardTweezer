@@ -99,17 +99,17 @@ class HubbardGraph(HubbardEqualizer):
             print('\nStart to plot graph...')
 
         if self.lattice_dim == 1:
-            fs = (self.lattice[0] * 2, self.lattice[1] * 1.5)
+            fs = (2 * (self.lattice[0] - 1), 1.5)
             if nnn:
                 margins = (0.05, 1)
             else:
                 margins = (0.05, 0.5)
         elif self.lattice_dim == 2:
-            margins = (0.1, 0.1)
+            margins = (0.15, 0.15)
             if self.lattice_shape == 'ring':
-                fs = (2 * self.lattice[0], 2 * self.lattice[0])
+                fs = (2.5 * (self.lattice[0] - 1), 2.5 * (self.lattice[0] - 1))
             else:
-                fs = tuple(2 * i for i in self.lattice)
+                fs = tuple(2.5 * (i - 1) for i in self.lattice)
         plt.figure(figsize=fs)
 
         nx.draw_networkx_nodes(self.graph,

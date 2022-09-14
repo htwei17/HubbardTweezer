@@ -245,21 +245,19 @@ class HubbardEqualizer(MLWF):
 
         return v0, bounds
 
-    def _set_trap_params(self, v0: np.ndarray, cond, status):
+    def _set_trap_params(self, v0: np.ndarray, verb, status):
         trap_depth = v0[:self.Nindep]
         if self.waist_dir != None:
             trap_waist = np.ones((self.Nindep, 2))
-            trap_waist[self.w_dof.reshape(self.Nindep, 2)] = v0[self.Nindep:np.sum(self.w_dof) +
-                                                                self.Nindep]
+            trap_waist[self.w_dof.reshape(
+                self.Nindep, 2)] = v0[self.Nindep:np.sum(self.w_dof) + self.Nindep]
         else:
             trap_waist = None
         trap_center = np.zeros((self.Nindep, 2))
         trap_center[self.tc_dof.reshape(
             self.Nindep, 2)] = v0[-np.sum(self.tc_dof):]
-
-        if cond:
-            print("\n")
-            print(f"Equalize: {status} trap depths: {trap_depth}")
+        if verb:
+            print(f"\nEqualize: {status} trap depths: {trap_depth}")
             if self.waist_dir != None:
                 print(f"Equalize: {status} waists:")
                 print(trap_waist)
@@ -268,12 +266,11 @@ class HubbardEqualizer(MLWF):
         return trap_depth, trap_waist, trap_center
 
     def _param_unfold(self, point: np.ndarray, status: str = 'current'):
-        trap_depth, trap_waist, trap_center = self._set_trap_params(point,
-                                                                    self.verbosity, status)
-        self.symm_unfold(self.Voff, trap_depth)
+        td, tw, tc = self._set_trap_params(point, self.verbosity, status)
+        self.symm_unfold(self.Voff, td)
         if self.waist_dir != None:
-            self.symm_unfold(self.waists, trap_waist)
-        self.symm_unfold(self.trap_centers, trap_center, graph=True)
+            self.symm_unfold(self.waists, tw)
+        self.symm_unfold(self.trap_centers, tc, graph=True)
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
@@ -305,13 +302,14 @@ class HubbardEqualizer(MLWF):
         else:
             A, x0 = res
             U = None
-            
+        # x0 is used to update unitary[0] in the next iteration
+
+        # Print out Hubbard parameters
         if self.verbosity > 1:
             print(f'scale_factor = {scale_factor}')
             print(f'V = {np.diag(A)}')
             print(f't = {abs(self.nn_tunneling(A))}')
-            if u:
-                print(f'U = {U}')
+            print(f'U = {U}')
 
         xlinks, ylinks = links
         Vtarget = None
