@@ -35,7 +35,7 @@ avg = rep.f(report, "Parameters", "average", 1)
 
 # ====== Hubbard parameters ======
 band = rep.i(report, "Parameters", "band", 1)
-ut = rep.f(report, "Parameters", "U/t", None)
+ut = rep.f(report, "Parameters", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)

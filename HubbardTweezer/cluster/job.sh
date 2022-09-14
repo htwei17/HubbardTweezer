@@ -7,11 +7,12 @@ Ly=$Lx
 LATTICE_DIM=2
 SHAPE=square
 # Equalization
+Ut=None
 EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="0:20:00"
+TIME="4:00:00"
 LN_SUFFIX=""
 LOG=True
 METHOD="trf"
@@ -41,6 +42,7 @@ while :; do
         echo "-e, --eq: determine which parameter to equalize (Default: $STATUS)"
         echo "          it can be 'neq' for no equalization,"
         echo "          'L'('N') for varying L(N) to check convergence ('neq' implied)"
+        echo "-u, --Ut:  Hubbard parameter U/t (Default: $Ut)"
         echo "-m, --method: method used to minimize cost function (Default: $METHOD)"
         exit
         ;;
@@ -99,6 +101,14 @@ while :; do
             shift
         else
             die 'ERROR: "--eq" requires a non-empty option argument.'
+        fi
+        ;;
+    -u | --Ut)
+        if [ "$2" ]; then
+            Ut=$2
+            shift
+        else
+            die 'ERROR: "--Ut" requires a non-empty option argument.'
         fi
         ;;
     -m | --method)
@@ -253,6 +263,7 @@ waist_direction = $WAIST
 symmetry = $SYMMETRY
 equalize = $EQ_FLAG
 equalize_target = $STATUS
+U_over_t = $Ut
 method = $METHOD
 write_log = $LOG
 no_bounds = False
