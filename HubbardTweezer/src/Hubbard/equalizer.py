@@ -102,7 +102,7 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        nnt = self.nn_tunneling(A)
+        nnt = self.nn_tunneling(A)        
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
