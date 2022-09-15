@@ -41,4 +41,4 @@
 ## TODO
 
 * Test Hubbard parameter calculations for all lattice geometries
-* A detailed documentation on how to run the program
+* A comprehensive documentation
