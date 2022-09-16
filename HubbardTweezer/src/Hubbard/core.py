@@ -193,6 +193,10 @@ class MLWF(DVR):
             # Shift onsite potential to zero average
             self.A -= np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
+                
+        if self.verbosity > 1:
+            print(f'Energies: {E}')
+            print(f'parities: {p}')
 
         if u:
             if self.verbosity:

@@ -63,6 +63,9 @@ if inFile == '--help' or inFile == '-h':
     plot:   plot Hubbard parameter graphs or not (default: False)
 
     verbosity:  (optional) 0~3, print more information or not (default: 0)
+    
+    [Equalization_Info]
+    x:  (optional) initial trap parameters loaded for equalization
     ''')
     sys.exit()
 
