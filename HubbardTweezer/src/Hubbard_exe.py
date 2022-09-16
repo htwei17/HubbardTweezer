@@ -1,17 +1,17 @@
 import numpy as np
+import sys
+from os.path import exists
+
 from Hubbard.output import *
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
-import sys
 
-# ====== Read arguments ======
-inFile = sys.argv[1]
-# outFile = sys.argv[2]
 
-if inFile == '--help' or inFile == '-h':
+def help_message(s=2):
+    # print help message and exit
     print('''
-    Usage: python Hubbard_exe.py <input ini file name>
+    Usage: python Hubbard_exe.py <input ini file path>
     
     The program will read [Parameters] setion in the input file
     and generate output setions in the same file. Detail see below.
@@ -112,10 +112,25 @@ if inFile == '--help' or inFile == '-h':
     (optional) Hubbard parameters for the multiband Hubbard model, unit kHz.
     Each item is similar to [Singleband_Parameters] with band indices added.
     ''')
-    sys.exit()
+    sys.exit(s)
 
-# ====== Read file ======
-report = rep.get_report(inFile)
+
+# ====== Read argument and file ======
+try:
+    inFile = sys.argv[1]
+    # outFile = sys.argv[2]
+
+    if inFile == '--help' or inFile == '-h':
+        help_message(2)
+    elif exists(inFile):
+        report = rep.get_report(inFile)
+    else:
+        raise FileNotFoundError('Hubbard_exe: input file not found')
+except FileNotFoundError as ferr:
+    print(ferr)
+    print("Usage: python Hubbard_exe.py <input ini file path>")
+    print("use -h or --help for help")
+    sys.exit(1)
 
 # ====== DVR parameters ======
 N = rep.i(report, "Parameters", "N", 20)
@@ -253,3 +268,5 @@ if G.bands > 1:
             values[f"U_{i+1}{j+1}_i"] = V[i, j]
 
     rep.create_report(report, "Multiband_Parameters", **values)
+
+sys.exit(0)
