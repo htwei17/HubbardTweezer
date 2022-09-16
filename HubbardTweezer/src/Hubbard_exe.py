@@ -13,7 +13,11 @@ if inFile == '--help' or inFile == '-h':
     print('''
     Usage: python Hubbard_exe.py <input ini file name>
     
-    Items in the input file:
+    The program will read [Parameters] setion in the input file
+    and generate output setions in the same file. Detail see below.
+    WARNING: multiple definitions of the same item will raise error.
+    
+    Items to input the file:
     ----------------------------------------
     
     [Parameters]
@@ -56,16 +60,57 @@ if inFile == '--help' or inFile == '-h':
                 see scipy.optimize.minimize and least_squares for more details
     no_bounds:  (optional) do not use bounds in optimization (default: False)
     random_initial_guess:   (optional) use random initial guess (default: False)
-    scale_factor:   (optional) energy scale factor used in cost function
+    scale_factor:   (optional) energy scale factor to make cost function dimensionless
                     None means avg t_x calculated in initial guess
                     in unit of kHz (default: None)
-    write_log:  (optional) print parameters of every step to log file or not (default: False)
+    write_log:  (optional) print parameters of every step to log file or not (default: False).
+                See [Equalization_Log] in output file
     plot:   plot Hubbard parameter graphs or not (default: False)
 
     verbosity:  (optional) 0~3, print more information or not (default: 0)
     
     [Equalization_Info]
-    x:  (optional) initial trap parameters loaded for equalization
+    x:  (optional) initial free trap parameters for equalization as 1D array
+    
+    
+    Items output by the program:
+    ----------------------------------------
+    N is the number of sites. k is the number of bands.
+    
+    [Singleband_Parameters]
+    The Hubbard parameters for the singleband Hubbard model, unit kHz.
+    t_ij:   NxN array, tunneling matrix between sites i and j
+    V_i:    Nx1 array, on-site potential at site i
+    U_i:    Nx1 array, on-site Hubbard interaction at site i
+    
+    [Trap_Adjustments]
+    The factors to adjust traps to equalize Hubbard parameters.
+    V_offset:   Nx1 array, factor to scale trap depth, true depth = V_offset * V_0
+    trap_centers:   Nx2 array, trap center position in unit of waist_x and waist_y
+    waist_factors:  Nx2 array, factor to scale trap waist, true waist_x/y = waist_factors_x/y * waist_x/y
+    
+    [Equalization_Result]
+    The equalization status and result.
+    x:  optimized free trap parameters as minimization function input
+    cost_func_by_terms:  cost function values C_U, C_t, C_V by terms of U, t, and V
+    cost_func_value: cost function value feval to be minimized
+                     feval = w_1 * C_U + w_2 * C_t + w_3 * C_V
+    total_cost_func:    total cost function value C = C_U + C_t + C_V
+    func_eval_number:   number of cost function evaluations
+    scale_factor:   energy scale factor to make cost function dimensionless.
+                    See scale_factor in [Parameters]
+    success:    minimization success or not
+    equalize_status:    minimization status given by scipy.optimize.minimize
+    termination_reason: termination message given by scipy.optimize.minimize
+    U_over_t:   Hubbard U/t ratio
+    
+    [Equalization_Log]
+    (optional) log of equalization process.
+    Each item is a list of values introduced in [Equalization_Result] in each step.
+    
+    [Multiband_Parameters]
+    (optional) Hubbard parameters for the multiband Hubbard model, unit kHz.
+    Each item is similar to [Singleband_Parameters] with band indices added.
     ''')
     sys.exit()
 
