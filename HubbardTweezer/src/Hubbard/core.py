@@ -193,7 +193,7 @@ class MLWF(DVR):
             # Shift onsite potential to zero average
             self.A -= np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
-                
+
         if self.verbosity > 1:
             print(f'Energies: {E}')
             print(f'parities: {p}')
@@ -270,6 +270,7 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
         W_sb = []
         p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
+            print(f'Solve {p} sector.')
             E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
@@ -315,6 +316,7 @@ def sector(dvr: MLWF):
         p_tuple.append([1, -1])
     else:
         p_tuple.append([1])
+    # Generate all possible combinations of xyz parity
     p_list = list(itertools.product(*p_tuple))
     return p_list
 
@@ -322,7 +324,7 @@ def sector(dvr: MLWF):
 def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
-    p[: len(sector)] = sector
+    p[:len(sector)] = sector
     dvr.update_p(p)
 
     Em, Wm = dvr.H_solver(k)
@@ -471,7 +473,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
 
     problem = pymanopt.Problem(manifold=manifold, cost=_cost_func)
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity-1 if dvr.verbosity > 0 else 0)
+        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity if dvr.verbosity <= 2 else 2)
     result = optimizer.run(
         problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point

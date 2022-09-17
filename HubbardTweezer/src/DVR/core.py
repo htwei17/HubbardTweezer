@@ -200,7 +200,7 @@ class DVR:
         self.dvr_symm = symmetry
         self.nd: np.ndarray = n != 0  # Nonzero dimensions
         self.sparse = sparse
-        self.verbosity = verbosity
+        self.verbosity = verbosity if verbosity >= 0 else 0
 
         self.dx = np.zeros(n.shape)
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of wx
@@ -449,6 +449,9 @@ class DVR:
 
             T = self.Tmat()
             V, no = self.Vmat()
+            # for i in range(3):
+            #     print(T[i])
+            # print(V)
             if self.verbosity > 2:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))

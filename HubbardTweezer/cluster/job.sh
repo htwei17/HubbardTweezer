@@ -12,7 +12,7 @@ EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="4:00:00"
+TIME="00:20:00"
 LN_SUFFIX=""
 LOG=True
 METHOD="trf"
@@ -141,7 +141,6 @@ while :; do
     shift
 done
 
-echo "Lattice size is: $Lx,$Ly"
 METHOD_SUFFIX="_"$METHOD
 
 if [ $STATUS = "neq" ]; then
@@ -212,7 +211,6 @@ laser_wavelength = 780
 V_0 = 52.26
 waist = 1000, 1000"
 else
-    Lx=$L
     Ly=1
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1350, 1550
@@ -221,6 +219,7 @@ V_0 = 50
 waist = 930, 1250"
 fi
 
+echo "Lattice size is: $Lx,$Ly"
 JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
 
 SLURM_FN=$JOB_NAME.slurm
