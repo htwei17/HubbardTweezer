@@ -259,8 +259,8 @@ class DVR:
             self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
 
             # Trap frequencies
-            self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-            self.omega *= np.sqrt(self.avg * self.hb *
+            self.omega = np.array([*(np.sqrt(2) / self.wxy), 1 / self.zR0])
+            self.omega *= np.sqrt(2 * self.avg * self.hb *
                                   self.V0 / self.m) / self.w
             # Trap harmonic lengths
             self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))

@@ -294,7 +294,7 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
 def sector(dvr: MLWF):
     # Generate all sector information for 1D and 2D lattice
     # Single site case
-    p = [1, -1] if dvr.ls else [0]
+    p = [1, -1] if dvr.ls else [0]  # ls: lattice symmetry
     if dvr.Nsite == 1:
         p_tuple = [[1], [1]]  # x, y direction
     else:
@@ -335,9 +335,11 @@ def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     return E, W, parity
 
 
-def loc_mat(dvr: MLWF, W, parity):
+def Xmat(dvr: MLWF, W, parity):
     # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
     # and position operator x, y, z
+    # NOTE: This is not the same as the X 'opterator', as DVR basis
+    #       is not invariant subspace of X. So X depends on DBR basis choice.
 
     R = []
 
@@ -429,15 +431,15 @@ def optimize(dvr: MLWF, E, W, parity, offset=True):
     return A, w
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, np.ndarray]:
+def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
     t0 = time()
 
     if dvr.Nsite > 1:
-        R = loc_mat(dvr, W, parity)
-        if dvr.lattice_dim == 1:
+        R = Xmat(dvr, W, parity)
+        if dvr.lattice_dim == 1 and eig1d:
             # If only one R given, the problem is simply diagonalization
             # solution is eigenstates of operator X
             X, solution = la.eigh(R[0])
@@ -484,22 +486,32 @@ def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
 
 def site_order(dvr: MLWF, W, U: np.ndarray, p) -> np.ndarray:
     # Order Wannier functions by lattice site label
+    # FIXME: When traps are very close,
+    #        optimized Wannier functions may not be localized on sites
     shift = np.zeros((dvr.Nsite, dim))
     for i in range(dvr.Nsite):
         shift[i, :2] = dvr.trap_centers[i] * dvr.lc
-        # Small offset to avoid zero values on z=0 in odd sector
-        shift[i, 2] = 0.25
-    x = [[[shift[i, d]] for d in range(dim)] for i in range(dvr.Nsite)]
+        # Small offset to avoid zero WF on z=0 in z-odd band
+        # Only when calculation is in 3D that pz = -1 is possible
+        # Roughly shift_z is at the peak of the 1st-excited z function
+        shift[i, 2] = dvr.hl[2]/dvr.w if all(p[:, 2] == -1) else 0
+    center_coord = [[[shift[i, d]]
+                     for d in range(dim)] for i in range(dvr.Nsite)]
     center_val = np.zeros((dvr.Nsite, dvr.Nsite))
+    # i-th row is the value of all WFs at the center of i-th site
     for i in range(dvr.Nsite):
-        center_val[i, :] = abs(wannier_func(dvr, W, U, p, x[i]))
-    # print(center_val)
+        center_val[i, :] = abs(wannier_func(dvr, W, U, p, center_coord[i]))
     # Find at which trap max of Wannier func is
     order = np.argmax(center_val, axis=1)
-    if dvr.verbosity > 1:
-        print("Trap site position of Wannier functions:", order)
-        print("Order of Wannier functions is set to match traps.")
-    return U[:, order]
+    if len(order) != len(set(order)):
+        print("MLWF: traps are too close and \
+                Wannier functions cannot be constructed physically!")
+        return U
+    else:
+        if dvr.verbosity > 1:
+            print("Trap site position of Wannier functions:", order)
+            print("Order of Wannier functions is set to match traps.")
+        return U[:, order]
 
 
 # def tight_binding(dvr: MLWF):
@@ -558,7 +570,7 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     Vi = wannier_func(dvr, Wi, Ui, pi, x)
     Vj = wannier_func(dvr, Wj, Uj, pj, x)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    Uint_onsite = intgrl3d(dx, wannier)
+    Uint_onsite = intgrl3d(wannier, dx)
     if dvr.model == "sho":
         print(
             f"Test with analytic calculation on {i + 1}-th site",
@@ -574,14 +586,16 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
 
 
 def wannier_func(dvr: MLWF, W, U, p: np.ndarray, x: Iterable) -> np.ndarray:
-    V = np.zeros((len(x[0]), len(x[1]), len(x[2]), p.shape[0]))
+    x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i]
+         for i in range(dim)]
+    V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
     for i in range(p.shape[0]):
         V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], x, p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
-def intgrl3d(dx: list[float, float, float], integrand: np.ndarray) -> float:
+def intgrl3d(integrand: np.ndarray, dx: list[float, float, float]) -> float:
     for i in range(dim):
         if dx[i] > 0:
             integrand = romb(integrand, dx[i], axis=0)
