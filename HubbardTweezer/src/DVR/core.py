@@ -3,8 +3,9 @@ from typing import Iterable, Literal, Union
 import numpy as np
 import sys
 import numpy as np
-import scipy.linalg as la
-import scipy.sparse.linalg as sla
+import numpy.linalg as la
+import scipy.linalg as sla
+import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
@@ -468,11 +469,11 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse non-hermitian matrix.')
-                E, W = sla.eigs(H, k, which='SA')
+                E, W = ssla.eigs(H, k, which='SA')
             else:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse hermitian matrix.')
-                E, W = sla.eigsh(H, k, which='SA')
+                E, W = ssla.eigsh(H, k, which='SA')
         else:
             # avg factor is used to control the time average potential strength
             H = self.H_mat()

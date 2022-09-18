@@ -2,8 +2,9 @@ import numpy as np
 from typing import Iterable
 from opt_einsum import contract
 from scipy.integrate import romb
+from scipy.spatial.distance import cdist
 from time import time
-import itertools
+from itertools import permutations, product
 import numpy.linalg as la
 
 import torch
@@ -270,7 +271,7 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
         W_sb = []
         p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
-            print(f'Solve {p} sector.')
+            # print(f'Solve {p} sector.')
             E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
@@ -317,7 +318,7 @@ def sector(dvr: MLWF):
     else:
         p_tuple.append([1])
     # Generate all possible combinations of xyz parity
-    p_list = list(itertools.product(*p_tuple))
+    p_list = list(product(*p_tuple))
     return p_list
 
 
@@ -450,7 +451,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
             solution = riemann_optimize(dvr, x0, R)
-            U = site_order(dvr, W, solution, parity)
+            U = site_order(dvr, solution, R)
     else:
         U = np.ones((1, 1))
 
@@ -484,34 +485,54 @@ def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
 # =============================================================================
 
 
-def site_order(dvr: MLWF, W, U: np.ndarray, p) -> np.ndarray:
+def site_order(dvr: MLWF, U: np.ndarray, R: list[torch.Tensor]) -> np.ndarray:
     # Order Wannier functions by lattice site label
     # FIXME: When traps are very close,
     #        optimized Wannier functions may not be localized on sites
-    shift = np.zeros((dvr.Nsite, dim))
-    for i in range(dvr.Nsite):
-        shift[i, :2] = dvr.trap_centers[i] * dvr.lc
-        # Small offset to avoid zero WF on z=0 in z-odd band
-        # Only when calculation is in 3D that pz = -1 is possible
-        # Roughly shift_z is at the peak of the 1st-excited z function
-        shift[i, 2] = dvr.hl[2]/dvr.w if all(p[:, 2] == -1) else 0
-    center_coord = [[[shift[i, d]]
-                     for d in range(dim)] for i in range(dvr.Nsite)]
-    center_val = np.zeros((dvr.Nsite, dvr.Nsite))
-    # i-th row is the value of all WFs at the center of i-th site
-    for i in range(dvr.Nsite):
-        center_val[i, :] = abs(wannier_func(dvr, W, U, p, center_coord[i]))
-    # Find at which trap max of Wannier func is
-    order = np.argmax(center_val, axis=1)
-    if len(order) != len(set(order)):
-        print("MLWF: traps are too close and \
-                Wannier functions cannot be constructed physically!")
-        return U
-    else:
-        if dvr.verbosity > 1:
-            print("Trap site position of Wannier functions:", order)
-            print("Order of Wannier functions is set to match traps.")
-        return U[:, order]
+
+    if dvr.lattice_dim == 1:
+        # Find WF center of mass
+        x = np.diag(U.T @ R[0].numpy() @ U) / dvr.lc[0]
+        order = np.argsort(x)
+    elif dvr.lattice_dim > 1:
+        # Find WF center of mass
+        x = np.array([np.diag(U.T @ R[i].numpy() @ U) / dvr.lc[i]
+                     for i in range(dvr.lattice_dim)]).T
+        order = nearest_match(dvr, x)
+    if dvr.verbosity > 1:
+        print("Trap site position of Wannier functions:", order)
+        print("Order of Wannier functions is set to match traps.")
+    return U[:, order]
+
+
+def nearest_match(dvr: MLWF, x: np.ndarray) -> np.ndarray:
+    # Match Wannier functions to nearest trap sites
+    # FIXME: Use a better algorithm to locate more accurate and efficient
+    #        An idea is to list all possible permutations
+    #        and find the one with least dist.
+    #        But this is slow as the number of permutations is factorial
+
+    # i-th row is the distance of i-th site to each WFs
+    dist_mat = cdist(dvr.trap_centers, x, metric="euclidean")
+    # # dist_mat is a square matrix, result shall be a full rank matrix
+    # # if trap centers and WFs are 1-to-1 corresponded.
+    # if la.matrix_rank(dist_mat <= 1/2) < dvr.Nsite:
+    #     print("WARNING: Wannier functions not localized on sites!")
+    # order = np.zeros(dvr.Nsite, dtype=int)
+    # for i in range(dvr.Nsite):
+    #     # Find unused site index that is closest to i-th WF
+    #     order[i] = np.where(dist_mat[i] == np.min(
+    #         dist_mat[i, np.delete(np.arange(dvr.Nsite), order[:i])]))[0]
+
+    # Two methods time differs ~1000x
+    # Naive method is ~75µs per call
+    # Permutation method is ~150ms per call
+    # If this func is evalauted ~1000 times, it's a considerable time
+    perm = np.array(tuple(permutations(range(dvr.Nsite))))
+    odx = np.arange(dvr.Nsite)
+    idx = np.argmin(tuple(np.sum(dist_mat[odx, order]**2) for order in perm))
+    order = perm[idx]
+    return order
 
 
 # def tight_binding(dvr: MLWF):
