@@ -15,6 +15,7 @@
 * [`networkx`](https://github.com/networkx/networkx) (or [`graphviz`](https://github.com/xflr6/graphviz))
 * `numpy`
 * `scipy`
+* `ortools`
 * `matplotlib`
 * `pympler`
 * `h5py`
