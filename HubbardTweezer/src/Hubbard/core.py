@@ -1,20 +1,16 @@
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
-from scipy.integrate import romb
-from scipy.spatial.distance import cdist
-from ortools.linear_solver import pywraplp
 from time import time
 from itertools import product, permutations
 import numpy.linalg as la
 
-import torch
-import pymanopt
-import pymanopt.manifolds
-import pymanopt.optimizers
-
-from DVR.core import *
+from .optimize import riemann_optimize
 from .lattice import *
+from DVR.core import *
+from DVR.wavefunc import psi
+from tools.integrate import romb3d
+from tools.point_match import nearest_match
 
 
 class MLWF(DVR):
@@ -186,7 +182,7 @@ class MLWF(DVR):
         if eig_sol != None:
             E, W, p = eig_sol
         else:
-            E, W, p = eigen_basis(self)
+            E, W, p = self.eigen_basis()
         E = E[0]
         W = W[0]
         p = p[0]
@@ -237,11 +233,6 @@ class MLWF(DVR):
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
 
-    def symm_fold(self, info):
-        # Extract information into symmetrized first sector
-        target = info[self.reflection[:, 0]]
-        return target
-
     def xy_links(self, nnt):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Only usable for rectangular & triangular latice.
@@ -258,161 +249,168 @@ class MLWF(DVR):
             nnty = np.mean(abs(nnt[ylinks]))
         return xlinks, ylinks, nntx, nnty
 
+    # TODO: Integrate multisector solver with DVR
+    def solve_sector(self, sector: np.ndarray, k: int, E, W, parity):
+        # Add a symmetry sector to the list of eigensolutions
+        p = self.p.copy()
+        p[:len(sector)] = sector
+        self.update_p(p)
 
-def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
-    # Find eigenbasis of symmetry block diagonalized Hamiltonian
-    k = dvr.Nsite * dvr.bands
-    if dvr.dvr_symm:
-        p_list = sector(dvr)
-        E_sb = np.array([])
-        W_sb = []
-        p_sb = np.array([], dtype=int).reshape(0, dim)
-        for p in p_list:
-            # print(f'Solve {p} sector.')
-            E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
+        Em, Wm = self.H_solver(k)
+        E = np.append(E, Em)
+        W += [Wm[:, i].reshape(self.n + 1 - self.init) for i in range(k)]
+        # Parity sector marker
+        parity = np.append(parity, np.tile(sector, (k, 1)), axis=0)
+        return E, W, parity
 
-        # Sort everything by energy, only keetp lowest k states
-        idx = np.argsort(E_sb)
-        if dvr.verbosity:
-            print(f'Energies: {E_sb[idx]}')
-            print(f'parities: {p_sb[idx, :]}')
-        idx = idx[:k]
-        E_sb = E_sb[idx]
-        W_sb = [W_sb[i] for i in idx]
-        p_sb = p_sb[idx, :]
-    else:
-        p_sb = np.zeros((k, dim))
-        E_sb, W_sb = dvr.H_solver(k)
-        W_sb = [W_sb[:, i].reshape(2 * dvr.n + 1) for i in range(k)]
-
-    E = [E_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite] for b in range(dvr.bands)]
-    W = [W_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite] for b in range(dvr.bands)]
-    parity = [p_sb[b * dvr.Nsite: (b + 1) * dvr.Nsite, :]
-              for b in range(dvr.bands)]
-
-    return E, W, parity
-
-
-def sector(dvr: MLWF):
-    # Generate all sector information for 1D and 2D lattice
-    # Single site case
-    p = [1, -1] if dvr.ls else [0]  # ls: lattice symmetry
-    if dvr.Nsite == 1:
-        p_tuple = [[1], [1]]  # x, y direction
-    else:
-        # x direction
-        p_tuple = [p]
-        # y direction
-        if dvr.lattice_dim == 2:
-            p_tuple.append(p)
+    def build_sectors(self):
+        # Generate all sector information for 1D and 2D lattice
+        # Single site case
+        p = [1, -1] if self.ls else [0]  # ls: lattice symmetry
+        if self.Nsite == 1:
+            p_tuple = [[1], [1]]  # x, y direction
+        else:
+            # x direction
+            p_tuple = [p]
+            # y direction
+            if self.lattice_dim == 2:
+                p_tuple.append(p)
+            else:
+                p_tuple.append([1])
+            # For a general omega_z << omega_x,y case,
+            # the lowest several bands are in
+            # z=1, z=-1, z=1 sector, etc... alternatively
+            # A simplest way to build bands is to simply collect
+            # Nband * Nsite lowest energy states
+            # z direction
+        if self.bands > 1 and self.dim == 3:
+            # Only for 3D case there are z=-1 bands
+            p_tuple.append([1, -1])
         else:
             p_tuple.append([1])
-        # For a general omega_z << omega_x,y case,
-        # the lowest several bands are in
-        # z=1, z=-1, z=1 sector, etc... alternatively
-        # A simplest way to build bands is to simply collect
-        # Nband * Nsite lowest energy states
-        # z direction
-    if dvr.bands > 1 and dvr.dim == 3:
-        # Only for 3D case there are z=-1 bands
-        p_tuple.append([1, -1])
-    else:
-        p_tuple.append([1])
-    # Generate all possible combinations of xyz parity
-    p_list = list(product(*p_tuple))
-    return p_list
+        # Generate all possible combinations of xyz parity
+        p_list = list(product(*p_tuple))
+        return p_list
 
+    def eigen_basis(self) -> tuple[list, list, list]:
+        # Find eigenbasis of symmetry block diagonalized Hamiltonian
+        k = self.Nsite * self.bands
+        if self.dvr_symm:
+            p_list = self.build_sectors()
+            E_sb = np.array([])
+            W_sb = []
+            p_sb = np.array([], dtype=int).reshape(0, dim)
+            for p in p_list:
+                # print(f'Solve {p} sector.')
+                E_sb, W_sb, p_sb = self.solve_sector(p, k, E_sb, W_sb, p_sb)
 
-def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
-    # Add a symmetry sector to the list of eigensolutions
-    p = dvr.p.copy()
-    p[:len(sector)] = sector
-    dvr.update_p(p)
+            # Sort everything by energy, only keetp lowest k states
+            idx = np.argsort(E_sb)
+            if self.verbosity:
+                print(f'Energies: {E_sb[idx]}')
+                print(f'parities: {p_sb[idx, :]}')
+            idx = idx[:k]
+            E_sb = E_sb[idx]
+            W_sb = [W_sb[i] for i in idx]
+            p_sb = p_sb[idx, :]
+        else:
+            p_sb = np.zeros((k, dim))
+            E_sb, W_sb = self.H_solver(k)
+            W_sb = [W_sb[:, i].reshape(2 * self.n + 1) for i in range(k)]
 
-    Em, Wm = dvr.H_solver(k)
-    E = np.append(E, Em)
-    W += [Wm[:, i].reshape(dvr.n + 1 - dvr.init) for i in range(k)]
-    # Parity sector marker
-    parity = np.append(parity, np.tile(sector, (k, 1)), axis=0)
-    return E, W, parity
+        E = [E_sb[b * self.Nsite: (b + 1) * self.Nsite]
+             for b in range(self.bands)]
+        W = [W_sb[b * self.Nsite: (b + 1) * self.Nsite]
+             for b in range(self.bands)]
+        parity = [p_sb[b * self.Nsite: (b + 1) * self.Nsite, :]
+                  for b in range(self.bands)]
 
+        return E, W, parity
 
-def Xmat(dvr: MLWF, W, parity):
-    # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
-    # and position operator x, y, z
-    # NOTE: This is not the same as the X 'opterator', as DVR basis
-    #       is not invariant subspace of X. So X depends on DBR basis choice.
+    def Xmat(self, W, parity):
+        # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
+        # and position operator x, y, z
+        # NOTE: This is not the same as the X 'opterator', as DVR basis
+        #       is not invariant subspace of X. So X depends on DBR basis choice.
+        R = []
+        # For 2D lattice band building keep single p_z = 1 or -1 sector,
+        # Z is always zero. Explained below.
+        for i in range(dim - 1):
+            if self.nd[i]:
+                R.append(self.Xmat_1d(W, parity, i))
+        return R
 
-    R = []
-
-    # For 2D lattice band building keep single p_z = 1 or -1 sector,
-    # Z is always zero. Explained below.
-    for i in range(dim - 1):
-        if dvr.nd[i]:
-            Rx = np.zeros((dvr.Nsite, dvr.Nsite))
-            idx = np.roll(np.arange(dim, dtype=int), -i)
-            if dvr.ls:
-                # Get X^pp'_ij matrix rep for Delta^p_i, p the parity.
-                # This matrix is nonzero only when p!=p':
-                # X^pp'_ij = x_i delta_ij with p_x * p'_x = -1
-                # As 1 and -1 sector have a dimension difference,
-                # the matrix X is alsways a n-diagonal matrix
-                # with n-by-n+1 or n+1-by-n dimension
-                # So, Z is always zero, as we only keep single p_z sector
-                x = np.arange(1, dvr.n[i] + 1) * dvr.dx[i]
-                lenx = len(x)
-                for j in range(dvr.Nsite):
-                    # If no absorber, W is real
-                    # This cconjugate does not change dtype of real W
-                    # It is only used in case of absorber
-                    Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
-                    for k in range(j + 1, dvr.Nsite):
-                        pjk = (
-                            parity[j, idx[idx < dim - 1]]
-                            * parity[k, idx[idx < dim - 1]]
-                        )
-                        if pjk[0] == -1 and pjk[1:] == 1:
-                            Wk = np.transpose(W[k], idx)[-lenx:, :, :]
-                            # Unitary transform X from DVR basis to single-body eigenbasis
-                            Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
-                            # Rx is also real if no absorber
-                            # So Rx is real-symmetric or hermitian
-                            Rx[k, j] = Rx[j, k].conj()
-            else:
-                # X = x_i delta_ij for non-symmetrized basis
-                x = np.arange(-dvr.n[i], dvr.n[i] + 1) * dvr.dx[i]
-                for j in range(dvr.Nsite):
-                    Wj = np.transpose(W[j], idx).conj()
-                    Rx[j, j] = contract("ijk,i,ijk", Wj, x, Wj.conj())
-                    for k in range(j + 1, dvr.Nsite):
-                        Wk = np.transpose(W[k], idx)
+    def Xmat_1d(self, W, parity, i):
+        Rx = np.zeros((self.Nsite, self.Nsite))
+        idx = np.roll(np.arange(dim, dtype=int), -i)
+        if self.ls:
+            # Get X^pp'_ij matrix rep for Delta^p_i, p the parity.
+            # This matrix is nonzero only when p!=p':
+            # X^pp'_ij = x_i delta_ij with p_x * p'_x = -1
+            # As 1 and -1 sector have a dimension difference,
+            # the matrix X is alsways a n-diagonal matrix
+            # with n-by-n+1 or n+1-by-n dimension
+            # So, Z is always zero, as we only keep single p_z sector
+            x = np.arange(1, self.n[i] + 1) * self.dx[i]
+            lenx = len(x)
+            for j in range(self.Nsite):
+                # If no absorber, W is real
+                # This cconjugate does not change dtype of real W
+                # It is only used in case of absorber
+                Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
+                for k in range(j + 1, self.Nsite):
+                    pjk = (
+                        parity[j, idx[idx < dim - 1]]
+                        * parity[k, idx[idx < dim - 1]]
+                    )
+                    if pjk[0] == -1 and pjk[1:] == 1:
+                        Wk = np.transpose(W[k], idx)[-lenx:, :, :]
+                        # Unitary transform X from DVR basis to single-body eigenbasis
                         Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
+                        # Rx is also real if no absorber
+                        # So Rx is real-symmetric or hermitian
                         Rx[k, j] = Rx[j, k].conj()
-            R.append(Rx)
-    return R
-
+        else:
+            # X = x_i delta_ij for non-symmetrized basis
+            x = np.arange(-self.n[i], self.n[i] + 1) * self.dx[i]
+            for j in range(self.Nsite):
+                Wj = np.transpose(W[j], idx).conj()
+                Rx[j, j] = contract("ijk,i,ijk", Wj, x, Wj.conj())
+                for k in range(j + 1, self.Nsite):
+                    Wk = np.transpose(W[k], idx)
+                    Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
+                    Rx[k, j] = Rx[j, k].conj()
+        return Rx
 
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
-    # Cost function to Wannier optimize
-    o = 0
-    for i in range(len(R)):
-        # R is real-symmetric if no absorber
-        X = U.conj().T @ R[i] @ U
-        Xp = X - torch.diag(torch.diag(X))
-        o += torch.trace(torch.matrix_power(Xp, 2))
-    # X must be hermitian, so is Xp
-    # Xp^2 is then positive and hermitian,
-    # its diagonal is real and positive, o >= 0
-    # Min is found when X diagonal, which means U diagonalize R
-    # SO U can be pure real orthogonal matrix!
-    # Q: Can X, Y, Z be diagonalized simultaneously in high dims?
-    # A: If the space is conplete then by QM theory it is possible
-    #    to diagonalize X, Y, Z simultaneously.
-    #    But this is not the case as it's a subspace.
-    return o.real
+def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
+    # Singleband Wannier function optimization
+    # x0 is the initial guess
+
+    t0 = time()
+    if dvr.Nsite > 1:
+        R = dvr.Xmat(W, parity)
+        if dvr.lattice_dim == 1 and eig1d:
+            # If only one R given, the problem is simply diagonalization
+            # solution is eigenstates of operator X
+            X, solution = la.eigh(R[0])
+            # Auto sort eigenvectors by X eigenvalues
+            U = solution[:, np.argsort(X)]
+        else:
+            # In high dimension, X, Y, Z don't commute
+            solution = riemann_optimize(R, x0, dvr.verbosity)
+            U = site_order(dvr, solution, R)
+    else:
+        U = np.ones((1, 1))
+
+    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    # TB parameter matrix, in unit of kHz
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band optimization time: {t1 - t0}s.")
+    return A, U
 
 
 def optimize(dvr: MLWF, E, W, parity, offset=True):
@@ -433,134 +431,27 @@ def optimize(dvr: MLWF, E, W, parity, offset=True):
     return A, w
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
-    # Singleband Wannier function optimization
-    # x0 is the initial guess
-
-    t0 = time()
-
-    if dvr.Nsite > 1:
-        R = Xmat(dvr, W, parity)
-        if dvr.lattice_dim == 1 and eig1d:
-            # If only one R given, the problem is simply diagonalization
-            # solution is eigenstates of operator X
-            X, solution = la.eigh(R[0])
-            # Auto sort eigenvectors by X eigenvalues
-            U = solution[:, np.argsort(X)]
-        else:
-            # In high dimension, X, Y, Z don't commute
-            # Convert list of ndarray to list of Tensor
-            R = [torch.from_numpy(Ri) for Ri in R]
-            solution = riemann_optimize(dvr, x0, R)
-            U = site_order(dvr, solution, R)
-    else:
-        U = np.ones((1, 1))
-
-    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    # TB parameter matrix, in unit of kHz
-
-    t1 = time()
-    if dvr.verbosity:
-        print(f"Single band optimization time: {t1 - t0}s.")
-
-    return A, U
-
-
-def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
-    # It's proven above that U can be purely real
-    # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
-    manifold = pymanopt.manifolds.SpecialOrthogonalGroup(dvr.Nsite)
-
-    @pymanopt.function.pytorch(manifold)
-    def _cost_func(point: torch.Tensor) -> torch.Tensor:
-        return cost_func(point, R)
-
-    problem = pymanopt.Problem(manifold=manifold, cost=_cost_func)
-    optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity if dvr.verbosity <= 2 else 2)
-    result = optimizer.run(
-        problem, initial_point=x0, reuse_line_searcher=True)
-    solution = result.point
-    return solution
-
 # =============================================================================
 
 
-def site_order(dvr: MLWF, U: np.ndarray, R: list[torch.Tensor]) -> np.ndarray:
+def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     # Order Wannier functions by lattice site label
     # FIXME: When traps are very close,
     #        optimized Wannier functions may not be localized on sites
 
     if dvr.lattice_dim == 1:
         # Find WF center of mass
-        x = np.diag(U.conj().T @ R[0].numpy() @ U) / dvr.lc[0]
+        x = np.diag(U.conj().T @ R[0] @ U) / dvr.lc[0]
         order = np.argsort(x)
     elif dvr.lattice_dim > 1:
         # Find WF center of mass
-        x = np.array([np.diag(U.conj().T @ R[i].numpy() @ U) / dvr.lc[i]
+        x = np.array([np.diag(U.conj().T @ R[i] @ U) / dvr.lc[i]
                      for i in range(dvr.lattice_dim)]).T
-        order = nearest_match(dvr, x)
+        order = nearest_match(dvr.trap_centers, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
         print("Order of Wannier functions is set to match traps.")
     return U[:, order]
-
-
-def nearest_match(dvr: MLWF, x: np.ndarray) -> np.ndarray:
-    # Match Wannier functions to nearest trap sites
-    # x is the center of mass of Wannier functions
-
-    # i-th row is the distance of i-th site to each WFs
-    dist_mat = cdist(dvr.trap_centers, x, metric="euclidean")
-    num_site = dvr.Nsite
-    num_wf = dvr.Nsite
-
-    # Create the mip solver with the SCIP backend.
-    solver: pywraplp.Solver = pywraplp.Solver.CreateSolver('SCIP')
-
-    # match[i, j] is an array of 0-1 variables, which will be 1
-    # if site i is assigned to WF j.
-    match = {}
-    for i in range(num_site):
-        for j in range(num_wf):
-            match[i, j] = solver.IntVar(0, 1, '')
-
-    # Each site is assigned to exactly 1 WF.
-    for i in range(num_site):
-        solver.Add(solver.Sum([match[i, j] for j in range(num_wf)]) == 1)
-
-    # Each WF is assigned to exactly 1 site.
-    for j in range(num_wf):
-        solver.Add(solver.Sum([match[i, j] for i in range(num_site)]) == 1)
-
-    objective_terms = []
-    for i in range(num_site):
-        for j in range(num_wf):
-            objective_terms.append(dist_mat[i][j] * match[i, j])
-    solver.Minimize(solver.Sum(objective_terms))
-    status = solver.Solve()
-
-    order = np.arange(num_site)
-    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
-        # print(f'Total cost = {solver.Objective().Value()}\n')
-        for i in range(num_site):
-            for j in range(num_wf):
-                # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
-                if match[i, j].solution_value() > 0.5:
-                    # print(f'Site {i} assigned to WF {j}.' +
-                    #       f' Dist: {dist_mat[i][j]}')
-                    order[i] = j
-    else:
-        print('Warning: no solution found. Order is not changed.')
-    return order
-
-
-# def tight_binding(dvr: MLWF):
-#     E, W, parity = eigen_basis(dvr)
-#     A, w = optimize(dvr, E, W, parity)
-#     mu = np.diag(A)  # Diagonals are mu_i
-#     t = -(A - np.diag(mu))  # Off-diagonals are t_ij
-#     return np.real(mu), abs(t)
 
 
 def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
@@ -577,28 +468,9 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
 def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
 
     t0 = time()
-
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
     )  # Unit to kHz
-    # # Construct interaction integral,
-    # # assuming DVR quadrature this reduced to sum 'ijk,ijk,ijk,ijk'
-    # integrl = np.zeros(dvr.Nsite * np.ones(4, dtype=int))
-    # intgrl_mat(dvr, Wi, Wj, pi, pj, integrl)  # np.ndarray is global variable
-    # # Bands are degenerate, only differed by spin index,
-    # $ so they share the same set of Wannier functions
-    # Uint = contract('ia,jb,kc,ld,ijkl->abcd', Ui.conj(), Uj.conj(), Uj, Ui,
-    #                 integrl)
-    # Uint_onsite = np.zeros(dvr.Nsite)
-    # for i in range(dvr.Nsite):
-    #     if dvr.model == 'sho':
-    #         print(
-    #             f'Test with analytic calculation on {i + 1}-th site',
-    #             np.real(Uint[i, i, i, i]) * (np.sqrt(2 * np.pi))**dvr.dim *
-    #             np.prod(dvr.hl))
-    #     Uint_onsite[i] = u * np.real(Uint[i, i, i, i])
-    # return Uint_onsite
-
     x = []
     dx = []
     for i in range(dim):
@@ -608,38 +480,33 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
         else:
             x.append(np.array([0]))
             dx.append(0)
-    Vi = wannier_func(dvr, Wi, Ui, pi, x)
-    Vj = wannier_func(dvr, Wj, Uj, pj, x)
+    Vi = wannier_func(x, Ui, dvr, Wi, pi)
+    Vj = wannier_func(x, Uj, dvr, Wj, pj)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    Uint_onsite = intgrl3d(wannier, dx)
+    Uint_onsite = romb3d(wannier, dx)
     if dvr.model == "sho":
         print(
             f"Test with analytic calculation on {i + 1}-th site",
             np.real(Uint_onsite) * (np.sqrt(2 * np.pi)
                                     ) ** dvr.dim * np.prod(dvr.hl),
         )
-
     t1 = time()
     if dvr.verbosity:
         print(f"Single band interaction time: {t1 - t0}s.")
-
     return u * Uint_onsite
 
 
-def wannier_func(dvr: MLWF, W, U, p: np.ndarray, x: Iterable) -> np.ndarray:
+def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i]
          for i in range(dim)]
     V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
     for i in range(p.shape[0]):
-        V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], x, p[i, :])[..., 0]
+        V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
-def intgrl3d(integrand: np.ndarray, dx: list[float, float, float]) -> float:
-    for i in range(dim):
-        if dx[i] > 0:
-            integrand = romb(integrand, dx[i], axis=0)
-        else:
-            integrand = integrand[0]
-    return integrand
+def symm_fold(reflection, info):
+    # Extract information into symmetrized first sector
+    target = info[reflection[:, 0]]
+    return target
