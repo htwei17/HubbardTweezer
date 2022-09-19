@@ -2,7 +2,7 @@ import tools.reportIO as rep
 from configobj import ConfigObj
 import numpy as np
 
-from .core import MLWF
+# from .core import MLWF
 
 
 def write_equalization(report: ConfigObj, info: dict, write_log: bool = False, final: bool = False):
@@ -29,7 +29,7 @@ def write_equalization(report: ConfigObj, info: dict, write_log: bool = False, f
         rep.create_report(report, "Equalization_Log", **values)
 
 
-def write_trap_params(report, G: MLWF):
+def write_trap_params(report, G):
     values = {
         "V_offset": G.Voff,
         "trap_centers": G.trap_centers,
@@ -38,7 +38,7 @@ def write_trap_params(report, G: MLWF):
     rep.create_report(report, "Trap_Adjustments", **values)
 
 
-def write_singleband(report, G: MLWF):
+def write_singleband(report, G):
     # FIXME: If not final result, G.U might be None.
     Vi = np.real(np.diag(G.A))
     tij = abs(np.real(G.A - np.diag(Vi)))
@@ -58,7 +58,7 @@ def read_Hubbard(report: ConfigObj):
     return U, A
 
 
-def update_saved_data(report: ConfigObj, G: MLWF):
+def update_saved_data(report: ConfigObj, G):
     G.U, G.A = read_Hubbard(report)
     G.A = G.A - np.eye(G.A.shape[0]) * np.mean(np.diag(G.A))
     Vi = np.real(np.diag(G.A))
@@ -68,6 +68,9 @@ def update_saved_data(report: ConfigObj, G: MLWF):
 
 
 def read_trap(report: ConfigObj):
+    """
+    Read equalized trap parameters from file.
+    """
     report = rep.get_report(report)
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
@@ -76,10 +79,12 @@ def read_trap(report: ConfigObj):
     return Voff, tc, w, sf
 
 
-def read_equalization(report: ConfigObj, G: MLWF):
-    """
-    Read equalization parameters from file.
-    """
+def read_equalizatśon_log(report: ConfigObj, G, index: int = -1):
     report = rep.get_report(report)
-    G.Voff, G.trap_centers, G.waists, G.sf = read_trap(report)
+    G.eqinfo['x'] = rep.a(report, "Equalization_Log", "x")
+    G.eqinfo['cost'] = rep.a(report, "Equalization_Log", "cost_func_by_terms")
+    G.eqinfo['fval'] = rep.a(report, "Equalization_Log", "cost_func_value")
+    G.eqinfo['ctot'] = rep.f(report, "Equalization_Log", "total_cost_func")
+    G.eff_dof()
+    G.param_unfold(G.eqinfo['x'][index - 1], f'{index}-th equalization')
     return G

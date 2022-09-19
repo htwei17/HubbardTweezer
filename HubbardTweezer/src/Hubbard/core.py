@@ -2,8 +2,10 @@ import numpy as np
 from typing import Iterable
 from opt_einsum import contract
 from scipy.integrate import romb
+from scipy.spatial.distance import cdist
+from ortools.linear_solver import pywraplp
 from time import time
-import itertools
+from itertools import product, permutations
 import numpy.linalg as la
 
 import torch
@@ -193,10 +195,6 @@ class MLWF(DVR):
             # Shift onsite potential to zero average
             self.A -= np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
-                
-        if self.verbosity > 1:
-            print(f'Energies: {E}')
-            print(f'parities: {p}')
 
         if u:
             if self.verbosity:
@@ -270,10 +268,15 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
         W_sb = []
         p_sb = np.array([], dtype=int).reshape(0, dim)
         for p in p_list:
+            # print(f'Solve {p} sector.')
             E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
-        idx = np.argsort(E_sb)[:k]
+        idx = np.argsort(E_sb)
+        if dvr.verbosity:
+            print(f'Energies: {E_sb[idx]}')
+            print(f'parities: {p_sb[idx, :]}')
+        idx = idx[:k]
         E_sb = E_sb[idx]
         W_sb = [W_sb[i] for i in idx]
         p_sb = p_sb[idx, :]
@@ -293,7 +296,7 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
 def sector(dvr: MLWF):
     # Generate all sector information for 1D and 2D lattice
     # Single site case
-    p = [1, -1] if dvr.ls else [0]
+    p = [1, -1] if dvr.ls else [0]  # ls: lattice symmetry
     if dvr.Nsite == 1:
         p_tuple = [[1], [1]]  # x, y direction
     else:
@@ -315,14 +318,15 @@ def sector(dvr: MLWF):
         p_tuple.append([1, -1])
     else:
         p_tuple.append([1])
-    p_list = list(itertools.product(*p_tuple))
+    # Generate all possible combinations of xyz parity
+    p_list = list(product(*p_tuple))
     return p_list
 
 
 def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     # Add a symmetry sector to the list of eigensolutions
     p = dvr.p.copy()
-    p[: len(sector)] = sector
+    p[:len(sector)] = sector
     dvr.update_p(p)
 
     Em, Wm = dvr.H_solver(k)
@@ -333,9 +337,11 @@ def solve_sector(sector: np.ndarray, dvr: MLWF, k: int, E, W, parity):
     return E, W, parity
 
 
-def loc_mat(dvr: MLWF, W, parity):
+def Xmat(dvr: MLWF, W, parity):
     # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
     # and position operator x, y, z
+    # NOTE: This is not the same as the X 'opterator', as DVR basis
+    #       is not invariant subspace of X. So X depends on DBR basis choice.
 
     R = []
 
@@ -427,15 +433,15 @@ def optimize(dvr: MLWF, E, W, parity, offset=True):
     return A, w
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, np.ndarray]:
+def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
     t0 = time()
 
     if dvr.Nsite > 1:
-        R = loc_mat(dvr, W, parity)
-        if dvr.lattice_dim == 1:
+        R = Xmat(dvr, W, parity)
+        if dvr.lattice_dim == 1 and eig1d:
             # If only one R given, the problem is simply diagonalization
             # solution is eigenstates of operator X
             X, solution = la.eigh(R[0])
@@ -446,7 +452,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None) -> tuple[np.ndarray, n
             # Convert list of ndarray to list of Tensor
             R = [torch.from_numpy(Ri) for Ri in R]
             solution = riemann_optimize(dvr, x0, R)
-            U = site_order(dvr, W, solution, parity)
+            U = site_order(dvr, solution, R)
     else:
         U = np.ones((1, 1))
 
@@ -471,7 +477,7 @@ def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
 
     problem = pymanopt.Problem(manifold=manifold, cost=_cost_func)
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity-1 if dvr.verbosity > 0 else 0)
+        max_iterations=1000, min_step_size=1e-12, verbosity=dvr.verbosity if dvr.verbosity <= 2 else 2)
     result = optimizer.run(
         problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point
@@ -480,24 +486,73 @@ def riemann_optimize(dvr: MLWF, x0, R: list) -> np.ndarray:
 # =============================================================================
 
 
-def site_order(dvr: MLWF, W, U: np.ndarray, p) -> np.ndarray:
+def site_order(dvr: MLWF, U: np.ndarray, R: list[torch.Tensor]) -> np.ndarray:
     # Order Wannier functions by lattice site label
-    shift = np.zeros((dvr.Nsite, dim))
-    for i in range(dvr.Nsite):
-        shift[i, :2] = dvr.trap_centers[i] * dvr.lc
-        # Small offset to avoid zero values on z=0 in odd sector
-        shift[i, 2] = 0.25
-    x = [[[shift[i, d]] for d in range(dim)] for i in range(dvr.Nsite)]
-    center_val = np.zeros((dvr.Nsite, dvr.Nsite))
-    for i in range(dvr.Nsite):
-        center_val[i, :] = abs(wannier_func(dvr, W, U, p, x[i]))
-    # print(center_val)
-    # Find at which trap max of Wannier func is
-    order = np.argmax(center_val, axis=1)
+    # FIXME: When traps are very close,
+    #        optimized Wannier functions may not be localized on sites
+
+    if dvr.lattice_dim == 1:
+        # Find WF center of mass
+        x = np.diag(U.conj().T @ R[0].numpy() @ U) / dvr.lc[0]
+        order = np.argsort(x)
+    elif dvr.lattice_dim > 1:
+        # Find WF center of mass
+        x = np.array([np.diag(U.conj().T @ R[i].numpy() @ U) / dvr.lc[i]
+                     for i in range(dvr.lattice_dim)]).T
+        order = nearest_match(dvr, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
         print("Order of Wannier functions is set to match traps.")
     return U[:, order]
+
+
+def nearest_match(dvr: MLWF, x: np.ndarray) -> np.ndarray:
+    # Match Wannier functions to nearest trap sites
+    # x is the center of mass of Wannier functions
+
+    # i-th row is the distance of i-th site to each WFs
+    dist_mat = cdist(dvr.trap_centers, x, metric="euclidean")
+    num_site = dvr.Nsite
+    num_wf = dvr.Nsite
+
+    # Create the mip solver with the SCIP backend.
+    solver: pywraplp.Solver = pywraplp.Solver.CreateSolver('SCIP')
+
+    # match[i, j] is an array of 0-1 variables, which will be 1
+    # if site i is assigned to WF j.
+    match = {}
+    for i in range(num_site):
+        for j in range(num_wf):
+            match[i, j] = solver.IntVar(0, 1, '')
+
+    # Each site is assigned to exactly 1 WF.
+    for i in range(num_site):
+        solver.Add(solver.Sum([match[i, j] for j in range(num_wf)]) == 1)
+
+    # Each WF is assigned to exactly 1 site.
+    for j in range(num_wf):
+        solver.Add(solver.Sum([match[i, j] for i in range(num_site)]) == 1)
+
+    objective_terms = []
+    for i in range(num_site):
+        for j in range(num_wf):
+            objective_terms.append(dist_mat[i][j] * match[i, j])
+    solver.Minimize(solver.Sum(objective_terms))
+    status = solver.Solve()
+
+    order = np.arange(num_site)
+    if status == pywraplp.Solver.OPTIMAL or status == pywraplp.Solver.FEASIBLE:
+        # print(f'Total cost = {solver.Objective().Value()}\n')
+        for i in range(num_site):
+            for j in range(num_wf):
+                # Test if x[i,j] is 1 (with tolerance for floating point arithmetic).
+                if match[i, j].solution_value() > 0.5:
+                    # print(f'Site {i} assigned to WF {j}.' +
+                    #       f' Dist: {dist_mat[i][j]}')
+                    order[i] = j
+    else:
+        print('Warning: no solution found. Order is not changed.')
+    return order
 
 
 # def tight_binding(dvr: MLWF):
@@ -556,7 +611,7 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     Vi = wannier_func(dvr, Wi, Ui, pi, x)
     Vj = wannier_func(dvr, Wj, Uj, pj, x)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    Uint_onsite = intgrl3d(dx, wannier)
+    Uint_onsite = intgrl3d(wannier, dx)
     if dvr.model == "sho":
         print(
             f"Test with analytic calculation on {i + 1}-th site",
@@ -572,14 +627,16 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
 
 
 def wannier_func(dvr: MLWF, W, U, p: np.ndarray, x: Iterable) -> np.ndarray:
-    V = np.zeros((len(x[0]), len(x[1]), len(x[2]), p.shape[0]))
+    x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i]
+         for i in range(dim)]
+    V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
     for i in range(p.shape[0]):
         V[:, :, :, i] = psi(dvr.n, dvr.dx, W[i], x, p[i, :])[..., 0]
         # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
-def intgrl3d(dx: list[float, float, float], integrand: np.ndarray) -> float:
+def intgrl3d(integrand: np.ndarray, dx: list[float, float, float]) -> float:
     for i in range(dim):
         if dx[i] > 0:
             integrand = romb(integrand, dx[i], axis=0)

@@ -102,7 +102,7 @@ class HubbardEqualizer(MLWF):
             A, V = res
             U = None
 
-        nnt = self.nn_tunneling(A)        
+        nnt = self.nn_tunneling(A)
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
@@ -163,9 +163,9 @@ class HubbardEqualizer(MLWF):
 
         self._update_log_final(res)
 
-        return self._param_unfold(res.x, 'final')
+        return self.param_unfold(res.x, 'final')
 
-    def _eff_dof(self):
+    def eff_dof(self):
         # Record all free DoFs in the function
         self.Voff_dof = np.ones(self.Nindep).astype(bool)
 
@@ -188,7 +188,7 @@ class HubbardEqualizer(MLWF):
 
     def init_guess(self, random=False, nobounds=False, lsq=True) -> tuple[np.ndarray, tuple]:
         # Mark effective DoFs
-        self._eff_dof()
+        self.eff_dof()
 
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
@@ -264,7 +264,7 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-    def _param_unfold(self, point: np.ndarray, status: str = 'current'):
+    def param_unfold(self, point: np.ndarray, status: str = 'current'):
         td, tw, tc = self._set_trap_params(point, self.verbosity, status)
         self.symm_unfold(self.Voff, td)
         if self.waist_dir != None:
@@ -284,7 +284,7 @@ class HubbardEqualizer(MLWF):
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
-        self._param_unfold(point, 'current')
+        self.param_unfold(point, 'current')
 
         # By accessing element of a list, x0 is mutable and can be updated
         if unitary != None and self.lattice_dim > 1:

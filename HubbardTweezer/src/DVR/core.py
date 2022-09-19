@@ -3,8 +3,9 @@ from typing import Iterable, Literal, Union
 import numpy as np
 import sys
 import numpy as np
-import scipy.linalg as la
-import scipy.sparse.linalg as sla
+import numpy.linalg as la
+import scipy.linalg as sla
+import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
@@ -200,7 +201,7 @@ class DVR:
         self.dvr_symm = symmetry
         self.nd: np.ndarray = n != 0  # Nonzero dimensions
         self.sparse = sparse
-        self.verbosity = verbosity
+        self.verbosity = verbosity if verbosity >= 0 else 0
 
         self.dx = np.zeros(n.shape)
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of wx
@@ -259,8 +260,8 @@ class DVR:
             self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
 
             # Trap frequencies
-            self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-            self.omega *= np.sqrt(self.avg * self.hb *
+            self.omega = np.array([*(np.sqrt(2) / self.wxy), 1 / self.zR0])
+            self.omega *= np.sqrt(2 * self.avg * self.hb *
                                   self.V0 / self.m) / self.w
             # Trap harmonic lengths
             self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
@@ -449,6 +450,9 @@ class DVR:
 
             T = self.Tmat()
             V, no = self.Vmat()
+            # for i in range(3):
+            #     print(T[i])
+            # print(V)
             if self.verbosity > 2:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
@@ -465,11 +469,11 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse non-hermitian matrix.')
-                E, W = sla.eigs(H, k, which='SA')
+                E, W = ssla.eigs(H, k, which='SA')
             else:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse hermitian matrix.')
-                E, W = sla.eigsh(H, k, which='SA')
+                E, W = ssla.eigsh(H, k, which='SA')
         else:
             # avg factor is used to control the time average potential strength
             H = self.H_mat()

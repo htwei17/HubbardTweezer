@@ -16,7 +16,10 @@ def lattice_graph(size: np.ndarray,
     if isinstance(size, Iterable):
         size = np.array(size)
 
-    if shape == 'ring':
+    if np.prod(size) == 1:
+        nodes = np.array([[0, 0]])
+        links = np.array([]). reshape(0, 2)
+    elif shape == 'ring':
         nodes, links = ring_coord(size[0])
     elif shape == 'square':
         nodes, links, __ = sqr_lattice(size)
