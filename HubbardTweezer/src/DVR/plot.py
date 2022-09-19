@@ -10,6 +10,7 @@ from cycler import cycler
 
 from .output import DVRdynaOutput
 from .dynamics import *
+from .wavefunc import psi
 
 params = {
     'figure.dpi': 300,
@@ -70,7 +71,7 @@ class DVRplot(DVRdynamics):
             self.title1 = self.title1 + ' moving-avged {} {} population \n'.format(
                 self.model, self.quantity)
             final_str = 'w/ f={:g}'.format(self.freq * self.freq_unit) + self.freq_unit_str \
-                            + ' ' + self.cvg_str
+                + ' ' + self.cvg_str
             self.title1 = self.title1 + final_str
             self.title2 = '{}D {} {} population \n'.format(
                 self.dim, self.model, self.quantity)
@@ -220,7 +221,7 @@ def plot_dynamics(N_list,
 
 
 def get_data(N_list, R0_list, dvr: DVRplot, t_step):
-    fn = lambda i: dvr.filename_gen(N_list, R0_list, t_step, i)
+    def fn(i): return dvr.filename_gen(N_list, R0_list, t_step, i)
     data = []
     for i in range(len(N_list)):
         io = DVRdynaOutput(wavefunc=dvr.wavefunc)
@@ -270,7 +271,8 @@ def plot_lifetime(N0_list,
         t_step = dvr.set_each_freq(fi)
 
         # NORMAL WAIST
-        dvr.V0 = 104.52 * dvr.kHz_2p  # 104.52kHz * 2 * pi, potential depth, in unit of angular freq
+        # 104.52kHz * 2 * pi, potential depth, in unit of angular freq
+        dvr.V0 = 104.52 * dvr.kHz_2p
         dvr.w = 1E-6  # ~1000nm, waist length, in unit of Bohr radius
         dvr.wxy = np.ones(2)
         dvr.VIdV0 = dvr.VI / dvr.V0  # Update VI in unit of V0
@@ -322,16 +324,16 @@ def plot_lifetime(N0_list,
         for i in range(sav.shape[0]):
             fit_x = 1. / np.array(N0_list[Nmin:])
             fit_y = sav[i, 1:][Nmin:]
-            ##### POLY FIT
+            # POLY FIT
             # fit = np.polyfit(np.log(fit_x), np.log(fit_y), 1)
             # p = np.poly1d(fit)
-            ##### EXP FIT
+            # EXP FIT
             # fit_func = lambda x, a, b: a * np.exp(x * b)
             # popt, pcov = curve_fit(fit_func, fit_x, fit_y)
             # p = lambda x: fit_func(x, *popt)
             # ext = np.array([p(0), abs(p(0) - fit_y[-1])])[None]
 
-            #### USE LAST DATAPOINT
+            # USE LAST DATAPOINT
             ext = np.array([fit_y[-1], abs(fit_y[-1] - fit_y[-2])])[None]
             ext_lt = np.append(ext_lt, ext, axis=0)
             # if sav[i, 0] >= 220 and inset:
@@ -613,7 +615,7 @@ def plot_wavefunction(N_list, R0_list, dvr: DVRplot, length=1):
     for fi in range(dvr.freq_list_len):
         t_step = dvr.set_each_freq(fi)
         dvr.set_all_n(N_list, R0_list, 0, False)
-        fn = lambda i: dvr.filename_gen(N_list, R0_list, i, t_step)
+        def fn(i): return dvr.filename_gen(N_list, R0_list, i, t_step)
 
         for i in range(len(N_list)):
             io = DVRdynaOutput(wavefunc=dvr.wavefunc)
@@ -627,7 +629,7 @@ def plot_wavefunction(N_list, R0_list, dvr: DVRplot, length=1):
             n_period = int(io.t[t_len - 1] / dvr.T)
 
             x = np.linspace(-R, R, int(1000))[:, None]
-            psi_xt = psi(dvr.n_list[i], dx, io.psi[:t_len, :].T, x, p)
+            psi_xt = psi(x, dvr.n_list[i], dx, io.psi[:t_len, :].T, p)
             psi_xt = abs(psi_xt)**2
             X, T = np.meshgrid(x.reshape(-1) / R0,
                                io.t.reshape(-1)[:t_len],
