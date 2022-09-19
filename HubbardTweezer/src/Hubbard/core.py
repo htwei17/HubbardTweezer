@@ -196,10 +196,6 @@ class MLWF(DVR):
             self.A -= np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
 
-        if self.verbosity > 1:
-            print(f'Energies: {E}')
-            print(f'parities: {p}')
-
         if u:
             if self.verbosity:
                 print("Calculate U.")
@@ -276,7 +272,11 @@ def eigen_basis(dvr: MLWF) -> tuple[list, list, list]:
             E_sb, W_sb, p_sb = solve_sector(p, dvr, k, E_sb, W_sb, p_sb)
 
         # Sort everything by energy, only keetp lowest k states
-        idx = np.argsort(E_sb)[:k]
+        idx = np.argsort(E_sb)
+        if dvr.verbosity:
+            print(f'Energies: {E_sb[idx]}')
+            print(f'parities: {p_sb[idx, :]}')
+        idx = idx[:k]
         E_sb = E_sb[idx]
         W_sb = [W_sb[i] for i in idx]
         p_sb = p_sb[idx, :]
@@ -493,11 +493,11 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[torch.Tensor]) -> np.ndarray:
 
     if dvr.lattice_dim == 1:
         # Find WF center of mass
-        x = np.diag(U.T @ R[0].numpy() @ U) / dvr.lc[0]
+        x = np.diag(U.conj().T @ R[0].numpy() @ U) / dvr.lc[0]
         order = np.argsort(x)
     elif dvr.lattice_dim > 1:
         # Find WF center of mass
-        x = np.array([np.diag(U.T @ R[i].numpy() @ U) / dvr.lc[i]
+        x = np.array([np.diag(U.conj().T @ R[i].numpy() @ U) / dvr.lc[i]
                      for i in range(dvr.lattice_dim)]).T
         order = nearest_match(dvr, x)
     if dvr.verbosity > 1:
