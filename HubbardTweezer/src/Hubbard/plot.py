@@ -51,16 +51,18 @@ class HubbardGraph(HubbardEqualizer):
         ])
 
     def update_node(self, label='param'):
-        self.pos = dict(
-            # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-            (n, self.trap_centers[n]) for n in self.graph.nodes())
         if label == 'param':
             # Label onsite chemical potential
+            self.pos = dict(
+                (n, self.wf_centers[n]) for n in self.graph.nodes())
             depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
             self.node_label = dict(
                 (n, f'{depth[n]:.0f}') for n in self.graph.nodes)
         elif label == 'adjust':
             # Label trap offset
+            self.pos = dict(
+                # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
+                (n, self.trap_centers[n]) for n in self.graph.nodes())
             self.node_label = dict(
                 (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
         self.node_size = [i**2 * 600 for i in gmean(self.waists, axis=1)]

@@ -67,6 +67,7 @@ class MLWF(DVR):
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape, self.ls)
         self.trap_centers = self.tc0.copy()
+        self.wf_centers = self.tc0.copy()  # Assume WF are localized at trap centers
         self.Nsite = self.trap_centers.shape[0]
 
         # Independent trap number under reflection symmetry
@@ -397,14 +398,20 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
             # solution is eigenstates of operator X
             X, solution = la.eigh(R[0])
             # Auto sort eigenvectors by X eigenvalues
-            U = solution[:, np.argsort(X)]
+            order = np.argsort(X)
+            U = solution[:, order]
+            wf_centers = np.array([X[order], np.zeros_like(X[order])]).T
         else:
             # In high dimension, X, Y, Z don't commute
             solution = riemann_optimize(R, x0, dvr.verbosity)
             U = site_order(dvr, solution, R)
+            wf_centers = np.array([np.diag(U.conj().T @ R[i] @ U) / dvr.lc[i]
+                                   for i in range(dvr.lattice_dim)]).T
     else:
         U = np.ones((1, 1))
+        wf_centers = np.zeros((1, 2))
 
+    dvr.wf_centers = wf_centers
     A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
     # TB parameter matrix, in unit of kHz
     t1 = time()
@@ -466,7 +473,6 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
 
 
 def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
-
     t0 = time()
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)

@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.linalg as la
+from numpy.linalg import LinAlgError
 from numbers import Number
 from typing import Iterable, Union
 from scipy.optimize import minimize, least_squares, OptimizeResult
@@ -92,8 +93,12 @@ class HubbardEqualizer(MLWF):
 
         print(f"Equalize: varying waist direction: {self.waist_dir}.")
         print(f"Equalize: method: {method}")
-        print(f"Equalize: target: {target}\n")
+        print(f"Equalize: quantities: {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
+
+        # Equalize trap depth first
+        self.equalize_trap_depth()
+        print(f"Equalize: trap depths equalzlied to {self.Voff}.")
 
         res = self.singleband_Hubbard(u=u, offset=True, output_unitary=True)
         if u:
@@ -106,13 +111,18 @@ class HubbardEqualizer(MLWF):
         xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
-            self.sf = abs(txTarget)
+            # TODO: set sf to be min of all tx, ty
+            self.sf = np.min([txTarget, tyTarget]
+                             ) if tyTarget != None else txTarget
         if not fix_t:
             txTarget, tyTarget = None, None
 
         if fix_u:
             if Ut is None:
-                Utarget = np.mean(U)
+                # Set target interaction to be max of initial interaction.
+                # This is to make traps not that localized in the middle to equalize U.
+                # As to achieve larger U traps depths seem more even.
+                Utarget = 1.2 * np.max(U)
                 Ut = Utarget / self.sf
             else:
                 Utarget = Ut * self.sf
@@ -122,6 +132,10 @@ class HubbardEqualizer(MLWF):
         # If V is shifted to zero then fix_v has no effect
         Vtarget = np.mean(np.real(np.diag(A))) if fix_v else None
 
+        print(f'Equalize: scale factor: {self.sf}')
+        print(f'Equalize: target tunneling: {txTarget, tyTarget}')
+        print(f'Equalize: target interaction: {Utarget}')
+        print(f'Equalize: target onsite potential: {Vtarget}')
         # Voff_bak = self.Voff
         # ls_bak = self.trap_centers
         # w_bak = self.waists
@@ -165,6 +179,27 @@ class HubbardEqualizer(MLWF):
 
         return self.param_unfold(res.x, 'final')
 
+    def trap_mat(self):
+        # depth of each trap center
+        tc = np.zeros((self.Nsite, dim))
+        vij = np.ones((self.Nsite, self.Nsite))
+        for i in range(self.Nsite):
+            tc[i, :] = np.append(self.trap_centers[i] * self.lc, 0)
+            for j in range(i):
+                vij[i, j] = -DVR.Vfun(self, *(tc[i] - tc[j]))
+                vij[j, i] = vij[i, j]  # Potential is symmetric in distance
+        return vij
+
+    def equalize_trap_depth(self):
+        vij = self.trap_mat()
+        Vtarget = np.max(vij @ np.ones(self.Nsite))
+        try:
+            # Equalize trap depth
+            # Powered to compensate for trap unevenness
+            self.Voff = la.solve(vij, Vtarget * np.ones(self.Nsite))**2
+        except:
+            raise LinAlgError('Homogenize: failed to solve for Voff.')
+
     def eff_dof(self):
         # Record all free DoFs in the function
         self.Voff_dof = np.ones(self.Nindep).astype(bool)
@@ -192,7 +227,8 @@ class HubbardEqualizer(MLWF):
 
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
-        v01 = np.ones(self.Nindep)
+        # v01 = np.ones(self.Nindep)
+        v01 = symm_fold(self.reflection, self.Voff)
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.Nindep))
         else:
@@ -484,7 +520,7 @@ class HubbardEqualizer(MLWF):
         t0 = time()
         res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
                             method=method, verbose=2,
-                            xtol=None, ftol=1e-9, gtol=1e-8, max_nfev=500 * self.Nindep)
+                            xtol=1e-8, ftol=1e-8, gtol=1e-8, max_nfev=500 * self.Nindep)
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
         return res
