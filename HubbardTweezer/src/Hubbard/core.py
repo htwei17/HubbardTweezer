@@ -55,14 +55,14 @@ class MLWF(DVR):
 
         # Convert lc to (lc, lc) or the other if only one number is given
         if isinstance(lc, Iterable) and len(lc) == 1:
-            lc = lc[0]
+            lc: Number = lc[0]
         if isinstance(lc, Number):
             if shape in ["triangular", "honeycomvb", "kagome"]:
                 # For equilateral triangle
-                lc = (lc, np.sqrt(3) / 2 * lc)
+                lc: tuple = (lc, np.sqrt(3) / 2 * lc)
             else:
                 # For squre
-                lc = (lc, lc)
+                lc: tuple = (lc, lc)
 
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape, self.ls)

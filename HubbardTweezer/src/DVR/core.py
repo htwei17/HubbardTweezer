@@ -189,6 +189,8 @@ class DVR:
 
             # Input in unit of nm, converted to m
             wx: Literal = 1E-6
+            if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
+                trap[1]: Number = trap[1][0]
             if isinstance(trap[1], Iterable):  # Convert to np.array
                 wx = trap[1][0]  # In unit of nm
                 self.wxy: np.ndarray = np.array(
