@@ -209,7 +209,7 @@ G = HubbardGraph(
     write_log=log,
     verbosity=verb)
 
-eig_sol = eigen_basis(G)
+eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
 if plot:
     G.draw_graph('adjust', A=G.A, U=G.U)
@@ -223,10 +223,11 @@ eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 nnt = G.nn_tunneling(G.A)
-xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
+links = G.xylinks()
 if G.sf == None:
-    G.sf = txTarget
-ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
+    G.sf, __ = G.t_target(nnt, links, np.min)
+target = G.t_target(nnt, links)
+ct = G.t_cost_func(G.A, links, target)
 cv = G.v_cost_func(G.A, None, G.sf)
 cu = G.u_cost_func(G.U, None, G.sf)
 cvec = np.array((cu, ct, cv))
@@ -235,7 +236,8 @@ cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo['sf'] = G.sf
-G.eqinfo['Ut'] = np.mean(G.U) / txTarget
+# Final U/t, so is determined by average values
+G.eqinfo['Ut'] = np.mean(G.U) / target[0]
 
 if eq:
     G.eqinfo['cost'] = np.append(G.eqinfo['cost'], cvec[None], axis=0)

@@ -192,7 +192,7 @@ fi
 
 if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550,
+lattice_const = 1520,
 laser_wavelength = 780
 V_0 = 73.0219
 waist = 1000,"
@@ -206,14 +206,14 @@ elif [ $SHAPE = 'ring' ]; then
     # Build a perfect ring s.t. no equalization needed
     Ly=1
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1520, 1520
+lattice_const = 1520,
 laser_wavelength = 780
 V_0 = 52.26
 waist = 1000,"
 else
     Ly=1
     DIM_PARAM="lattice_size = $Lx,
-lattice_const = 1350,
+lattice_const = 1450,
 laser_wavelength = 770
 V_0 = 50
 waist = 930, 1250"

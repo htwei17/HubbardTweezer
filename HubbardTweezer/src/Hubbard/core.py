@@ -1,3 +1,4 @@
+from pyclbr import Function
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
@@ -234,7 +235,7 @@ class MLWF(DVR):
             else:  # Symmetrize trap depth
                 target[self.reflection[row, :]] = info[row]
 
-    def xy_links(self, nnt):
+    def xylinks(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Only usable for rectangular & triangular latice.
         #        Ring lattice, etc.?
@@ -243,12 +244,14 @@ class MLWF(DVR):
         else:
             xlinks = np.tile(True, self.links.shape[0])
         ylinks = np.logical_not(xlinks)
-        nntx = np.mean(abs(nnt[xlinks]))  # Find x direction links
-        nnty = None
+        return xlinks, ylinks
+
+    def t_target(self, nnt, links, func: Function = np.mean):
+        xlinks, ylinks = links
+        nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan
-        if any(ylinks == True):
-            nnty = np.mean(abs(nnt[ylinks]))
-        return xlinks, ylinks, nntx, nnty
+        nnty = func(abs(nnt[ylinks])) if any(ylinks == True) else None
+        return nntx, nnty
 
     # TODO: Integrate multisector solver with DVR
     def solve_sector(self, sector: np.ndarray, k: int, E, W, parity):

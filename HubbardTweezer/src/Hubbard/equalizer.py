@@ -1,3 +1,4 @@
+from os import link
 import numpy as np
 import numpy.linalg as la
 from numpy.linalg import LinAlgError
@@ -95,6 +96,7 @@ class HubbardEqualizer(MLWF):
         print(f"Equalize: method: {method}")
         print(f"Equalize: quantities: {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
+        links = self.xylinks()
 
         # Equalize trap depth first
         self.equalize_trap_depth()
@@ -108,10 +110,11 @@ class HubbardEqualizer(MLWF):
             U = None
 
         nnt = self.nn_tunneling(A)
-        xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+        # Set tx, ty target to be small s.t.
+        # lattice spacing is not too close and WF collapses
+        txTarget, tyTarget = self.t_target(nnt, links, np.min)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
-            # TODO: set sf to be min of all tx, ty
             self.sf = np.min([txTarget, tyTarget]
                              ) if tyTarget != None else txTarget
         if not fix_t:
@@ -122,7 +125,7 @@ class HubbardEqualizer(MLWF):
                 # Set target interaction to be max of initial interaction.
                 # This is to make traps not that localized in the middle to equalize U.
                 # As to achieve larger U traps depths seem more even.
-                Utarget = 1.2 * np.max(U)
+                Utarget = np.max(U)
                 Ut = Utarget / self.sf
             else:
                 Utarget = Ut * self.sf
@@ -166,10 +169,10 @@ class HubbardEqualizer(MLWF):
         U0 = [V] if callback else None
 
         if method in ['trf', 'dogbox']:
-            res = self._eq_lsq((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
+            res = self._eq_lsq((u, t, v), links, (Vtarget, Utarget,
                                txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
         elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
-            res = self._eq_min((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
+            res = self._eq_min((u, t, v), links, (Vtarget, Utarget,
                                txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
         else:
             raise ValueError(
@@ -467,15 +470,16 @@ class HubbardEqualizer(MLWF):
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
                     target: tuple[float, ...]) -> float:
+        links = self.xylinks() if links is None else links
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+            txTarget, tyTarget = self.t_target(nnt, links)
         elif isinstance(target, Iterable):
-            xlinks, ylinks = links
             txTarget, tyTarget = target
             if txTarget is None:
-                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+                txTarget, tyTarget = self.t_target(nnt, links)
+        xlinks, ylinks = links
 
         ct = np.mean((abs(nnt[xlinks]) / txTarget - 1)**2)
         if tyTarget != None:
@@ -574,12 +578,12 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+            xlinks, ylinks, txTarget, tyTarget = self.xylinks(nnt)
         elif isinstance(target, Iterable):
             xlinks, ylinks = links
             txTarget, tyTarget = target
             if txTarget is None:
-                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
+                xlinks, ylinks, txTarget, tyTarget = self.xylinks(nnt)
 
         ct = (abs(nnt[xlinks]) - txTarget) / \
             (txTarget * np.sqrt(np.sum(xlinks)))
