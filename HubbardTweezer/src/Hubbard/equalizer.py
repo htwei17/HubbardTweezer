@@ -98,7 +98,7 @@ class HubbardEqualizer(MLWF):
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         links = self.xylinks()
 
-        # Equalize trap depth first
+        # Equalize trap depth first, to make sure
         self.equalize_trap_depth()
         print(f"Equalize: trap depths equalzlied to {self.Voff}.")
 
@@ -195,6 +195,7 @@ class HubbardEqualizer(MLWF):
 
     def equalize_trap_depth(self):
         vij = self.trap_mat()
+        # Set trap depth target to be the deepest one
         Vtarget = np.max(vij @ np.ones(self.Nsite))
         try:
             # Equalize trap depth

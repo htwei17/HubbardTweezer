@@ -188,15 +188,18 @@ class DVR:
                 0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
 
             # Input in unit of nm, converted to m
-            wx: Literal = 1E-6
             if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
-                trap[1]: Number = trap[1][0]
-            if isinstance(trap[1], Iterable):  # Convert to np.array
-                wx = trap[1][0]  # In unit of nm
+                wx: Number = trap[1][0]
+                self.wxy: np.ndarray = np.ones(2)
+            elif isinstance(trap[1], Iterable):  # Convert to np.array
+                wx: Number = trap[1][0]  # In unit of nm
                 self.wxy: np.ndarray = np.array(
                     trap[1]) / wx  # wi in unit of wx
             elif isinstance(trap[1], Number):  # Number convert to np.array
-                wx = trap[1]  # In unit of nm
+                wx: Number = trap[1]  # In unit of nm
+                self.wxy: np.ndarray = np.ones(2)
+            else:
+                wx: Literal = 1000
                 self.wxy: np.ndarray = np.ones(2)
             self.w: Literal = wx * 1E-9  # Convert micron to m
 

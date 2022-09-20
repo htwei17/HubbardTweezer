@@ -12,7 +12,7 @@ EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="00:20:00"
+TIME="02:00:00"
 LN_SUFFIX=""
 LOG=True
 METHOD="trf"
@@ -213,7 +213,7 @@ waist = 1000,"
 else
     Ly=1
     DIM_PARAM="lattice_size = $Lx,
-lattice_const = 1450,
+lattice_const = 1500,
 laser_wavelength = 770
 V_0 = 50
 waist = 930, 1250"
