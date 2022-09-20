@@ -27,7 +27,7 @@ def riemann_optimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.nda
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     verbosity = verbosity if verbosity <= 2 else 2
-    verbosity = verbosity if verbosity >= 0 else 0
+    verbosity = verbosity-1 if verbosity > 0 else 0
     N: int = R[0].shape[0]  # matrix dimension
     # Convert list of ndarray to list of Tensor
     R = [torch.from_numpy(Ri) for Ri in R]

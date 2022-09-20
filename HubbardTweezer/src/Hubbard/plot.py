@@ -184,12 +184,9 @@ class HubbardGraph(HubbardEqualizer):
         if ax is None:
             ax = plt.gca()
         if self.lattice_dim == 1:
-            if nnn:
-                shift = (0, 0.8)
-            else:
-                shift = (0, 0.05)
+            shift = (0, 0.8) if nnn else (0, 0.05)
         elif self.lattice_dim == 2:
-            shift = (-0.15, 0.15)
+            shift = (-0.1, 0.1)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
