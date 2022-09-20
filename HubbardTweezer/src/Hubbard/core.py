@@ -226,9 +226,8 @@ class MLWF(DVR):
 
     def xylinks(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
-        # FIXME: Only usable for rectangular & triangular latice.
-        #        Ring, etc.?
-        if self.lattice_shape in ['square', 'Lieb', 'triangular']:
+        # FIXME: Check all possible cases
+        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
             xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         else:
             xlinks = np.tile(True, self.links.shape[0])

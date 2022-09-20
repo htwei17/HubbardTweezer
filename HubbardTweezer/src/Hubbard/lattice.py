@@ -37,10 +37,7 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size, symmetry)
     elif shape == 'zigzag':
-        # TODO: implement zigzag, and other assymmetric lattice
-        # FIXME: zigzag has no y-axis symmetry
-        #        one way to do is to copy the chain to be mirrored on y-axis
-        # NOTE: the code below is not finished
+        # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
         nodes, links, __ = tri_lattice(np.array([size[0], 2]), symmetry=False)
     elif shape == 'honeycomb':
         # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
