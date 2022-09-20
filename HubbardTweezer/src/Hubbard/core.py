@@ -175,7 +175,7 @@ class MLWF(DVR):
                               self.V0 / self.m) / self.w
 
     def singleband_Hubbard(
-        self, u=False, x0=None, offset=True, output_unitary=False, eig_sol=None
+        self, u=False, x0=None, offset=True, eig_sol=None
     ):
 
         # Calculate single band tij matrix and U matrix
@@ -194,22 +194,11 @@ class MLWF(DVR):
             self.A -= np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
 
-        if u:
-            if self.verbosity:
-                print("Calculate U.")
-            self.U = singleband_interaction(self, V, V, W, W, p, p)
-            self.bands = band_bak
-            if output_unitary:
-                return self.A, self.U, V
-            else:
-                return self.A, self.U
-        else:
-            self.bands = band_bak
-            self.U = None
-            if output_unitary:
-                return self.A, V
-            else:
-                return self.A
+        if u and self.verbosity:
+            print("Calculate U.")
+        self.U = singleband_interaction(self, V, V, W, W, p, p) if u else None
+        self.bands = band_bak
+        return self.A, self.U, V
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
@@ -238,8 +227,8 @@ class MLWF(DVR):
     def xylinks(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Only usable for rectangular & triangular latice.
-        #        Ring lattice, etc.?
-        if self.lattice_shape in ['square', 'triangular']:
+        #        Ring, etc.?
+        if self.lattice_shape in ['square', 'Lieb', 'triangular']:
             xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
         else:
             xlinks = np.tile(True, self.links.shape[0])
@@ -310,7 +299,7 @@ class MLWF(DVR):
 
             # Sort everything by energy, only keetp lowest k states
             idx = np.argsort(E_sb)
-            if self.verbosity:
+            if self.verbosity > 2:
                 print(f'Energies: {E_sb[idx]}')
                 print(f'parities: {p_sb[idx, :]}')
             idx = idx[:k]

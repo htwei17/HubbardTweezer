@@ -211,6 +211,16 @@ G = HubbardGraph(
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+nnt = G.nn_tunneling(G.A)
+links = G.xylinks()
+if G.sf == None:
+    G.sf, __ = G.t_target(nnt, links, np.min)
+# Print out Hubbard parameters
+if G.verbosity > 1:
+    print(f'scale_factor = {G.sf}')
+    print(f'V = {np.diag(G.A)}')
+    print(f't = {abs(G.nn_tunneling(G.A))}')
+    print(f'U = {G.U}')
 if plot:
     G.draw_graph('adjust', A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
@@ -222,14 +232,10 @@ write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-nnt = G.nn_tunneling(G.A)
-links = G.xylinks()
-if G.sf == None:
-    G.sf, __ = G.t_target(nnt, links, np.min)
 target = G.t_target(nnt, links)
+cu = G.u_cost_func(G.U, None, G.sf)
 ct = G.t_cost_func(G.A, links, target)
 cv = G.v_cost_func(G.A, None, G.sf)
-cu = G.u_cost_func(G.U, None, G.sf)
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
