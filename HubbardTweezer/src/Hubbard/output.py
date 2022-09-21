@@ -79,12 +79,13 @@ def read_trap(report: ConfigObj):
     return Voff, tc, w, sf
 
 
-def read_equalizatśon_log(report: ConfigObj, G, index: int = -1):
+def read_equalizatśon_log(report: ConfigObj, G, index: int = 0):
     report = rep.get_report(report)
     G.eqinfo['x'] = rep.a(report, "Equalization_Log", "x")
     G.eqinfo['cost'] = rep.a(report, "Equalization_Log", "cost_func_by_terms")
     G.eqinfo['fval'] = rep.a(report, "Equalization_Log", "cost_func_value")
     G.eqinfo['ctot'] = rep.f(report, "Equalization_Log", "total_cost_func")
     G.eff_dof()
-    G.param_unfold(G.eqinfo['x'][index - 1], f'{index}-th equalization')
+    G.param_unfold(G.eqinfo['x'][index - 1],
+                   f'{index -1 if index <= 0 else index}-th equalization')
     return G

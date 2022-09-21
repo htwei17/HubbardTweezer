@@ -36,7 +36,9 @@ def _set_uv(uv, target, factor):
         target = np.mean(uv)
     if factor is None:
         # Avoid division by zero
-        factor = 1e-1 if factor < 1e-1 else abs(target)
+        factor = abs(target)
+        if factor < 1e-1:
+            factor = 1e-1
     return target, factor
 
 
@@ -118,7 +120,8 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         # Set tx, ty target to be small s.t.
         # lattice spacing is not too close and WF collapses
-        txTarget, tyTarget = self.t_target(nnt, links, np.min)
+        def _func(x): return 0.8 * np.min(x)
+        txTarget, tyTarget = self.t_target(nnt, links, _func)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
             self.sf = np.min([txTarget, tyTarget]
@@ -443,7 +446,7 @@ class HubbardEqualizer(MLWF):
         # U is different, as calculating U costs time
         cu = self.u_cost_func(U, Utarget, scale_factor) if w[0] else 0
         cv = self.v_cost_func(A, Vtarget, scale_factor)
-        ct = self.t_cost_func(A, links, (txTarget, tyTarget))
+        ct = self.t_cost_func(A, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
@@ -463,12 +466,12 @@ class HubbardEqualizer(MLWF):
         return cv
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
-                    target: tuple[float, ...]) -> float:
+                    target: tuple[float, ...], tfactor: float) -> float:
         nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
             A, links, target)
-        ct = np.mean((abs(nnt[xlinks]) / txTarget - 1)**2)
+        ct = np.mean((abs(nnt[xlinks]) - txTarget)**2) / tfactor**2
         if tyTarget != None:
-            ct += np.mean((abs(nnt[ylinks]) / tyTarget - 1)**2)
+            ct += np.mean((abs(nnt[ylinks]) - tyTarget)**2) / tfactor**2
         if self.verbosity > 1:
             print(f'Tunneling target=({txTarget}, {tyTarget})')
             print(f'Tunneling cost ct^2={ct}')
@@ -491,7 +494,7 @@ class HubbardEqualizer(MLWF):
         cu = self.u_res_func(
             U, Utarget, scale_factor) if w[0] else np.zeros(self.Nsite)
         cv = self.v_res_func(A, Vtarget, scale_factor)
-        ct = self.t_res_func(A, links, (txTarget, tyTarget))
+        ct = self.t_res_func(A, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term
@@ -513,14 +516,14 @@ class HubbardEqualizer(MLWF):
         return cv
 
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
-                   target: tuple[float, ...]):
+                   target: tuple[float, ...], tfactor: float) -> np.ndarray:
         nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
             A, links, target)
         ct = (abs(nnt[xlinks]) - txTarget) / \
-            (txTarget * np.sqrt(np.sum(xlinks)))
+            (tfactor * np.sqrt(np.sum(xlinks)))
         if tyTarget != None:
             ct = np.concatenate(
-                (ct, (abs(nnt[ylinks]) - tyTarget) / (tyTarget * np.sqrt(np.sum(ylinks)))))
+                (ct, (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
             print(f'Tunneling target=({txTarget}, {tyTarget})')
             print(f'Tunneling residue ct={ct}')

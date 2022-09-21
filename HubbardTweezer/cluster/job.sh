@@ -12,7 +12,7 @@ EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="02:00:00"
+TIME="04:00:00"
 LN_SUFFIX=""
 LOG=True
 METHOD="trf"
@@ -192,13 +192,13 @@ fi
 
 if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1520,
+lattice_const = 1550,
 laser_wavelength = 780
 V_0 = 73.0219
 waist = 1000,"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1520, 1690
+lattice_const = 1550, 1550
 laser_wavelength = 780
 V_0 = 52.26
 waist = 1000,"
@@ -206,7 +206,7 @@ elif [ $SHAPE = 'ring' ]; then
     # Build a perfect ring s.t. no equalization needed
     Ly=1
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1520,
+lattice_const = 1550,
 laser_wavelength = 780
 V_0 = 52.26
 waist = 1000,"
