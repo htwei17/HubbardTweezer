@@ -12,7 +12,7 @@ EQ_FLAG=True
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
-TIME="04:00:00"
+TIME="02:00:00"
 LN_SUFFIX=""
 LOG=True
 METHOD="trf"
@@ -141,8 +141,60 @@ while :; do
     shift
 done
 
+# ========= Methods =========
 METHOD_SUFFIX="_"$METHOD
 
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
+    PARTITION=commons
+    TIME="8:00:00"
+fi
+
+# if [ $WAIST != "None" ]; then
+#     EQ_FLAG=True
+#     PARTITION=commons
+#     TIME="12:00:00"
+# fi
+
+# ========= Lattice =========
+if [ $SHAPE != "square" ]; then
+    LATTICE_DIM=2
+fi
+
+if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
+    # 2D triangular
+    DIM_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550,
+laser_wavelength = 780
+V_0 = 73.0219
+waist = 1000,"
+elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
+    # 2D other lattice
+    DIM_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550, 1600
+laser_wavelength = 780
+V_0 = 52.26
+waist = 1000,"
+elif [ $SHAPE = 'ring' ]; then
+    # Ring
+    # Build a perfect ring s.t. no equalization needed
+    Ly=1
+    DIM_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550,
+laser_wavelength = 780
+V_0 = 52.26
+waist = 1000,"
+else
+    # 1D chain
+    Ly=1
+    TIME="00:20:00"
+    DIM_PARAM="lattice_size = $Lx,
+lattice_const = 1500,
+laser_wavelength = 770
+V_0 = 50
+waist = 930, 1250"
+fi
+
+# ========= Equalization =========
 if [ $STATUS = "neq" ]; then
     EQ_FLAG=False
     WAIST=None
@@ -175,50 +227,7 @@ R=$R
 Rz=$Rz"
 fi
 
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
-    PARTITION=commons
-    TIME="8:00:00"
-fi
-
-# if [ $WAIST != "None" ]; then
-#     EQ_FLAG=True
-#     PARTITION=commons
-#     TIME="12:00:00"
-# fi
-
-if [ $SHAPE != "square" ]; then
-    LATTICE_DIM=2
-fi
-
-if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550,
-laser_wavelength = 780
-V_0 = 73.0219
-waist = 1000,"
-elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550, 1550
-laser_wavelength = 780
-V_0 = 52.26
-waist = 1000,"
-elif [ $SHAPE = 'ring' ]; then
-    # Build a perfect ring s.t. no equalization needed
-    Ly=1
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550,
-laser_wavelength = 780
-V_0 = 52.26
-waist = 1000,"
-else
-    Ly=1
-    DIM_PARAM="lattice_size = $Lx,
-lattice_const = 1500,
-laser_wavelength = 770
-V_0 = 50
-waist = 930, 1250"
-fi
-
+# ========= Write sbatch script =========
 echo "Lattice size is: $Lx,$Ly"
 JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
 
@@ -293,6 +302,7 @@ cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
 cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
 
+# ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
     sbatch --array=16-22:2 $SLURM_FN
 else

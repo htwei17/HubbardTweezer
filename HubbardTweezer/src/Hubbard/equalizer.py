@@ -58,6 +58,7 @@ class HubbardEqualizer(MLWF):
             iofile=None,  # Input/output file
             write_log: bool = False,  # Whether to write detailed log into iofile
             x0: np.ndarray = None,  # Initial value for minimization to start from
+            init_factor: float = 1.05,  # Initial spacing factor
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -88,6 +89,7 @@ class HubbardEqualizer(MLWF):
                           random=random,
                           nobounds=nobounds,
                           method=method,
+                          init_factor=init_factor,
                           callback=False,
                           iofile=iofile)
 
@@ -99,6 +101,7 @@ class HubbardEqualizer(MLWF):
                  random: bool = False,
                  nobounds: bool = False,
                  method: str = 'trf',
+                 init_factor: float = 1.05,
                  callback: bool = False,
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
@@ -111,16 +114,19 @@ class HubbardEqualizer(MLWF):
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
         links = self.xylinks()
 
-        # Equalize trap depth first, to make sure
-        self.equalize_trap_depth()
-        print(f"Equalize: trap depths equalzlied to {self.Voff}.")
+        # Equalize trap depth first, to make sure traps won't go too uneven
+        # to have non-local WF. But this makes U to be more uneven.
+        # self.equalize_trap_depth()
+        # print(f"Equalize: trap depths equalzlied to {self.Voff}.")
+        # Push spacing to be further s.t. trap depth is more even
+        self.trap_centers *= init_factor
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
         nnt = self.nn_tunneling(A)
         # Set tx, ty target to be small s.t.
         # lattice spacing is not too close and WF collapses
-        def _func(x): return 0.8 * np.min(x)
+        def _func(x): return np.min(x)
         txTarget, tyTarget = self.t_target(nnt, links, _func)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
@@ -287,7 +293,8 @@ class HubbardEqualizer(MLWF):
             v02 = np.array([])
             b2 = []
         else:
-            v02 = np.ones(2 * self.Nindep)
+            # v02 = np.ones(2 * self.Nindep)
+            v02 = symm_fold(self.reflection, self.waists).flatten()
             if lsq:
                 b2 = list(s2
                           for i in range(2 * self.Nindep) if self.w_dof[i])
@@ -303,7 +310,7 @@ class HubbardEqualizer(MLWF):
             s3 = (-np.inf, np.inf)
         else:
             s3 = (1 - 1 / self.lc[0]) / 2
-        v03 = self.tc0[self.reflection[:, 0]].flatten()
+        v03 = symm_fold(self.reflection, self.trap_centers).flatten()
         if lsq:
             b3 = list((v03[i] - s3, v03[i] + s3)
                       for i in range(2 * self.Nindep) if self.tc_dof[i])
@@ -438,6 +445,7 @@ class HubbardEqualizer(MLWF):
 
 
 # ================= GENERAL MINIMIZATION =================
+
 
     def _cost_func(self, point, info, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
