@@ -186,7 +186,7 @@ waist = 1000,"
 else
     # 1D chain
     Ly=1
-    TIME="00:20:00"
+    TIME="01:00:00"
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1500,
 laser_wavelength = 770
@@ -194,7 +194,7 @@ V_0 = 50
 waist = 930, 1250"
 fi
 
-# ========= Equalization =========
+# ========= Non-equalization =========
 if [ $STATUS = "neq" ]; then
     EQ_FLAG=False
     WAIST=None
@@ -241,7 +241,7 @@ echo "#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=32GB
+#SBATCH --mem=24GB
 #SBATCH --mail-user=hw50@rice.edu
 #SBATCH --mail-type=ALL
 #

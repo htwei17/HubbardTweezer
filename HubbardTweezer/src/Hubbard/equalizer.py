@@ -58,7 +58,6 @@ class HubbardEqualizer(MLWF):
             iofile=None,  # Input/output file
             write_log: bool = False,  # Whether to write detailed log into iofile
             x0: np.ndarray = None,  # Initial value for minimization to start from
-            init_factor: float = 1.05,  # Initial spacing factor
             *args,
             **kwargs):
         super().__init__(N, *args, **kwargs)
@@ -89,7 +88,6 @@ class HubbardEqualizer(MLWF):
                           random=random,
                           nobounds=nobounds,
                           method=method,
-                          init_factor=init_factor,
                           callback=False,
                           iofile=iofile)
 
@@ -101,7 +99,6 @@ class HubbardEqualizer(MLWF):
                  random: bool = False,
                  nobounds: bool = False,
                  method: str = 'trf',
-                 init_factor: float = 1.05,
                  callback: bool = False,
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
@@ -118,8 +115,6 @@ class HubbardEqualizer(MLWF):
         # to have non-local WF. But this makes U to be more uneven.
         # self.equalize_trap_depth()
         # print(f"Equalize: trap depths equalzlied to {self.Voff}.")
-        # Push spacing to be further s.t. trap depth is more even
-        self.trap_centers *= init_factor
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 

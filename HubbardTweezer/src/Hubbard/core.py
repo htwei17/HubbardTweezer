@@ -298,13 +298,17 @@ class MLWF(DVR):
 
             # Sort everything by energy, only keetp lowest k states
             idx = np.argsort(E_sb)
-            if self.verbosity > 2:
-                print(f'Energies: {E_sb[idx]}')
-                print(f'parities: {p_sb[idx, :]}')
-            idx = idx[:k]
             E_sb = E_sb[idx]
-            W_sb = [W_sb[i] for i in idx]
             p_sb = p_sb[idx, :]
+            if self.verbosity > 2:
+                print(f'Energies: {E_sb}')
+                print(f'parities: {[p_sb]}')
+            if E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
+                print('Wannier WARNING: band gap is smaller than band width.')
+            idx = idx[:k]
+            E_sb = E_sb[:k]
+            W_sb = [W_sb[i] for i in idx]
+            p_sb = p_sb[:k]
         else:
             p_sb = np.zeros((k, dim))
             E_sb, W_sb = self.H_solver(k)
@@ -434,8 +438,6 @@ def optimize(dvr: MLWF, E, W, parity, offset=True):
 
 def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     # Order Wannier functions by lattice site label
-    # FIXME: When traps are very close,
-    #        optimized Wannier functions may not be localized on sites
 
     if dvr.lattice_dim == 1:
         # Find WF center of mass
