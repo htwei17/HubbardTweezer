@@ -6,10 +6,10 @@ bash job.sh -t 1 -l 8 -w None -e UT
 bash job.sh -t 1 -l 8 -w None -e UvT
 bash job.sh -t 1 -l 8 -w None -e Uv
 bash job.sh -t 1 -l 8 -w None -e vT
-bash job.sh -t 1 -l 8 -w xy -e vT
-bash job.sh -t 1 -l 8 -w xy -e UvT
-bash job.sh -t 1 -l 8 -w xy -e Uv
-bash job.sh -t 1 -l 8 -w xy -e UT
+bash job.sh -t 1 -l 8 -w x -e vT
+bash job.sh -t 1 -l 8 -w x -e UvT
+bash job.sh -t 1 -l 8 -w x -e Uv
+bash job.sh -t 1 -l 8 -w x -e UT
 
 bash job.sh -w None -e UT
 bash job.sh -w None -e UvT

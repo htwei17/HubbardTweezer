@@ -164,34 +164,26 @@ if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     # 2D triangular
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550,
-laser_wavelength = 780
-V_0 = 73.0219
-waist = 1000,"
+V_0 = 73.0219"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550, 1600
-laser_wavelength = 780
-V_0 = 52.26
-waist = 1000,"
+V_0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
     # Build a perfect ring s.t. no equalization needed
     Ly=1
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550,
-laser_wavelength = 780
-V_0 = 52.26
-waist = 1000,"
+V_0 = 52.26"
 else
     # 1D chain
     Ly=1
-    TIME="01:00:00"
+    TIME="00:40:00"
     DIM_PARAM="lattice_size = $Lx,
-lattice_const = 1500,
-laser_wavelength = 770
-V_0 = 50
-waist = 930, 1250"
+lattice_const = 1550,
+V_0 = 52.26"
 fi
 
 # ========= Non-equalization =========
@@ -272,6 +264,8 @@ else
 N = \$N
 L0 = \$R, \$R, \$Rz
 $DIM_PARAM
+waist = 1000,
+laser_wavelength = 780
 shape = $SHAPE
 scattering_length = 1770
 dimension = $d

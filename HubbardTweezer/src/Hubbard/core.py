@@ -58,7 +58,7 @@ class MLWF(DVR):
         if isinstance(lc, Iterable) and len(lc) == 1:
             lc: Number = lc[0]
         if isinstance(lc, Number):
-            if shape in ["triangular", "honeycomvb", "kagome"]:
+            if shape in ["triangular", "honeycomvb", "kagome", "zigzag"]:
                 # For equilateral triangle
                 lc: tuple = (lc, np.sqrt(3) / 2 * lc)
             else:
@@ -134,6 +134,8 @@ class MLWF(DVR):
         self.dim = dim
         self.bands = band
         self.ls = lattice_symmetry
+        if shape == "zigzag":
+            self.ls = False
         n = np.zeros(3, dtype=int)
         n[:dim] = N
         absorber = kwargs.get('absorber', False)

@@ -39,7 +39,10 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'zigzag':
         # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
         # TODO: delete horizontal links
-        nodes, links, __ = tri_lattice(np.array([size[0], 2]), symmetry=False)
+        symmetry = False
+        nodes, links, __ = tri_lattice(
+            np.array([size[0], 2], dtype=int), symmetry)
+        links = links[abs(links[:, 0] - links[:, 1]) != 1]
     elif shape == 'honeycomb':
         # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
         size[size < 3] == 3
