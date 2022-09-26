@@ -72,7 +72,7 @@ class MLWF(DVR):
         self.Nsite = self.trap_centers.shape[0]
 
         # Independent trap number under reflection symmetry
-        self.Nindep = self.reflection.shape[0] if self.ls else self.Nsite
+        self.Nindep = self.reflection.shape[0]
 
         if self.model == "Gaussian":
             self.lc = np.array(lc) * 1e-9 / self.w  # In unit of wx
@@ -216,15 +216,17 @@ class MLWF(DVR):
     def symm_unfold(self, target: Iterable, info, graph=False):
         # Unfold information to all symmetry sectors
         # No need to output as target is Iterable
-        parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
-        for row in range(self.reflection.shape[0]):
-            if graph:  # Symmetrize graph node coordinates
-                # NOTE: repeated nodes will be removed
-                info[row][self.inv_coords[row]] = 0
-                pinfo = parity * info[row][None]
-                target[self.reflection[row, :]] = pinfo
-            else:  # Symmetrize trap depth
-                target[self.reflection[row, :]] = info[row]
+        if self.ls:
+            parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
+            for row in range(self.reflection.shape[0]):
+                if graph:  # Symmetrize graph node coordinates
+                    # NOTE: repeated nodes will be removed
+                    info[row][self.inv_coords[row]] = 0
+                    target[self.reflection[row, :]] = parity * info[row][None]
+                else:  # Symmetrize trap depth
+                    target[self.reflection[row, :]] = info[row]
+        else:
+            target[:] = info
 
     def xylinks(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
@@ -296,25 +298,28 @@ class MLWF(DVR):
             p_sb = np.array([], dtype=int).reshape(0, dim)
             for p in p_list:
                 # print(f'Solve {p} sector.')
-                E_sb, W_sb, p_sb = self.solve_sector(p, k, E_sb, W_sb, p_sb)
+                E_sb, W_sb, p_sb = self.solve_sector(
+                    p, k + 1, E_sb, W_sb, p_sb)
 
             # Sort everything by energy, only keetp lowest k states
-            idx = np.argsort(E_sb)
+            idx = np.argsort(E_sb)[:k+1]
             E_sb = E_sb[idx]
+            W_sb = [W_sb[i] for i in idx[:k]]
             p_sb = p_sb[idx, :]
-            if self.verbosity > 2:
-                print(f'Energies: {E_sb}')
-                print(f'parities: {[p_sb]}')
-            if E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
-                print('Wannier WARNING: band gap is smaller than band width.')
-            idx = idx[:k]
-            E_sb = E_sb[:k]
-            W_sb = [W_sb[i] for i in idx]
-            p_sb = p_sb[:k]
         else:
             p_sb = np.zeros((k, dim))
-            E_sb, W_sb = self.H_solver(k)
+            E_sb, W_sb = self.H_solver(k + 1)
             W_sb = [W_sb[:, i].reshape(2 * self.n + 1) for i in range(k)]
+
+        if self.verbosity > 2:
+            print(f'Energies: {E_sb}')
+            if self.ls:
+                print(f'parities: {[p_sb]}')
+        elif E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
+            print('Wannier WARNING: band gap is smaller than band width.')
+
+        E_sb = E_sb[:k]
+        p_sb = p_sb[:k]
 
         E = [E_sb[b * self.Nsite: (b + 1) * self.Nsite]
              for b in range(self.bands)]
@@ -509,5 +514,4 @@ def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
 
 def symm_fold(reflection, info):
     # Extract information into symmetrized first sector
-    target = info[reflection[:, 0]]
-    return target
+    return info[reflection[:, 0]]

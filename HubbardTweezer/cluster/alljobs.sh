@@ -28,3 +28,6 @@ bash job.sh -s Lieb -w xy -e vT
 bash job.sh -s Lieb -w xy -e UvT
 bash job.sh -s Lieb -w xy -e Uv
 bash job.sh -s Lieb -w xy -e UT
+
+# bash job.sh -s triangular -l 4 -y 2 -w None -e UvT -v False
+# bash job.sh -s zigzag -l 4 -y 2 -w None -e neq

@@ -167,7 +167,8 @@ nb = rep.b(report, "Parameters", "no_bounds", False)
 r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
-x0 = rep.a(report, "Equalization_Info", "x", None)
+# Try to read existing equalization result as initial guess for next equalization
+x0 = rep.a(report, "Equalization_Result", "x", None)
 
 # ====== Plotting ======
 plot = rep.b(report, "Parameters", "plot", False)

@@ -144,10 +144,11 @@ done
 # ========= Methods =========
 METHOD_SUFFIX="_"$METHOD
 
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
-    PARTITION=commons
-    TIME="8:00:00"
-fi
+# If job is not finished w/i scavenge wall time, just continue by using the same ini
+# if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
+#     PARTITION=commons
+#     TIME="08:00:00"
+# fi
 
 # if [ $WAIST != "None" ]; then
 #     EQ_FLAG=True
@@ -165,6 +166,12 @@ if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550,
 V_0 = 73.0219"
+elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'zigzag' ]; then
+    # 2D triangular
+    DIM_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 2400, 1000
+V_0 = 52.26"
+    SYMMETRY=False
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
