@@ -261,7 +261,7 @@ else:
     G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"
-G.eqinfo.write_equalization(report, G, write_log=log)
+G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

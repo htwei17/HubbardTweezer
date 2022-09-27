@@ -187,7 +187,7 @@ class HubbardEqualizer(MLWF):
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
-        self.eqinfo.update_log_final(res)
+        self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, 'final')
 
     def _set_targets(self, Ut, fix_u, fix_t, links, A, U):

@@ -35,17 +35,16 @@ class EqulizeInfo(dict):
     def update_log(self, G, point, report, target, cvec, fval, io_freq: int = 10):
         # Keep revcord
         ctot = la.norm(cvec)
-        diff = self['fval'][len(self['fval'])//2] - fval
-
         self['Nfeval'] += 1
         self['x'] = np.append(self['x'], point[None], axis=0)
         self.update_cost(cvec, fval, ctot)
+        diff = self['fval'][len(self['fval'])//2] - fval
         self['diff'] = np.append(self['diff'], diff)
         # display selfrmation
         if self['Nfeval'] % io_freq == 0:
             if isinstance(report, ConfigObj):
                 self._update_target(target)
-                if G.method == 'Nelder-Mead':
+                if G.eqmethod == 'Nelder-Mead':
                     self._update_simplex()
                 self['sf'] = G.sf
                 self['success'] = False
