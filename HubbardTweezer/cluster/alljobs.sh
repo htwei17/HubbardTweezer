@@ -31,3 +31,12 @@ bash job.sh -s Lieb -w xy -e UT
 
 # bash job.sh -s triangular -l 4 -y 2 -w None -e UvT -v False
 # bash job.sh -s zigzag -l 4 -y 2 -w None -e neq
+
+# bash job1600.sh -w None -e UT -m NM
+# bash job1600.sh -w None -e UvT -m NM
+# bash job1600.sh -w None -e Uv -m NM
+# bash job1600.sh -w None -e vT -m NM
+# bash job1600.sh -w xy -e vT -m NM
+# bash job1600.sh -w xy -e UvT -m NM
+# bash job1600.sh -w xy -e Uv -m NM
+# bash job1600.sh -w xy -e UT -m NM

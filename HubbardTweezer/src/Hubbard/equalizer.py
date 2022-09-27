@@ -209,8 +209,9 @@ class HubbardEqualizer(MLWF):
         elif mode == 'cost':
             # Method-specific options
             if method == 'Nelder-Mead':
+                adp = self.Nindep > 3
                 options = {
-                    'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-7, 'maxiter': 500 * self.Nindep}
+                    'disp': True, 'return_all': True, 'adaptive': adp, 'xatol': 1e-6, 'fatol': 1e-7, 'maxiter': 500 * self.Nindep}
             elif method == 'SLSQP':
                 options = {'disp': True, 'ftol': 1e-7,
                            'nfev': 500 * self.Nindep}

@@ -175,7 +175,7 @@ V_0 = 52.26"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550, 1600
+lattice_const = 1600, 1650
 V_0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
@@ -263,7 +263,7 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$LN_SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/1600/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
@@ -301,7 +301,7 @@ echo \"I ran on: \$SLURM_NODELIST\"
 # Code run
 cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output/1600" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
