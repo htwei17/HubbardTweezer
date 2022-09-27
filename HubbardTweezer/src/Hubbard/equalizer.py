@@ -1,10 +1,9 @@
-from os import link
 import numpy as np
 import numpy.linalg as la
 from numpy.linalg import LinAlgError
 from numbers import Number
 from typing import Iterable, Union
-from scipy.optimize import minimize, least_squares, OptimizeResult
+from scipy.optimize import minimize, least_squares
 from configobj import ConfigObj
 from time import time
 
@@ -51,7 +50,7 @@ class HubbardEqualizer(MLWF):
             eqtarget='UvT',  # Equalization target
             scale_factor=None,  # Scale factor for cost function
             Ut: float = None,  # Interaction target in unit of tx
-            method: str = 'trf',  # Minimize algorithm method
+            eqmethod: str = None,  # Minimize algorithm method
             nobounds: bool = False,  # Whether to use bounds or not
             waist='x',  # Waist to vary, None means no waist change
             random: bool = False,  # Random initial guess
@@ -65,7 +64,11 @@ class HubbardEqualizer(MLWF):
         # set equalization label in file output
         self.eq_label = eqtarget
         self.waist_dir = waist
-        self.eqinfo = {}
+        self.eqinfo = EqulizeInfo()
+        if eqmethod is None:
+            self.eqmethod = 'Nelder-Mead' if waist == None else 'trf'
+        else:
+            self.eqmethod = eqmethod
         self.log = write_log
         if isinstance(scale_factor, Number):
             self.sf = scale_factor
@@ -78,7 +81,6 @@ class HubbardEqualizer(MLWF):
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
-            method = 'Nelder-Mead' if method == 'NM' else method
             if not isinstance(x0, np.ndarray):
                 print('Illegal x0 provided. Use no initial guess.')
                 x0 = None
@@ -87,7 +89,6 @@ class HubbardEqualizer(MLWF):
                           Ut=Ut, x0=x0,
                           random=random,
                           nobounds=nobounds,
-                          method=method,
                           callback=False,
                           iofile=iofile)
 
@@ -98,13 +99,12 @@ class HubbardEqualizer(MLWF):
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
-                 method: str = 'trf',
                  callback: bool = False,
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 
         print(f"Equalize: varying waist direction: {self.waist_dir}.")
-        print(f"Equalize: method: {method}")
+        print(f"Equalize: method: {self.eqmethod}")
         print(f"Equalize: quantities: {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         # Force corresponding factor to be 0 if flags u,t,v are false
@@ -118,11 +118,83 @@ class HubbardEqualizer(MLWF):
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
+        target = self._set_targets(Ut, fix_u, fix_t, links, A, U)
+        # Voff_bak = self.Voff
+        # ls_bak = self.trap_centers
+        # w_bak = self.waists
+
+        v0, bounds = self.init_guess(random, nobounds, lsq=True)
+
+        if isinstance(x0, np.ndarray):
+            try:
+                if self.eqmethod == 'Nelder-Mead' and x0.shape == (len(v0) + 1, len(v0)):
+                    v0 = x0[0]
+                    init_simplx = x0
+                elif len(x0) == len(v0):
+                    v0 = x0  # Use passed initial guess
+            except:  # x0 is None or other cases
+                print("Equalize: external initial guess is not passed.")
+                init_simplx = None
+                pass
+
+        self.eqinfo.create_log(v0, target)
+
+        # Decide if each step cost function used the last step's unitary matrix
+        # callback can have sometimes very few iteraction steps
+        # But since unitary optimize time cost is not large in larger systems
+        # it is not recommended
+        # Pack U0 to be mutable, thus can be updated in each iteration of minimize
+        U0 = [V] if callback else None
+
+        if self.eqmethod in ['trf', 'dogbox']:
+            mode = 'res'
+        elif self.eqmethod in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
+            mode = 'cost'
+        else:
+            mode = 'res'
+            self.eqmethod = 'trf'
+            print(
+                f'Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf.')
+
+        # if nobounds:
+        #     method = 'lm'
+        #     print(f'Method is set to {method} given unconstraint problem.')
+
+        def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
+            c = self.opt_func(point, info, links, target, weight,
+                              self.sf, unitary=U0, mode=mode, report=iofile)
+            return c
+
+        t0 = time()
+        if mode == 'res':
+            # Convert to tuple of (lb, ub)
+            ba = np.array(bounds)
+            bounds = (ba[:, 0], ba[:, 1])
+            res = least_squares(opt_target, v0, bounds=bounds, args=(self.eqinfo,),
+                                method=self.eqmethod, verbose=2,
+                                xtol=1e-6, ftol=1e-7, gtol=1e-7, max_nfev=500 * self.Nindep)
+        elif mode == 'cost':
+            # Method-specific options
+            if self.eqmethod == 'Nelder-Mead':
+                adp = self.Nindep > 3
+                options = {
+                    'disp': True, 'initial_simplex': init_simplx, 'adaptive': adp, 'xatol': 1e-6, 'fatol': 1e-7, 'maxiter': 500 * self.Nindep}
+            elif self.eqmethod == 'SLSQP':
+                options = {'disp': True, 'ftol': 1e-7,
+                           'nfev': 500 * self.Nindep}
+            res = minimize(opt_target, v0, bounds=bounds, args=self.eqinfo,
+                           method=self.eqmethod, options=options)
+        t1 = time()
+        print(f"Equalization took {t1 - t0} seconds.")
+
+        self.eqinfo.update_log_final(res)
+        return self.param_unfold(res.x, 'final')
+
+    def _set_targets(self, Ut, fix_u, fix_t, links, A, U):
         nnt = self.nn_tunneling(A)
         # Set tx, ty target to be small s.t.
         # lattice spacing is not too close and WF collapses
-        def _func(x): return np.min(x)
-        txTarget, tyTarget = self.t_target(nnt, links, _func)
+        txTarget, tyTarget = self.t_target(nnt, links, np.min)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
             self.sf = np.min([txTarget, tyTarget]
@@ -150,78 +222,7 @@ class HubbardEqualizer(MLWF):
         print(f'Equalize: target tunneling: {txTarget, tyTarget}')
         print(f'Equalize: target interaction: {Utarget}')
         print(f'Equalize: target onsite potential: {Vtarget}')
-        # Voff_bak = self.Voff
-        # ls_bak = self.trap_centers
-        # w_bak = self.waists
-
-        v0, bounds = self.init_guess(
-            random=random, nobounds=nobounds, lsq=True)
-
-        if isinstance(x0, np.ndarray):
-            try:
-                if len(x0) == len(v0):
-                    v0 = x0  # Use passed initial guess
-            except:
-                print("Equalize: external initial guess is not passed.")
-                pass
-
-        self.eqinfo = {'Nfeval': 0,
-                       'cost': np.array([]).reshape(0, 3),
-                       'ctot': np.array([]),
-                       'fval': np.array([]),
-                       'diff': np.array([]),
-                       'x': np.array([]).reshape(0, *v0.shape)}
-
-        # Decide if each step cost function used the last step's unitary matrix
-        # callback can have sometimes very few iteraction steps
-        # But since unitary optimize time cost is not large in larger systems
-        # it is not recommended
-        # Pack U0 to be mutable, thus can be updated in each iteration of minimize
-        U0 = [V] if callback else None
-
-        if method in ['trf', 'dogbox']:
-            mode = 'res'
-        elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
-            mode = 'cost'
-        else:
-            mode = 'res'
-            method = 'trf'
-            print(
-                f'Equalize WARNING: unknown optimization method: {method}. Set to trf.')
-
-        # if nobounds:
-        #     method = 'lm'
-        #     print(f'Method is set to {method} given unconstraint problem.')
-
-        def opt_target(point: np.ndarray, info: Union[dict, None]):
-            c = self.opt_func(point, info, links, (Vtarget, Utarget, txTarget,
-                              tyTarget), weight, self.sf, unitary=U0, mode=mode, report=iofile)
-            return c
-
-        t0 = time()
-        if mode == 'res':
-            # Convert to tuple of (lb, ub)
-            ba = np.array(bounds)
-            bounds = (ba[:, 0], ba[:, 1])
-            res = least_squares(opt_target, v0, bounds=bounds, args=(self.eqinfo,),
-                                method=method, verbose=2,
-                                xtol=1e-6, ftol=1e-7, gtol=1e-7, max_nfev=500 * self.Nindep)
-        elif mode == 'cost':
-            # Method-specific options
-            if method == 'Nelder-Mead':
-                adp = self.Nindep > 3
-                options = {
-                    'disp': True, 'return_all': True, 'adaptive': adp, 'xatol': 1e-6, 'fatol': 1e-7, 'maxiter': 500 * self.Nindep}
-            elif method == 'SLSQP':
-                options = {'disp': True, 'ftol': 1e-7,
-                           'nfev': 500 * self.Nindep}
-            res = minimize(opt_target, v0, bounds=bounds, args=self.eqinfo,
-                           method=method, options=options)
-        t1 = time()
-        print(f"Equalization took {t1 - t0} seconds.")
-
-        self._update_log_final(res)
-        return self.param_unfold(res.x, 'final')
+        return Vtarget, Utarget, txTarget, tyTarget
 
     def trap_mat(self):
         # depth of each trap center
@@ -370,7 +371,7 @@ class HubbardEqualizer(MLWF):
 
     def opt_func(self,
                  point: np.ndarray,
-                 info: Union[dict, None],
+                 info: Union[EqulizeInfo, None],
                  links: tuple[np.ndarray, np.ndarray],
                  target: tuple[float, ...],
                  weight: np.ndarray = np.ones(3),
@@ -404,46 +405,11 @@ class HubbardEqualizer(MLWF):
         else:
             raise ValueError(f"Equalize: mode {mode} not supported.")
 
-    def _update_log(self, point, info, report, cvec, fval, io_freq=10):
-        # Keep revcord
-        if info != None:
-            info['Nfeval'] += 1
-            info['x'] = np.append(info['x'], point[None], axis=0)
-            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            ctot = la.norm(cvec)
-            info['ctot'] = np.append(info['ctot'], ctot)
-            info['fval'] = np.append(info['fval'], fval)
-            diff = info['fval'][len(info['fval'])//2] - fval
-            info['diff'] = np.append(info['diff'], diff)
-            # display information
-            if info['Nfeval'] % io_freq == 0:
-                if isinstance(report, ConfigObj):
-                    info['sf'] = self.sf
-                    info['success'] = False
-                    info['exit_status'] = -1
-                    info['termination_reason'] = "Not terminated yet"
-                    write_equalization(
-                        report, info, self.log, final=False)
-                    write_trap_params(report, self)
-                    write_singleband(report, self)
-        if self.verbosity:
-            print(f"Cost function by terms: {cvec}")
-            print(f"Total cost function value fval={fval}\n")
-            if info != None:
-                print(
-                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
-
-    def _update_log_final(self, res: OptimizeResult):
-        self.eqinfo['sf'] = self.sf
-        self.eqinfo['success'] = res.success
-        self.eqinfo['exit_status'] = res.status
-        self.eqinfo['termination_reason'] = res.message
-
 
 # ================= GENERAL MINIMIZATION =================
 
 
-    def _cost_func(self, point, info, scale_factor, report, res, links, target, w):
+    def _cost_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, U = res
 
@@ -456,7 +422,7 @@ class HubbardEqualizer(MLWF):
         c = w @ cvec
         cvec = np.sqrt(cvec)
         fval = np.sqrt(c)
-        self._update_log(point, info, report, cvec, fval)
+        info.update_log(self, point, report, target, cvec, fval)
         return c
 
     def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
@@ -491,7 +457,7 @@ class HubbardEqualizer(MLWF):
 
 # ==================== LEAST SQUARES ====================
 
-    def _res_func(self, point, info, scale_factor, report, res, links, target, w):
+    def _res_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, U = res
 
@@ -506,7 +472,7 @@ class HubbardEqualizer(MLWF):
             [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
-        self._update_log(point, info, report, cvec, fval)
+        info.update_log(self, point, report, target, cvec, fval)
         return c
 
     def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
