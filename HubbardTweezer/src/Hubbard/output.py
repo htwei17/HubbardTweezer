@@ -70,7 +70,7 @@ class EqulizeInfo(dict):
         self['exit_status'] = res.status
         self['termination_reason'] = res.message
         if res.get('final_simplex', None) is not None:
-            self['simplex'] = res.items('final_simplex')[0]
+            self['simplex'] = res['final_simplex'][0]
 
     def write_equalization(self, report: ConfigObj, write_log: bool = False):
         """

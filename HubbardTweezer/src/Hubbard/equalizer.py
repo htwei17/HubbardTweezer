@@ -124,6 +124,7 @@ class HubbardEqualizer(MLWF):
         # w_bak = self.waists
 
         v0, bounds = self.init_guess(random, nobounds, lsq=True)
+        init_simplx = None
 
         if isinstance(x0, np.ndarray):
             try:
@@ -134,7 +135,6 @@ class HubbardEqualizer(MLWF):
                     v0 = x0  # Use passed initial guess
             except:  # x0 is None or other cases
                 print("Equalize: external initial guess is not passed.")
-                init_simplx = None
                 pass
 
         self.eqinfo.create_log(v0, target)
