@@ -8,7 +8,7 @@ from typing import Iterable
 import copy
 
 from .core import *
-from .output import DVRdynaOutput
+from .io import DVRDynamicsIO
 
 
 class DVRdynamics(DVR):
@@ -507,7 +507,7 @@ def dynamics_period(dvr: DVRdynamics, t_step, cond_str, psi1, psi, time6, fn,
         else:
             rho_trap, psi_w = None, None
 
-        io = DVRdynaOutput(t, rho_gs, dvr.wavefunc, (rho_trap, psi_w))
+        io = DVRDynamicsIO(t, rho_gs, dvr.wavefunc, (rho_trap, psi_w))
         io.write_file(fn)
 
         dvr.step_count += 1
@@ -526,7 +526,7 @@ def dynamics_realtime(dvr: DVRdynamics, t_step, cond_str, psi, psi1, time6, fn,
         rho_trap = la.norm(
             psi
         )**2  # Roughly estimate state proportion remaining within DVR space
-        io = DVRdynaOutput(t, rho_gs, dvr.wavefunc, (rho_trap, psi))
+        io = DVRDynamicsIO(t, rho_gs, dvr.wavefunc, (rho_trap, psi))
         io.write_file(fn)
 
         print_progress(cond_str, dvr.step_count, time6)
@@ -553,7 +553,7 @@ def one_period_mem_eff(t1, t2, dynamics):
 
 def init_save(dvr: DVRdynamics, t_step, psi0):
     fn = dvr.filename_gen(t_step)
-    io = DVRdynaOutput(0, 1, dvr.wavefunc, (1, psi0))
+    io = DVRDynamicsIO(0, 1, dvr.wavefunc, (1, psi0))
     io.write_file(fn)
     return fn
 

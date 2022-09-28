@@ -8,7 +8,7 @@ from configobj import ConfigObj
 from time import time
 
 from .core import *
-from .output import *
+from .io import *
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:

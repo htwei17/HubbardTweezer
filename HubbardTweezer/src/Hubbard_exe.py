@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from os.path import exists
 
-from Hubbard.output import *
+from Hubbard.io import *
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
