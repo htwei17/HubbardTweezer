@@ -30,7 +30,9 @@ class EqulizeInfo(dict):
 
     def _update_simplex(self):
         N = self['x'].shape[-1]
-        self['simplex'] = self['x'][-N+1:].copy()
+        # Pick the last 2N points, and select N+1 lowest cost points
+        idx = np.argsort(self['fval'][-2*N:])
+        self['simplex'] = np.take(self['x'][-2*N:], idx[:N+1], axis=0)
 
     def update_log(self, G, point, report, target, cvec, fval, io_freq: int = 10):
         # Keep revcord
@@ -54,8 +56,8 @@ class EqulizeInfo(dict):
                 write_trap_params(report, G)
                 write_singleband(report, G)
         if G.verbosity:
-            print(f"Cost function by terms: {cvec}")
-            print(f"Total cost function value fval={fval}\n")
+            print(f"Cost function by terms = {cvec}")
+            print(f"Cost function total value fval = {fval}\n")
             print(
                 f'i={self["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 

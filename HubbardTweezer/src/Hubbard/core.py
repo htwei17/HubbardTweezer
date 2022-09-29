@@ -65,6 +65,8 @@ class MLWF(DVR):
                 # For squre
                 lc: tuple = (lc, lc)
 
+        print(
+            f'lattice: lattice shape is {shape}; lattice constants set to: {lc}')
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape, self.ls)
         self.trap_centers = self.tc0.copy()
@@ -228,7 +230,7 @@ class MLWF(DVR):
         else:
             target[:] = info
 
-    def xylinks(self):
+    def xy_links(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Check all possible cases
         if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
@@ -238,7 +240,7 @@ class MLWF(DVR):
         ylinks = np.logical_not(xlinks)
         return xlinks, ylinks
 
-    def t_target(self, nnt, links, func: Function = np.mean):
+    def txy_target(self, nnt, links, func: Function = np.mean):
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan

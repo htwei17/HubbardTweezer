@@ -170,7 +170,9 @@ log = rep.b(report, "Parameters", "write_log", False)
 # Try to read existing equalization result as initial guess for next equalization
 meth = 'Nelder-Mead' if meth == 'NM' else meth
 if meth == 'Nelder-Mead':
-    x0 = rep.a(report, "Equalization_Result", "simplex", None)
+    # Try to read simplex first, then x0
+    x0 = rep.a(report, "Equalization_Result", "simplex",
+               rep.a(report, "Equalization_Result", "x", None))
 else:
     x0 = rep.a(report, "Equalization_Result", "x", None)
 
@@ -217,9 +219,9 @@ G = HubbardGraph(
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
 nnt = G.nn_tunneling(G.A)
-links = G.xylinks()
+links = G.xy_links()
 if G.sf == None:
-    G.sf, __ = G.t_target(nnt, links, np.min)
+    G.sf, __ = G.txy_target(nnt, links, np.min)
 # Print out Hubbard parameters
 if G.verbosity > 1:
     print(f'scale_factor = {G.sf}')
@@ -237,8 +239,8 @@ write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-Vtarget = np.real(np.diag(G.A))
-ttarget = G.t_target(nnt, links)
+Vtarget = np.mean(np.real(np.diag(G.A)))
+ttarget = G.txy_target(nnt, links)
 Utarget = np.mean(G.U)
 cu = G.u_cost_func(G.U, Utarget, G.sf)
 ct = G.t_cost_func(G.A, links, ttarget, G.sf)

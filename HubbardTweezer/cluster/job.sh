@@ -145,10 +145,11 @@ done
 METHOD_SUFFIX="_"$METHOD
 
 # If job is not finished w/i scavenge wall time, just continue by using the same ini
-# if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
-#     PARTITION=commons
-#     TIME="08:00:00"
-# fi
+# TODO: add init_simplex for NM otherwise it's not effective
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
+    PARTITION=scavenge
+    TIME="4:00:00"
+fi
 
 # if [ $WAIST != "None" ]; then
 #     EQ_FLAG=True
@@ -267,6 +268,7 @@ WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
+cd \$WORK_DIR
 
 if [ -s \$FN ]; then
     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
@@ -299,7 +301,6 @@ echo \"I ran on: \$SLURM_NODELIST\"
 # echo \"Task No.: \$SLURM_ARRAY_TASK_ID\"
 
 # Code run
-cd \$WORK_DIR
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
 cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
 

@@ -103,13 +103,13 @@ class HubbardEqualizer(MLWF):
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 
-        print(f"Equalize: varying waist direction: {self.waist_dir}.")
-        print(f"Equalize: method: {self.eqmethod}")
-        print(f"Equalize: quantities: {target}\n")
+        print(f"Equalize: varying waist direction = {self.waist_dir}.")
+        print(f"Equalize: method = {self.eqmethod}")
+        print(f"Equalize: quantities = {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
-        links = self.xylinks()
+        links = self.xy_links()
 
         # Equalize trap depth first, to make sure traps won't go too uneven
         # to have non-local WF. But this makes U to be more uneven.
@@ -131,8 +131,10 @@ class HubbardEqualizer(MLWF):
                 if self.eqmethod == 'Nelder-Mead' and x0.shape == (len(v0) + 1, len(v0)):
                     v0 = x0[0]
                     init_simplx = x0
+                    print("Equalize: external initial simplex is passed to NM.")
                 elif len(x0) == len(v0):
                     v0 = x0  # Use passed initial guess
+                    print("Equalize: external initial guess is passed.")
             except:  # x0 is None or other cases
                 print("Equalize: external initial guess is not passed.")
                 pass
@@ -194,7 +196,7 @@ class HubbardEqualizer(MLWF):
         nnt = self.nn_tunneling(A)
         # Set tx, ty target to be small s.t.
         # lattice spacing is not too close and WF collapses
-        txTarget, tyTarget = self.t_target(nnt, links, np.min)
+        txTarget, tyTarget = self.txy_target(nnt, links, np.min)
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
             self.sf = np.min([txTarget, tyTarget]
@@ -218,10 +220,10 @@ class HubbardEqualizer(MLWF):
         # Vtarget = np.mean(np.real(np.diag(A))) if fix_v else None
         Vtarget = 0
 
-        print(f'Equalize: scale factor: {self.sf}')
-        print(f'Equalize: target tunneling: {txTarget, tyTarget}')
-        print(f'Equalize: target interaction: {Utarget}')
-        print(f'Equalize: target onsite potential: {Vtarget}')
+        print(f'Equalize: scale factor = {self.sf}')
+        print(f'Equalize: target tunneling = {txTarget, tyTarget}')
+        print(f'Equalize: target interaction = {Utarget}')
+        print(f'Equalize: target onsite potential = {Vtarget}')
         return Vtarget, Utarget, txTarget, tyTarget
 
     def trap_mat(self):
@@ -348,15 +350,15 @@ class HubbardEqualizer(MLWF):
         return trap_depth, trap_waist, trap_center
 
     def _set_t(self, A, links, target):
-        links = self.xylinks() if links is None else links
+        links = self.xy_links() if links is None else links
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
-            txTarget, tyTarget = self.t_target(nnt, links)
+            txTarget, tyTarget = self.txy_target(nnt, links)
         elif isinstance(target, Iterable):
             txTarget, tyTarget = target
             if txTarget is None:
-                txTarget, tyTarget = self.t_target(nnt, links)
+                txTarget, tyTarget = self.txy_target(nnt, links)
         xlinks, ylinks = links
         return nnt, txTarget, tyTarget, xlinks, ylinks
 
@@ -431,8 +433,8 @@ class HubbardEqualizer(MLWF):
 
         cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vfactor**2
         if self.verbosity > 1:
-            print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential cost cv^2={cv}')
+            print(f'Onsite potential target = {Vtarget}')
+            print(f'Onsite potential cost cv^2 = {cv}')
         return cv
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -443,16 +445,16 @@ class HubbardEqualizer(MLWF):
         if tyTarget != None:
             ct += np.mean((abs(nnt[ylinks]) - tyTarget)**2) / tfactor**2
         if self.verbosity > 1:
-            print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling cost ct^2={ct}')
+            print(f'Tunneling target = ({txTarget}, {tyTarget})')
+            print(f'Tunneling cost ct^2 = {ct}')
         return ct
 
     def u_cost_func(self, U, Utarget: float, Ufactor: float = None) -> float:
         Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
         cu = np.mean((U - Utarget)**2) / Ufactor**2
         if self.verbosity > 1:
-            print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction cost cu^2={cu}')
+            print(f'Onsite interaction target = {Utarget}')
+            print(f'Onsite interaction cost cu^2 = {cu}')
         return cu
 
 # ==================== LEAST SQUARES ====================
@@ -481,8 +483,8 @@ class HubbardEqualizer(MLWF):
         cv = (np.real(np.diag(A)) - Vtarget) / \
             (Vfactor * np.sqrt(len(A)))
         if self.verbosity > 2:
-            print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential residue cv={cv}')
+            print(f'Onsite potential target = {Vtarget}')
+            print(f'Onsite potential residue cv = {cv}')
         return cv
 
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
@@ -495,14 +497,14 @@ class HubbardEqualizer(MLWF):
             ct = np.concatenate(
                 (ct, (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
-            print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling residue ct={ct}')
+            print(f'Tunneling target = ({txTarget}, {tyTarget})')
+            print(f'Tunneling residue ct = {ct}')
         return ct
 
     def u_res_func(self, U, Utarget: float, Ufactor: float = None):
         Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
         cu = (U - Utarget) / (Ufactor * np.sqrt(len(U)))
         if self.verbosity > 2:
-            print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction residue cu={cu}')
+            print(f'Onsite interaction target = {Utarget}')
+            print(f'Onsite interaction residue cu = {cu}')
         return cu
