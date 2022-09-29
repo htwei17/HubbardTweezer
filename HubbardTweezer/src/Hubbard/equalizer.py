@@ -68,7 +68,7 @@ class HubbardEqualizer(MLWF):
         if eqmethod is None:
             self.eqmethod = 'Nelder-Mead' if waist == None else 'trf'
         else:
-            self.eqmethod = eqmethod
+            self.eqmethod = 'Nelder-Mead' if eqmethod == 'NM' else eqmethod
         self.log = write_log
         if isinstance(scale_factor, Number):
             self.sf = scale_factor
