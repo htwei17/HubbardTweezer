@@ -1,8 +1,8 @@
 # importing the library
-from memory_profiler import profile
-
 import numpy as np
-from DVR3d_exe import *
+
+from DVR.core import *
+from DVR.mem_scaling import profile
 
 N_list = range(20, 21, 2)
 R = 3 * np.array([w, w, 2.4 * w])
@@ -23,16 +23,15 @@ N = 20
 # instantiating the decorator
 @profile
 def func(n):
-    DVR3d_exe(n,
-              R,
-              freq_list=freq_list,
-              stop_time=st,
-              step_no=sn,
-              dim=d,
-              model='Gaussian',
-              auto_t_step=False,
-              realtime=False,
-              absorber=True)
+    DVR(n, R,
+        freq_list=freq_list,
+        stop_time=st,
+        step_no=sn,
+        dim=d,
+        model='Gaussian',
+        auto_t_step=False,
+        realtime=False,
+        absorber=True)
 
 
 func(N)
