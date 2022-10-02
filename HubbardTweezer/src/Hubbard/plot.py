@@ -29,7 +29,7 @@ class HubbardGraph(HubbardEqualizer):
         self.graph = nx.DiGraph(self.edges, name='Lattice')
         self.pos = dict(
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-            (n, self.trap_centers[n]) for n in self.graph.nodes())
+            (n, self.wf_centers[n]) for n in self.graph.nodes())
 
     def set_edges(self, label='param'):
         for link in self.graph.edges:
@@ -73,19 +73,25 @@ class HubbardGraph(HubbardEqualizer):
         # Add higher neighbor bonds
         # NOTE: explicit square lattice geometry assumed
         # FIXME: 3x2 lattice error as this gives an index 6
-        if not self.lattice_shape == 'square':
-            print('WARNING: nnn only supported for square lattices. Nothing doen.')
+        if self.lattice_shape == 'zigzag':
+            for i in range(min(limit, self.Nsite // 2)):
+                self.graph.add_edge(i, i + 1)
+        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'zigzag']:
+            if limit + 2 > self.Nsite:
+                limit = self.Nsite - 2
+            if center >= self.Nsite:
+                center = 0
+            if self.lattice_dim == 1:
+                for i in range(limit):
+                    self.graph.add_edge(center, i + 2)
+            elif self.lattice_dim == 2:
+                for i in range(2 * limit):
+                    self.graph.add_edge(center, i + 2)
+        else:
+            print(
+                f'WARNING: nnn not supported for {self.lattice_shape} lattice. \
+                    Nothing doen.')
             return
-        if limit + 2 > self.Nsite:
-            limit = self.Nsite - 2
-        if center >= self.Nsite:
-            center = 0
-        if self.lattice_dim == 1:
-            for i in range(limit):
-                self.graph.add_edge(center, i + 2)
-        elif self.lattice_dim == 2:
-            for i in range(2 * limit):
-                self.graph.add_edge(center, i + 2)
 
     def singleband_params(self, label='param', A=None, U=None):
         if label == 'param' and (A is None or U is None):
@@ -99,6 +105,11 @@ class HubbardGraph(HubbardEqualizer):
         self.singleband_params(label, A, U)
         if label == 'param' and nnn:
             self.add_nnn()
+        if all(abs(self.wf_centers[:, 1]) < 1e-6):
+            self.lattice_dim = 1
+            self.lattice = np.array([self.Nsite, 1])
+            self.wf_centers[:, 1] = 0
+
         self.set_edges(label)
         self.set_nodes(label)
 

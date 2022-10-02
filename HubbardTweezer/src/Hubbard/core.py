@@ -42,17 +42,18 @@ class MLWF(DVR):
         if self.Nsite == 1:
             self.lattice = np.ones(1)
             self.lattice_dim = 1
-        elif self.Nsite > 1 and lattice.size == 1:
-            self.lattice = np.resize(
-                np.pad(lattice, pad_width=(0, 1), constant_values=1), 2
-            )
-            self.lattice_dim = 1
         else:
-            self.lattice = lattice.copy()
+            if lattice.size == 1:
+                self.lattice = np.resize(
+                    np.pad(lattice, pad_width=(0, 1), constant_values=1), 2
+                )
+                self.lattice_dim = 1
+            else:
+                self.lattice = lattice.copy()
+                eff_dim = (lattice > 1)  # * (np.array(lc) > 0)
+                self.lattice_dim = lattice[eff_dim].size
             if shape == 'ring':
                 self.lattice_dim = 2
-            else:
-                self.lattice_dim = lattice[lattice > 1].size
 
         # Convert lc to (lc, lc) or the other if only one number is given
         if isinstance(lc, Iterable) and len(lc) == 1:
@@ -70,16 +71,19 @@ class MLWF(DVR):
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape, self.ls)
         self.trap_centers = self.tc0.copy()
-        self.wf_centers = self.tc0.copy()  # Assume WF are localized at trap centers
         self.Nsite = self.trap_centers.shape[0]
 
         # Independent trap number under reflection symmetry
         self.Nindep = self.reflection.shape[0]
 
+        # Set lattice constants in unit of wx
         if self.model == "Gaussian":
-            self.lc = np.array(lc) * 1e-9 / self.w  # In unit of wx
+            self.lc = np.array(lc) * 1e-9 / self.w
         elif self.model == "sho":
             self.lc = np.array(lc)
+
+        # Assume WF are localized at trap centers, location in unit of wx
+        self.wf_centers = self.tc0.copy() * self.lc
 
         dx = self.dx.copy()
         lattice_range = np.max(abs(self.trap_centers), axis=0)
@@ -230,16 +234,6 @@ class MLWF(DVR):
         else:
             target[:] = info
 
-    def xy_links(self):
-        # Distinguish x and y n.n. bonds and target t_x t_y values
-        # FIXME: Check all possible cases
-        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
-            xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
-        else:
-            xlinks = np.tile(True, self.links.shape[0])
-        ylinks = np.logical_not(xlinks)
-        return xlinks, ylinks
-
     def txy_target(self, nnt, links, func: Function = np.mean):
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
@@ -342,13 +336,25 @@ class MLWF(DVR):
         # Z is always zero. Explained below.
         for i in range(dim - 1):
             if self.nd[i]:
-                R.append(self.Xmat_1d(W, parity, i))
+                Rx = self.Xmat_1d(W, parity, i)
+                if Rx is not None:
+                    R.append(Rx)
         return R
 
-    def Xmat_1d(self, W, parity, i):
+    def Xmat_1d(self, W, parity: np.ndarray, i: int):
         Rx = np.zeros((self.Nsite, self.Nsite))
         idx = np.roll(np.arange(dim, dtype=int), -i)
-        if self.ls:
+        if any(parity[:, i] == 0):
+            # X = x_i delta_ij for non-symmetrized basis
+            x = np.arange(-self.n[i], self.n[i] + 1) * self.dx[i]
+            for j in range(self.Nsite):
+                Wj = np.transpose(W[j], idx).conj()
+                Rx[j, j] = contract("ijk,i,ijk", Wj, x, Wj.conj())
+                for k in range(j + 1, self.Nsite):
+                    Wk = np.transpose(W[k], idx)
+                    Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
+                    Rx[k, j] = Rx[j, k].conj()
+        elif any(parity[:, i] == 1) and any(parity[:, i] == -1):
             # Get X^pp'_ij matrix rep for Delta^p_i, p the parity.
             # This matrix is nonzero only when p!=p':
             # X^pp'_ij = x_i delta_ij with p_x * p'_x = -1
@@ -376,15 +382,7 @@ class MLWF(DVR):
                         # So Rx is real-symmetric or hermitian
                         Rx[k, j] = Rx[j, k].conj()
         else:
-            # X = x_i delta_ij for non-symmetrized basis
-            x = np.arange(-self.n[i], self.n[i] + 1) * self.dx[i]
-            for j in range(self.Nsite):
-                Wj = np.transpose(W[j], idx).conj()
-                Rx[j, j] = contract("ijk,i,ijk", Wj, x, Wj.conj())
-                for k in range(j + 1, self.Nsite):
-                    Wk = np.transpose(W[k], idx)
-                    Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
-                    Rx[k, j] = Rx[j, k].conj()
+            Rx = None
         return Rx
 
 # ========================== OPTIMIZATION ALGORITHMS ==========================
@@ -404,12 +402,13 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
             # Auto sort eigenvectors by X eigenvalues
             order = np.argsort(X)
             U = solution[:, order]
-            wf_centers = np.array([X[order], np.zeros_like(X[order])]).T
+            wf_centers = np.array(
+                [X[order] * dvr.lc[0], np.zeros_like(X[order])]).T
         else:
             # In high dimension, X, Y, Z don't commute
             solution = riemann_optimize(R, x0, dvr.verbosity)
             U = site_order(dvr, solution, R)
-            wf_centers = np.array([np.diag(U.conj().T @ R[i] @ U) / dvr.lc[i]
+            wf_centers = np.array([np.diag(U.conj().T @ R[i] @ U)
                                    for i in range(dvr.lattice_dim)]).T
     else:
         U = np.ones((1, 1))
@@ -450,13 +449,13 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
 
     if dvr.lattice_dim == 1:
         # Find WF center of mass
-        x = np.diag(U.conj().T @ R[0] @ U) / dvr.lc[0]
+        x = np.diag(U.conj().T @ R[0] @ U)
         order = np.argsort(x)
     elif dvr.lattice_dim > 1:
         # Find WF center of mass
-        x = np.array([np.diag(U.conj().T @ R[i] @ U) / dvr.lc[i]
+        x = np.array([np.diag(U.conj().T @ R[i] @ U)
                      for i in range(dvr.lattice_dim)]).T
-        order = nearest_match(dvr.trap_centers, x)
+        order = nearest_match(dvr.trap_centers * dvr.lc, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
         print("Order of Wannier functions is set to match traps.")

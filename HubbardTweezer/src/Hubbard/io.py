@@ -152,13 +152,22 @@ def update_saved_data(report: ConfigObj, G):
     rep.create_report(report, "Singleband_Parameters", **values)
 
 
-def read_trap(report: ConfigObj):
+def read_trap(report: ConfigObj, G):
+    G.Voff, G.trap_centers, G.wf_centers, G.waists, G.sf = read_trap_params(
+        report)
+    if G.wf_centers.size == 0:
+        G.wf_centers = G.trap_centers * G.lc
+    return G
+
+
+def read_trap_params(report: ConfigObj):
     """
     Read equalized trap parameters from file.
     """
     report = rep.get_report(report)
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
+    wc = rep.a(report, "Trap_Adjustments", "wf_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
     sf = rep.f(report, "Equalization_Result", "scale_factor")
-    return Voff, tc, w, sf
+    return Voff, tc, wc, w, sf
