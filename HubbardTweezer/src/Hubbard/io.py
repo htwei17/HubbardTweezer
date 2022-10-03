@@ -171,3 +171,15 @@ def read_trap_params(report: ConfigObj):
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
     sf = rep.f(report, "Equalization_Result", "scale_factor")
     return Voff, tc, wc, w, sf
+
+
+def read_target(report: ConfigObj):
+    """
+    Read target parameters from file.
+    """
+    report = rep.get_report(report)
+    Utarget = rep.a(report, "Equalization_Result", "U_target")
+    ttarget = rep.a(report, "Equalization_Result", "t_target")
+    Vtarget = rep.a(report, "Equalization_Result", "V_target")
+    txTarget, tyTarget = ttarget[0], ttarget[1]
+    return Utarget, txTarget, tyTarget, Vtarget
