@@ -71,8 +71,7 @@ class MLWF(DVR):
             f'lattice: lattice shape is {shape}; lattice constants set to: {lc}')
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
             self.lattice, shape, self.ls)
-        self.trap_centers = self.tc0.copy()
-        self.Nsite = self.trap_centers.shape[0]
+        self.Nsite = self.tc0.shape[0]
 
         # Independent trap number under reflection symmetry
         self.Nindep = self.reflection.shape[0]
@@ -91,15 +90,14 @@ class MLWF(DVR):
         lattice_range = np.max(abs(self.trap_centers), axis=0)
         lattice_range = np.resize(
             np.pad(lattice_range, (0, 2), constant_values=0), dim)
-        lc = np.resize(self.lc, dim)
         if self.verbosity:
             print(f"lattice: lattice shape is {shape}")
             print(f"lattice: Full lattice sizes: {lattice}")
             if self.verbosity > 1:
-                print(f"lattice: lattice constants: {lc[:self.lattice_dim]}w")
+                print(f"lattice: lattice constants: {lc}w")
                 print(f"lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
-        R0 = lattice_range * lc + self.R00
+        R0 = lattice_range + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
 
@@ -146,6 +144,7 @@ class MLWF(DVR):
             self.ls = False
         n = np.zeros(3, dtype=int)
         n[:dim] = N
+
         absorber = kwargs.get('absorber', False)
         if absorber:
             raise TypeError(
@@ -171,7 +170,7 @@ class MLWF(DVR):
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.Nsite):
-                shift = self.trap_centers[i] * self.lc
+                shift = self.trap_centers[i]
                 self.update_waist(self.waists[i])
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
@@ -457,7 +456,7 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
         # Find WF center of mass
         x = np.array([np.diag(U.conj().T @ R[i] @ U)
                      for i in range(dvr.lattice_dim)]).T
-        order = nearest_match(dvr.trap_centers * dvr.lc, x)
+        order = nearest_match(dvr.trap_centers, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
         print("Order of Wannier functions is set to match traps.")

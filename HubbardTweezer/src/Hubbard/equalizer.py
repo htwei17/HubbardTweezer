@@ -241,7 +241,7 @@ class HubbardEqualizer(MLWF):
         tc = np.zeros((self.Nsite, dim))
         vij = np.ones((self.Nsite, self.Nsite))
         for i in range(self.Nsite):
-            tc[i, :] = np.append(self.trap_centers[i] * self.lc, 0)
+            tc[i, :] = np.append(self.trap_centers[i], 0)
             for j in range(i):
                 vij[i, j] = -DVR.Vfun(self, *(tc[i] - tc[j]))
                 vij[j, i] = vij[i, j]  # Potential is symmetric in distance
