@@ -5,6 +5,7 @@ from opt_einsum import contract
 from time import time
 from itertools import product, permutations
 import numpy.linalg as la
+import torch
 
 from .optimize import riemann_optimize
 from .lattice import *
@@ -83,7 +84,8 @@ class MLWF(DVR):
             self.lc = np.array(lc)
 
         # Assume WF are localized at trap centers, location in unit of wx
-        self.wf_centers = self.tc0.copy() * self.lc
+        self.trap_centers = self.tc0 * self.lc
+        self.wf_centers = self.tc0 * self.lc
 
         dx = self.dx.copy()
         lattice_range = np.max(abs(self.trap_centers), axis=0)

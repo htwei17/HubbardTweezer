@@ -7,9 +7,14 @@ import numpy.linalg as la
 import scipy.linalg as sla
 import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
-from scipy.sparse.linalg import LinearOperator
+# from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
+
+import torch
+from xitorch.linalg import symeig
+
+from .linopt import LinearOperator
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
@@ -360,9 +365,6 @@ class DVR:
     def H_op(self, T: list, V, no, psi0: np.ndarray):
         # Define Hamiltonian operator for sparse solver
 
-        self.p *= self.n != 0
-        self.dx *= self.n != 0
-
         psi0 = psi0.reshape(*no)
         psi: np.ndarray = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
         # T_xx' delta_yy' delta_zz'
@@ -404,6 +406,9 @@ class DVR:
                     .format(self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model,
                             k))
 
+            self.p *= self.n != 0
+            self.dx *= self.n != 0
+
             T = self.Tmat()
             V, no = self.Vmat()
             # for i in range(3):
@@ -413,23 +418,24 @@ class DVR:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
 
-            def applyH(psi) -> np.ndarray:
-                return self.H_op(T, V, no, psi)
-
             t0 = time()
             N = np.product(no)
-            H = LinearOperator((N, N), matvec=applyH)
 
             if k <= 0:
                 k = 10
             if self.absorber:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse non-hermitian matrix.')
+
+                def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
+                H = ssla.LinearOperator((N, N), matvec=applyH)
                 E, W = ssla.eigs(H, k, which='SA')
             else:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse hermitian matrix.')
-                E, W = ssla.eigsh(H, k, which='SA')
+                T = [torch.from_numpy(T[i]).requires_grad_() for i in range(len(T))]
+                H = LinearOperator(T, torch.Tensor(V).requires_grad_(), no)
+                E, W = symeig(H, k)
         else:
             # avg factor is used to control the time average potential strength
             H = self.H_mat()
