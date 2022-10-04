@@ -7,14 +7,10 @@ import numpy.linalg as la
 import scipy.linalg as sla
 import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
-# from scipy.sparse.linalg import LinearOperator
+from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
 
-import torch
-from xitorch.linalg import symeig
-
-from .linopt import LinearOperator
 
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
@@ -418,6 +414,9 @@ class DVR:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
 
+            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
+            H = LinearOperator((N, N), matvec=applyH)
+
             t0 = time()
             N = np.product(no)
 
@@ -427,15 +426,11 @@ class DVR:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse non-hermitian matrix.')
 
-                def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
-                H = ssla.LinearOperator((N, N), matvec=applyH)
                 E, W = ssla.eigs(H, k, which='SA')
             else:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse hermitian matrix.')
-                T = [torch.from_numpy(T[i]).requires_grad_() for i in range(len(T))]
-                H = LinearOperator(T, torch.Tensor(V).requires_grad_(), no)
-                E, W = symeig(H, k)
+                E, W = ssla.eigsh(H, k, which='SA')
         else:
             # avg factor is used to control the time average potential strength
             H = self.H_mat()
