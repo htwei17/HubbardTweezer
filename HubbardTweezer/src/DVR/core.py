@@ -414,11 +414,10 @@ class DVR:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
 
-            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
-            H = LinearOperator((N, N), matvec=applyH)
-
             t0 = time()
+            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
             N = np.product(no)
+            H = LinearOperator((N, N), matvec=applyH)
 
             if k <= 0:
                 k = 10
