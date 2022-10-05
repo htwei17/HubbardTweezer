@@ -83,11 +83,12 @@ class MLWF(DVR):
             self.lc = np.array(lc)
 
         # Assume WF are localized at trap centers, location in unit of wx
-        self.trap_centers = self.tc0 * self.lc
-        self.wf_centers = self.tc0 * self.lc
+        self.tc0 = self.tc0 * self.lc
+        self.trap_centers = self.tc0.copy()
+        self.wf_centers = self.tc0.copy()
 
         dx = self.dx.copy()
-        lattice_range = np.max(abs(self.trap_centers), axis=0)
+        lattice_range = np.max(abs(self.tc0), axis=0)
         lattice_range = np.resize(
             np.pad(lattice_range, (0, 2), constant_values=0), dim)
         if self.verbosity:
@@ -119,6 +120,14 @@ class MLWF(DVR):
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
+
+    def update_waist(self, waists):
+        self.wxy = self.wxy0 * waists
+        self.zR = np.pi * self.w * self.wxy**2 / self.l
+        self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
+        self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
+        self.omega *= np.sqrt(self.avg * self.hb *
+                              self.V0 / self.m) / self.w
 
     def __init__(
         self,
@@ -174,14 +183,6 @@ class MLWF(DVR):
                 self.update_waist(self.waists[i])
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
-
-    def update_waist(self, waists):
-        self.wxy = self.wxy0 * waists
-        self.zR = np.pi * self.w * self.wxy**2 / self.l
-        self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
-        self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-        self.omega *= np.sqrt(self.avg * self.hb *
-                              self.V0 / self.m) / self.w
 
     def singleband_Hubbard(
         self, u=False, x0=None, offset=True, eig_sol=None
@@ -403,8 +404,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
             # Auto sort eigenvectors by X eigenvalues
             order = np.argsort(X)
             U = solution[:, order]
-            wf_centers = np.array(
-                [X[order] * dvr.lc[0], np.zeros_like(X[order])]).T
+            wf_centers = np.array([X[order], np.zeros_like(X)]).T
         else:
             # In high dimension, X, Y, Z don't commute
             solution = riemann_optimize(R, x0, dvr.verbosity)
@@ -489,7 +489,7 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
             x.append(np.array([0]))
             dx.append(0)
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
-    Vj = wannier_func(x, Uj, dvr, Wj, pj)
+    Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
     Uint_onsite = romb3d(wannier, dx)
     if dvr.model == "sho":

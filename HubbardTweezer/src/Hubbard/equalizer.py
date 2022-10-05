@@ -123,7 +123,7 @@ class HubbardEqualizer(MLWF):
         # ls_bak = self.trap_centers
         # w_bak = self.waists
 
-        v0, bounds = self.init_guess(random, nobounds, lsq=True)
+        v0, bounds = self.init_guess(random, nobounds)
         init_simplx = None
 
         if isinstance(x0, np.ndarray):
@@ -221,7 +221,7 @@ class HubbardEqualizer(MLWF):
         Vtarget = 0
 
         print(f'Equalize: scale factor = {self.sf}')
-        print(f'Equalize: target tunneling = {txTarget, tyTarget}')
+        print(f'Equalize: target tunneling = {txTarget}, {tyTarget}')
         print(f'Equalize: target interaction = {Utarget}')
         print(f'Equalize: target onsite potential = {Vtarget}')
         return Vtarget, Utarget, txTarget, tyTarget
@@ -279,7 +279,7 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_guess(self, random=False, nobounds=False, lsq=True) -> tuple[np.ndarray, tuple]:
+    def init_guess(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
         # Mark effective DoFs
         self.eff_dof()
 
@@ -304,13 +304,8 @@ class HubbardEqualizer(MLWF):
         else:
             # v02 = np.ones(2 * self.Nindep)
             v02 = symm_fold(self.reflection, self.waists).flatten()
-            if lsq:
-                b2 = list(s2
-                          for i in range(2 * self.Nindep) if self.w_dof[i])
-                v02 = v02[self.w_dof]
-            else:
-                b2 = list(s2 if self.w_dof[i] else (
-                    1, 1) for i in range(2 * self.Nindep))
+            b2 = list(s2 for i in range(2 * self.Nindep) if self.w_dof[i])
+            v02 = v02[self.w_dof]
 
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
@@ -320,13 +315,9 @@ class HubbardEqualizer(MLWF):
         else:
             s3 = (1 - 1 / self.lc[0]) / 2
         v03 = symm_fold(self.reflection, self.trap_centers).flatten()
-        if lsq:
-            b3 = list((v03[i] - s3, v03[i] + s3)
-                      for i in range(2 * self.Nindep) if self.tc_dof[i])
-            v03 = v03[self.tc_dof]
-        else:
-            b3 = list((v03[i] - s3, v03[i] + s3)
-                      if self.tc_dof[i] else (0, 0) for i in range(2 * self.Nindep))
+        b3 = list((v03[i] - s3, v03[i] + s3)
+                  for i in range(2 * self.Nindep) if self.tc_dof[i])
+        v03 = v03[self.tc_dof]
 
         bounds = tuple(b1 + b2 + b3)
 
@@ -420,7 +411,6 @@ class HubbardEqualizer(MLWF):
 
 # ================= GENERAL MINIMIZATION =================
 
-
     def _cost_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, U = res
@@ -455,7 +445,7 @@ class HubbardEqualizer(MLWF):
         if tyTarget != None:
             ct += np.mean((abs(nnt[ylinks]) - tyTarget)**2) / tfactor**2
         if self.verbosity > 1:
-            print(f'Tunneling target = ({txTarget}, {tyTarget})')
+            print(f'Tunneling target = {txTarget}, {tyTarget}')
             print(f'Tunneling cost ct^2 = {ct}')
         return ct
 
@@ -507,7 +497,7 @@ class HubbardEqualizer(MLWF):
             ct = np.concatenate(
                 (ct, (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
-            print(f'Tunneling target = ({txTarget}, {tyTarget})')
+            print(f'Tunneling target = {txTarget}, {tyTarget}')
             print(f'Tunneling residue ct = {ct}')
         return ct
 
