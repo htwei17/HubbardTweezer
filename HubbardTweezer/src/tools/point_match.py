@@ -51,5 +51,8 @@ def nearest_match(site: np.ndarray, wf: np.ndarray) -> np.ndarray:
                     #       f' Dist: {dist_mat[i][j]}')
                     order[i] = j
     else:
-        print('Warning: no solution found. Order is not changed.')
+        print('WARNING: no solution found. Order is not changed.')
+    if solver.Objective().Value() > 0.5:  # If any WF is way too far from its site
+        print(f'WARNING: total distance = {solver.Objective().Value()}.',
+              'Assignment might be non-local.')
     return order

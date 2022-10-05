@@ -2,7 +2,7 @@ import h5py
 import numpy as np
 
 
-class DVRdynaOutput:
+class DVRDynamicsIO:
 
     def __init__(self,
                  t=None,

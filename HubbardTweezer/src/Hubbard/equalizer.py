@@ -1,13 +1,14 @@
 import numpy as np
 import numpy.linalg as la
+from numpy.linalg import LinAlgError
 from numbers import Number
 from typing import Iterable, Union
-from scipy.optimize import minimize, least_squares, OptimizeResult
+from scipy.optimize import minimize, least_squares
 from configobj import ConfigObj
 from time import time
 
 from .core import *
-from .output import *
+from .io import *
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
@@ -29,6 +30,17 @@ def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
     return u, t, v, fix_u, fix_t, fix_v
 
 
+def _set_uv(uv, target, factor):
+    if target is None:
+        target = np.mean(uv)
+    if factor is None:
+        # Avoid division by zero
+        factor = abs(target)
+        if factor < 1e-1:
+            factor = 1e-1
+    return target, factor
+
+
 class HubbardEqualizer(MLWF):
 
     def __init__(
@@ -38,7 +50,7 @@ class HubbardEqualizer(MLWF):
             eqtarget='UvT',  # Equalization target
             scale_factor=None,  # Scale factor for cost function
             Ut: float = None,  # Interaction target in unit of tx
-            method: str = 'trf',  # Minimize algorithm method
+            eqmethod: str = None,  # Minimize algorithm method
             nobounds: bool = False,  # Whether to use bounds or not
             waist='x',  # Waist to vary, None means no waist change
             random: bool = False,  # Random initial guess
@@ -52,7 +64,11 @@ class HubbardEqualizer(MLWF):
         # set equalization label in file output
         self.eq_label = eqtarget
         self.waist_dir = waist
-        self.eqinfo = {}
+        self.eqinfo = EqulizeInfo()
+        if eqmethod is None:
+            self.eqmethod = 'Nelder-Mead' if waist == None else 'trf'
+        else:
+            self.eqmethod = 'Nelder-Mead' if eqmethod == 'NM' else eqmethod
         self.log = write_log
         if isinstance(scale_factor, Number):
             self.sf = scale_factor
@@ -65,7 +81,6 @@ class HubbardEqualizer(MLWF):
                     and self.waist_dir != 'xy':
                 self.waist_dir = 'xy'
 
-            method = 'Nelder-Mead' if method == 'NM' else method
             if not isinstance(x0, np.ndarray):
                 print('Illegal x0 provided. Use no initial guess.')
                 x0 = None
@@ -74,7 +89,6 @@ class HubbardEqualizer(MLWF):
                           Ut=Ut, x0=x0,
                           random=random,
                           nobounds=nobounds,
-                          method=method,
                           callback=False,
                           iofile=iofile)
 
@@ -85,64 +99,47 @@ class HubbardEqualizer(MLWF):
                  weight: np.ndarray = np.ones(3),
                  random: bool = False,
                  nobounds: bool = False,
-                 method: str = 'trf',
                  callback: bool = False,
                  iofile: ConfigObj = None
                  ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
 
-        print(f"Equalize: varying waist direction: {self.waist_dir}.")
-        print(f"Equalize: method: {method}")
-        print(f"Equalize: target: {target}\n")
+        print(f"Equalize: varying waist direction = {self.waist_dir}.")
+        print(f"Equalize: method = {self.eqmethod}")
+        print(f"Equalize: quantities = {target}\n")
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
+        # Force corresponding factor to be 0 if flags u,t,v are false
+        weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
+        links = self.xy_links()
 
-        res = self.singleband_Hubbard(u=u, offset=True, output_unitary=True)
-        if u:
-            A, U, V = res
-        else:
-            A, V = res
-            U = None
+        # Equalize trap depth first, to make sure traps won't go too uneven
+        # to have non-local WF. But this makes U to be more uneven.
+        # self.equalize_trap_depth()
+        # print(f"Equalize: trap depths equalzlied to {self.Voff}.")
 
-        nnt = self.nn_tunneling(A)
-        xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-        # Energy scale factor, set to be of avg initial tx
-        if not isinstance(self.sf, Number):
-            self.sf = abs(txTarget)
-        if not fix_t:
-            txTarget, tyTarget = None, None
+        A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
-        if fix_u:
-            if Ut is None:
-                Utarget = np.mean(U)
-                Ut = Utarget / self.sf
-            else:
-                Utarget = Ut * self.sf
-        else:
-            Utarget = None
-
-        # If V is shifted to zero then fix_v has no effect
-        Vtarget = np.mean(np.real(np.diag(A))) if fix_v else None
-
+        target = self._set_targets(Ut, fix_u, fix_t, links, A, U)
         # Voff_bak = self.Voff
         # ls_bak = self.trap_centers
         # w_bak = self.waists
 
-        v0, bounds = self.init_guess(
-            random=random, nobounds=nobounds, lsq=True)
+        v0, bounds = self.init_guess(random, nobounds)
+        init_simplx = None
 
         if isinstance(x0, np.ndarray):
             try:
-                if len(x0) == len(v0):
+                if self.eqmethod == 'Nelder-Mead' and x0.shape == (len(v0) + 1, len(v0)):
+                    v0 = x0[0]
+                    init_simplx = x0
+                    print("Equalize: external initial simplex is passed to NM.")
+                elif len(x0) == len(v0):
                     v0 = x0  # Use passed initial guess
-            except:
+                    print("Equalize: external initial guess is passed.")
+            except:  # x0 is None or other cases
                 print("Equalize: external initial guess is not passed.")
                 pass
 
-        self.eqinfo = {'Nfeval': 0,
-                       'cost': np.array([]).reshape(0, 3),
-                       'ctot': np.array([]),
-                       'fval': np.array([]),
-                       'diff': np.array([]),
-                       'x': np.array([]).reshape(0, *v0.shape)}
+        self.eqinfo.create_log(v0, target)
 
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
@@ -151,19 +148,115 @@ class HubbardEqualizer(MLWF):
         # Pack U0 to be mutable, thus can be updated in each iteration of minimize
         U0 = [V] if callback else None
 
-        if method in ['trf', 'dogbox']:
-            res = self._eq_lsq((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
-                               txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
-        elif method in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
-            res = self._eq_min((u, t, v), (xlinks, ylinks), (Vtarget, Utarget,
-                               txTarget, tyTarget), (v0, bounds), weight, method, U0, iofile)
+        if self.eqmethod in ['trf', 'dogbox']:
+            mode = 'res'
+        elif self.eqmethod in ['Nelder-Mead', 'Powell', 'CG', 'BFGS', 'L-BFGS-B', 'TNC', 'COBYLA', 'SLSQP', 'trust-constr', 'dogleg', 'trust-ncg', 'trust-exact', 'trust-krylov']:
+            mode = 'cost'
         else:
-            raise ValueError(
-                f'Equalize: unknown optimization method: {method}. Please choose from trf, dogbox, Nelder-Mead, Powell, CG, BFGS, L-BFGS-B, TNC, COBYLA, SLSQP, trust-constr, dogleg, trust-ncg, trust-exact, trust-krylov')
+            mode = 'res'
+            self.eqmethod = 'trf'
+            print(
+                f'Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf.')
 
-        self._update_log_final(res)
+        # if nobounds:
+        #     method = 'lm'
+        #     print(f'Method is set to {method} given unconstraint problem.')
 
+        def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
+            c = self.opt_func(point, info, links, target, weight,
+                              self.sf, unitary=U0, mode=mode, report=iofile)
+            return c
+
+        t0 = time()
+        if mode == 'res':
+            # Convert to tuple of (lb, ub)
+            ba = np.array(bounds)
+            bounds = (ba[:, 0], ba[:, 1])
+            res = least_squares(opt_target, v0, bounds=bounds, args=(self.eqinfo,),
+                                method=self.eqmethod, verbose=2,
+                                xtol=1e-6, ftol=1e-7, gtol=1e-7, max_nfev=500 * self.Nindep)
+        elif mode == 'cost':
+            # Method-specific options
+            if self.eqmethod == 'Nelder-Mead':
+                adp = self.Nindep > 3
+                options = {
+                    'disp': True, 'initial_simplex': init_simplx, 'adaptive': adp, 'xatol': 1e-6, 'fatol': 1e-7, 'maxiter': 500 * self.Nindep}
+            elif self.eqmethod == 'SLSQP':
+                options = {'disp': True, 'ftol': 1e-7,
+                           'nfev': 500 * self.Nindep}
+            res = minimize(opt_target, v0, bounds=bounds, args=self.eqinfo,
+                           method=self.eqmethod, options=options)
+        t1 = time()
+        print(f"Equalization took {t1 - t0} seconds.")
+
+        self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, 'final')
+
+    def _set_targets(self, Ut, fix_u, fix_t, links, A, U):
+        nnt = self.nn_tunneling(A)
+        # Set tx, ty target to be small s.t.
+        # lattice spacing is not too close and WF collapses
+        txTarget, tyTarget = self.txy_target(nnt, links, np.min)
+        # Energy scale factor, set to be of avg initial tx
+        if not isinstance(self.sf, Number):
+            self.sf = np.min([txTarget, tyTarget]
+                             ) if tyTarget != None else txTarget
+        if not fix_t:
+            txTarget, tyTarget = None, None
+
+        if fix_u:
+            if Ut is None:
+                # Set target interaction to be max of initial interaction.
+                # This is to make traps not that localized in the middle to equalize U.
+                # As to achieve larger U traps depths seem more even.
+                Utarget = np.max(U)
+                Ut = Utarget / self.sf
+            else:
+                Utarget = Ut * self.sf
+        else:
+            Utarget = None
+
+        # If V is shifted to zero then fix_v has no effect
+        # Vtarget = np.mean(np.real(np.diag(A))) if fix_v else None
+        Vtarget = 0
+
+        print(f'Equalize: scale factor = {self.sf}')
+        print(f'Equalize: target tunneling = {txTarget}, {tyTarget}')
+        print(f'Equalize: target interaction = {Utarget}')
+        print(f'Equalize: target onsite potential = {Vtarget}')
+        return Vtarget, Utarget, txTarget, tyTarget
+
+    def xy_links(self):
+        # Distinguish x and y n.n. bonds and target t_x t_y values
+        # FIXME: Check all possible cases
+        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
+            xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
+        else:
+            xlinks = np.tile(True, self.links.shape[0])
+        ylinks = np.logical_not(xlinks)
+        return xlinks, ylinks
+
+    def trap_mat(self):
+        # depth of each trap center
+        tc = np.zeros((self.Nsite, dim))
+        vij = np.ones((self.Nsite, self.Nsite))
+        for i in range(self.Nsite):
+            tc[i, :] = np.append(self.trap_centers[i], 0)
+            for j in range(i):
+                vij[i, j] = -DVR.Vfun(self, *(tc[i] - tc[j]))
+                vij[j, i] = vij[i, j]  # Potential is symmetric in distance
+        return vij
+
+    def equalize_trap_depth(self):
+        vij = self.trap_mat()
+        # Set trap depth target to be the deepest one
+        Vtarget = np.max(vij @ np.ones(self.Nsite))
+        try:
+            # Equalize trap depth
+            # Powered to compensate for trap unevenness
+            self.Voff = la.solve(vij, Vtarget * np.ones(self.Nsite))**2
+        except:
+            raise LinAlgError('Homogenize: failed to solve for Voff.')
 
     def eff_dof(self):
         # Record all free DoFs in the function
@@ -181,18 +274,19 @@ class HubbardEqualizer(MLWF):
             tcy = np.tile(False, self.Nindep)
         else:
             tcy = np.array([not self.inv_coords[i, 1]
-                           for i in range(self.Nindep)])
+                            for i in range(self.Nindep)])
         self.tc_dof = np.array([tcx, tcy]).T.reshape(-1)
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_guess(self, random=False, nobounds=False, lsq=True) -> tuple[np.ndarray, tuple]:
+    def init_guess(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
         # Mark effective DoFs
         self.eff_dof()
 
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
-        v01 = np.ones(self.Nindep)
+        # v01 = np.ones(self.Nindep)
+        v01 = symm_fold(self.reflection, self.Voff)
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.Nindep))
         else:
@@ -208,14 +302,10 @@ class HubbardEqualizer(MLWF):
             v02 = np.array([])
             b2 = []
         else:
-            v02 = np.ones(2 * self.Nindep)
-            if lsq:
-                b2 = list(s2
-                          for i in range(2 * self.Nindep) if self.w_dof[i])
-                v02 = v02[self.w_dof]
-            else:
-                b2 = list(s2 if self.w_dof[i] else (
-                    1, 1) for i in range(2 * self.Nindep))
+            # v02 = np.ones(2 * self.Nindep)
+            v02 = symm_fold(self.reflection, self.waists).flatten()
+            b2 = list(s2 for i in range(2 * self.Nindep) if self.w_dof[i])
+            v02 = v02[self.w_dof]
 
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
@@ -224,14 +314,10 @@ class HubbardEqualizer(MLWF):
             s3 = (-np.inf, np.inf)
         else:
             s3 = (1 - 1 / self.lc[0]) / 2
-        v03 = self.tc0[self.reflection[:, 0]].flatten()
-        if lsq:
-            b3 = list((v03[i] - s3, v03[i] + s3)
-                      for i in range(2 * self.Nindep) if self.tc_dof[i])
-            v03 = v03[self.tc_dof]
-        else:
-            b3 = list((v03[i] - s3, v03[i] + s3)
-                      if self.tc_dof[i] else (0, 0) for i in range(2 * self.Nindep))
+        v03 = symm_fold(self.reflection, self.trap_centers).flatten()
+        b3 = list((v03[i] - s3, v03[i] + s3)
+                  for i in range(2 * self.Nindep) if self.tc_dof[i])
+        v03 = v03[self.tc_dof]
 
         bounds = tuple(b1 + b2 + b3)
 
@@ -264,6 +350,19 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
+    def _set_t(self, A, links, target):
+        links = self.xy_links() if links is None else links
+        nnt = self.nn_tunneling(A)
+        # Mostly not usable if not directly call this function
+        if target is None:
+            txTarget, tyTarget = self.txy_target(nnt, links)
+        elif isinstance(target, Iterable):
+            txTarget, tyTarget = target
+            if txTarget is None:
+                txTarget, tyTarget = self.txy_target(nnt, links)
+        xlinks, ylinks = links
+        return nnt, txTarget, tyTarget, xlinks, ylinks
+
     def param_unfold(self, point: np.ndarray, status: str = 'current'):
         td, tw, tc = self._set_trap_params(point, self.verbosity, status)
         self.symm_unfold(self.Voff, td)
@@ -273,34 +372,23 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def cbd_func(self,
+    def opt_func(self,
                  point: np.ndarray,
-                 info: Union[dict, None],
+                 info: Union[EqulizeInfo, None],
                  links: tuple[np.ndarray, np.ndarray],
                  target: tuple[float, ...],
-                 utv: tuple[bool] = (False, False, False),
-                 scale_factor: float = None,
                  weight: np.ndarray = np.ones(3),
+                 scale_factor: float = None,
                  unitary: Union[list, None] = None,
                  mode: str = 'cost',
                  report: ConfigObj = None) -> float:
         self.param_unfold(point, 'current')
 
         # By accessing element of a list, x0 is mutable and can be updated
-        if unitary != None and self.lattice_dim > 1:
-            x0 = unitary[0]
-        else:
-            x0 = None
+        x0 = unitary[0] if unitary != None and self.lattice_dim > 1 else None
+        u = weight[0] != 0
 
-        u, t, v = utv
-
-        res = self.singleband_Hubbard(
-            u=u, x0=x0, offset=True, output_unitary=True)
-        if u:
-            A, U, x0 = res
-        else:
-            A, x0 = res
-            U = None
+        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, offset=True)
         # x0 is used to update unitary[0] in the next iteration
 
         # Print out Hubbard parameters
@@ -310,205 +398,75 @@ class HubbardEqualizer(MLWF):
             print(f't = {abs(self.nn_tunneling(A))}')
             print(f'U = {U}')
 
-        xlinks, ylinks = links
-        Vtarget = None
-        Utarget = None
-        txTarget, tyTarget = None, None
-        if isinstance(target, Iterable):
-            Vtarget, Utarget, txTarget, tyTarget = target
-
-        w = weight.copy()
+        if not isinstance(target, Iterable):
+            target = (None, None, None, None)
 
         if mode == 'cost':
-            return self._cost_func(point, info, scale_factor, report, (u, t, v), (A, U), (xlinks, ylinks), (Vtarget, Utarget, txTarget, tyTarget), w)
+            return self._cost_func(point, info, scale_factor, report, (A, U), links, target, weight)
         elif mode == 'res':
-            return self._res_func(point, info, scale_factor, report, (u, t, v), (A, U), (xlinks, ylinks), (Vtarget, Utarget, txTarget, tyTarget), w)
+            return self._res_func(point, info, scale_factor, report, (A, U), links, target, weight)
         else:
             raise ValueError(f"Equalize: mode {mode} not supported.")
 
-    def _update_log(self, point, info, report, cvec, fval, io_freq=10):
-        # Keep revcord
-        if info != None:
-            info['Nfeval'] += 1
-            info['x'] = np.append(info['x'], point[None], axis=0)
-            info['cost'] = np.append(info['cost'], cvec[None], axis=0)
-            ctot = la.norm(cvec)
-            info['ctot'] = np.append(info['ctot'], ctot)
-            info['fval'] = np.append(info['fval'], fval)
-            diff = info['fval'][len(info['fval'])//2] - fval
-            info['diff'] = np.append(info['diff'], diff)
-            # display information
-            if info['Nfeval'] % io_freq == 0:
-                if isinstance(report, ConfigObj):
-                    info['sf'] = self.sf
-                    info['success'] = False
-                    info['exit_status'] = -1
-                    info['termination_reason'] = "Not terminated yet"
-                    write_equalization(
-                        report, info, self.log, final=False)
-                    write_trap_params(report, self)
-                    write_singleband(report, self)
-        if self.verbosity:
-            print(f"Cost function by terms: {cvec}")
-            print(f"Total cost function value fval={fval}\n")
-            if info != None:
-                print(
-                    f'i={info["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
-
-    def _update_log_final(self, res: OptimizeResult):
-        self.eqinfo['sf'] = self.sf
-        self.eqinfo['success'] = res.success
-        self.eqinfo['exit_status'] = res.status
-        self.eqinfo['termination_reason'] = res.message
 
 # ================= GENERAL MINIMIZATION =================
 
-    def _eq_min(self, utv, links, target, init_guess, weight, method, U0, iofile) -> OptimizeResult:
-        u, t, v = utv
-        xlinks, ylinks = links
-        Vtarget, Utarget, txTarget, tyTarget = target
-        v0, bounds = init_guess
-
-        def cost_func(point: np.ndarray, info: Union[dict, None]) -> float:
-            c = self.cbd_func(point, info, (xlinks, ylinks),
-                              (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), self.sf, weight, unitary=U0, mode='cost', report=iofile)
-            return c
-
-        t0 = time()
-        # Method-specific options
-        if method == 'Nelder-Mead':
-            options = {
-                'disp': True, 'return_all': True, 'adaptive': False, 'xatol': 1e-6, 'fatol': 1e-9, 'maxiter': 500 * self.Nindep}
-        elif method == 'SLSQP':
-            options = {'disp': True, 'ftol': np.finfo(float).eps}
-
-        res = minimize(cost_func, v0, args=self.eqinfo,
-                       bounds=bounds, method=method, options=options)
-        t1 = time()
-        print(f"Equalization took {t1 - t0} seconds.")
-        return res
-
-    def _cost_func(self, point, info, scale_factor, report, utv, res, links, target, w):
-        u, t, v = utv
-        xlinks, ylinks = links
+    def _cost_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, U = res
 
-        cu = 0
-        if u:
-            # U is different, as calculating U costs time
-            cu = self.u_cost_func(U, Utarget, scale_factor)
-
+        # U is different, as calculating U costs time
+        cu = self.u_cost_func(U, Utarget, scale_factor) if w[0] else 0
         cv = self.v_cost_func(A, Vtarget, scale_factor)
-        if not v:
-            # Force V to have no effect on cost function
-            w[2] = 0
-
-        ct = self.t_cost_func(A, (xlinks, ylinks), (txTarget, tyTarget))
-        if not t:
-            # Force t to have no effect on cost function
-            w[1] = 0
+        ct = self.t_cost_func(A, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
         cvec = np.sqrt(cvec)
         fval = np.sqrt(c)
-        self._update_log(point, info, report, cvec, fval)
+        info.update_log(self, point, report, target, cvec, fval)
         return c
 
     def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
-        if Vtarget is None:
-            Vtarget = np.mean(np.real(np.diag(A)))
-        if Vfactor is None:
-            Vfactor = abs(Vtarget)
-            if Vfactor < 1e-2:  # Avoid division by zero
-                Vfactor = 0.2
+        Vtarget, Vfactor = _set_uv(
+            np.real(np.diag(A)), Vtarget, Vfactor)
+
         cv = np.mean((np.real(np.diag(A)) - Vtarget)**2) / Vfactor**2
         if self.verbosity > 1:
-            print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential cost cv={cv}')
+            print(f'Onsite potential target = {Vtarget}')
+            print(f'Onsite potential cost cv^2 = {cv}')
         return cv
 
     def t_cost_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
-                    target: tuple[float, ...]) -> float:
-        nnt = self.nn_tunneling(A)
-        # Mostly not usable if not directly call this function
-        if target is None:
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-        elif isinstance(target, Iterable):
-            xlinks, ylinks = links
-            txTarget, tyTarget = target
-            if txTarget is None:
-                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-
-        ct = np.mean((abs(nnt[xlinks]) / txTarget - 1)**2)
+                    target: tuple[float, ...], tfactor: float) -> float:
+        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
+            A, links, target)
+        ct = np.mean((abs(nnt[xlinks]) - txTarget)**2) / tfactor**2
         if tyTarget != None:
-            ct += np.mean((abs(nnt[ylinks]) / tyTarget - 1)**2)
+            ct += np.mean((abs(nnt[ylinks]) - tyTarget)**2) / tfactor**2
         if self.verbosity > 1:
-            print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling cost ct={ct}')
+            print(f'Tunneling target = {txTarget}, {tyTarget}')
+            print(f'Tunneling cost ct^2 = {ct}')
         return ct
 
     def u_cost_func(self, U, Utarget: float, Ufactor: float = None) -> float:
-        if Utarget is None:
-            Utarget = np.mean(U)
-        if Ufactor is None:
-            Ufactor = Utarget
+        Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
         cu = np.mean((U - Utarget)**2) / Ufactor**2
         if self.verbosity > 1:
-            print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction cost cu={cu}')
+            print(f'Onsite interaction target = {Utarget}')
+            print(f'Onsite interaction cost cu^2 = {cu}')
         return cu
 
 # ==================== LEAST SQUARES ====================
 
-    def _eq_lsq(self, utv, links, target, init_guess, weight, method, U0, iofile) -> OptimizeResult:
-        u, t, v = utv
-        xlinks, ylinks = links
-        Vtarget, Utarget, txTarget, tyTarget = target
-        v0, bounds = init_guess
-
-        def res_func(point: np.ndarray, info: Union[dict, None]):
-            c = self.cbd_func(point, info, (xlinks, ylinks),
-                              (Vtarget, Utarget, txTarget, tyTarget), (u, t, v), self.sf, weight, unitary=U0, mode='res', report=iofile)
-            return c
-
-        # if nobounds:
-        #     method = 'lm'
-        #     print(f'Method is set to {method} given unconstraint problem.')
-
-        # Convert to tuple of (lb, ub)
-        ba = np.array(bounds)
-        bounds = (ba[:, 0], ba[:, 1])
-
-        t0 = time()
-        res = least_squares(res_func, v0, bounds=bounds, args=(self.eqinfo,),
-                            method=method, verbose=2,
-                            xtol=None, ftol=1e-9, gtol=1e-8, max_nfev=500 * self.Nindep)
-        t1 = time()
-        print(f"Equalization took {t1 - t0} seconds.")
-        return res
-
-    def _res_func(self, point, info, scale_factor, report, utv, res, links, target, w):
-        u, t, v = utv
-        xlinks, ylinks = links
+    def _res_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, U = res
 
-        cu = np.zeros(self.Nsite)
-        if u:
-            # U is different, as calculating U costs time
-            cu = self.u_res_func(U, Utarget, scale_factor)
-
+        cu = self.u_res_func(
+            U, Utarget, scale_factor) if w[0] else np.zeros(self.Nsite)
         cv = self.v_res_func(A, Vtarget, scale_factor)
-        if not v:
-            # Force V to have no effect on cost function
-            w[2] = 0
-
-        ct = self.t_res_func(A, (xlinks, ylinks), (txTarget, tyTarget))
-        if not t:
-            # Force t to have no effect on cost function
-            w[1] = 0
+        ct = self.t_res_func(A, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term
@@ -516,52 +474,37 @@ class HubbardEqualizer(MLWF):
             [np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
-        self._update_log(point, info, report, cvec, fval)
+        info.update_log(self, point, report, target, cvec, fval)
         return c
 
     def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
-        if Vtarget is None:
-            Vtarget = np.mean(np.real(np.diag(A)))
-        if Vfactor is None:
-            Vfactor = abs(Vtarget)
-            if Vfactor < 1e-2:  # Avoid division by zero
-                Vfactor = 0.2
+        Vtarget, Vfactor = _set_uv(
+            np.real(np.diag(A)), Vtarget, Vfactor)
         cv = (np.real(np.diag(A)) - Vtarget) / \
             (Vfactor * np.sqrt(len(A)))
         if self.verbosity > 2:
-            print(f'Onsite potential target={Vtarget}')
-            print(f'Onsite potential residue cv={cv}')
+            print(f'Onsite potential target = {Vtarget}')
+            print(f'Onsite potential residue cv = {cv}')
         return cv
 
     def t_res_func(self, A: np.ndarray, links: tuple[np.ndarray, np.ndarray],
-                   target: tuple[float, ...]):
-        nnt = self.nn_tunneling(A)
-        # Mostly not usable if not directly call this function
-        if target is None:
-            xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-        elif isinstance(target, Iterable):
-            xlinks, ylinks = links
-            txTarget, tyTarget = target
-            if txTarget is None:
-                xlinks, ylinks, txTarget, tyTarget = self.xy_links(nnt)
-
+                   target: tuple[float, ...], tfactor: float) -> np.ndarray:
+        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
+            A, links, target)
         ct = (abs(nnt[xlinks]) - txTarget) / \
-            (txTarget * np.sqrt(np.sum(xlinks)))
+            (tfactor * np.sqrt(np.sum(xlinks)))
         if tyTarget != None:
             ct = np.concatenate(
-                (ct, (abs(nnt[ylinks]) - tyTarget) / (tyTarget * np.sqrt(np.sum(ylinks)))))
+                (ct, (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks)))))
         if self.verbosity > 2:
-            print(f'Tunneling target=({txTarget}, {tyTarget})')
-            print(f'Tunneling residue ct={ct}')
+            print(f'Tunneling target = {txTarget}, {tyTarget}')
+            print(f'Tunneling residue ct = {ct}')
         return ct
 
     def u_res_func(self, U, Utarget: float, Ufactor: float = None):
-        if Utarget is None:
-            Utarget = np.mean(U)
-        if Ufactor is None:
-            Ufactor = Utarget
+        Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
         cu = (U - Utarget) / (Ufactor * np.sqrt(len(U)))
         if self.verbosity > 2:
-            print(f'Onsite interaction target fixed to {Utarget}')
-            print(f'Onsite interaction residue cu={cu}')
+            print(f'Onsite interaction target = {Utarget}')
+            print(f'Onsite interaction residue cu = {cu}')
         return cu

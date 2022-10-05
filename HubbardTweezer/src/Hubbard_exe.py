@@ -2,7 +2,7 @@ import numpy as np
 import sys
 from os.path import exists
 
-from Hubbard.output import *
+from Hubbard.io import *
 from Hubbard.plot import HubbardGraph
 from Hubbard.equalizer import *
 import tools.reportIO as rep
@@ -167,7 +167,14 @@ nb = rep.b(report, "Parameters", "no_bounds", False)
 r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
-x0 = rep.a(report, "Equalization_Info", "x", None)
+# Try to read existing equalization result as initial guess for next equalization
+meth = 'Nelder-Mead' if meth == 'NM' else meth
+if meth == 'Nelder-Mead':
+    # Try to read simplex first, then x0
+    x0 = rep.a(report, "Equalization_Result", "simplex",
+               rep.a(report, "Equalization_Result", "x", None))
+else:
+    x0 = rep.a(report, "Equalization_Result", "x", None)
 
 # ====== Plotting ======
 plot = rep.b(report, "Parameters", "plot", False)
@@ -202,15 +209,25 @@ G = HubbardGraph(
     random=r,
     x0=x0,
     scale_factor=sf,
-    method=meth,
+    eqmethod=meth,
     nobounds=nb,
     symmetry=symm,
     iofile=report,
     write_log=log,
     verbosity=verb)
 
-eig_sol = eigen_basis(G)
+eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+nnt = G.nn_tunneling(G.A)
+links = G.xy_links()
+if G.sf == None:
+    G.sf, __ = G.txy_target(nnt, links, np.min)
+# Print out Hubbard parameters
+if G.verbosity > 1:
+    print(f'scale_factor = {G.sf}')
+    print(f'V = {np.diag(G.A)}')
+    print(f't = {abs(G.nn_tunneling(G.A))}')
+    print(f'U = {G.U}')
 if plot:
     G.draw_graph('adjust', A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
@@ -222,36 +239,31 @@ write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-nnt = G.nn_tunneling(G.A)
-xlinks, ylinks, txTarget, tyTarget = G.xy_links(nnt)
-if G.sf == None:
-    G.sf = txTarget
-ct = G.t_cost_func(G.A, (xlinks, ylinks), (txTarget, tyTarget))
-cv = G.v_cost_func(G.A, None, G.sf)
-cu = G.u_cost_func(G.U, None, G.sf)
+Vtarget = np.mean(np.real(np.diag(G.A)))
+ttarget = G.txy_target(nnt, links)
+Utarget = np.mean(G.U)
+cu = G.u_cost_func(G.U, Utarget, G.sf)
+ct = G.t_cost_func(G.A, links, ttarget, G.sf)
+cv = G.v_cost_func(G.A, Vtarget, G.sf)
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo['sf'] = G.sf
-G.eqinfo['Ut'] = np.mean(G.U) / txTarget
+# Final U/t, so is determined by average values
+G.eqinfo['Ut'] = Utarget / ttarget[0]
 
 if eq:
-    G.eqinfo['cost'] = np.append(G.eqinfo['cost'], cvec[None], axis=0)
-    G.eqinfo['fval'] = np.append(G.eqinfo['fval'], fval)
-    G.eqinfo['ctot'] = np.append(G.eqinfo['ctot'], ctot)
+    G.eqinfo.update_cost(cvec, fval, ctot)
 else:
     v0, __ = G.init_guess(random=False)
-    G.eqinfo['x'] = v0[None]
-    G.eqinfo['Nfeval'] = 0
-    G.eqinfo['cost'] = cvec[None]
-    G.eqinfo['fval'] = np.array([fval])
-    G.eqinfo['ctot'] = np.array([ctot])
+    G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
+    G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1
     G.eqinfo["termination_reason"] = "Not equalized"
-write_equalization(report, G.eqinfo, write_log=log, final=True)
+G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
     A, U = optimize(G, *eig_sol)

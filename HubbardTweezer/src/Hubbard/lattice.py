@@ -37,11 +37,12 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size, symmetry)
     elif shape == 'zigzag':
-        # TODO: implement zigzag, and other assymmetric lattice
-        # FIXME: zigzag has no y-axis symmetry
-        #        one way to do is to copy the chain to be mirrored on y-axis
-        # NOTE: the code below is not finished
-        nodes, links, __ = tri_lattice(np.array([size[0], 2]), symmetry=False)
+        # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
+        # TODO: delete horizontal links
+        symmetry = False
+        nodes, links, __ = tri_lattice(
+            np.array([size[0], 2], dtype=int), symmetry)
+        links = links[abs(links[:, 0] - links[:, 1]) != 1]
     elif shape == 'honeycomb':
         # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
         size[size < 3] == 3
@@ -83,10 +84,7 @@ def lattice_graph(size: np.ndarray,
         nodes = nodes[~hole, :]
         links = shift_links(links, hole_idx)
 
-    reflection, inv_coords = None, None
-    if symmetry:
-        reflection, inv_coords = build_reflection(nodes, shape)
-        # TODO: consider what we can do with multi-fold rotations
+    reflection, inv_coords = build_reflection(nodes, symmetry)
     return nodes, links, reflection, inv_coords
 
 
@@ -263,7 +261,7 @@ def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     return links
 
 
-def build_reflection(graph, shape='c4'):
+def build_reflection(graph: np.ndarray, symmetry: bool = True):
     # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other
@@ -273,23 +271,28 @@ def build_reflection(graph, shape='c4'):
     #     [pp mp pm mm] equiv pts 3
     #     [pp mp pm mm] equiv pts 4
     #     ...
+    # TODO: consider what we can do with multi-fold rotations
 
-    nsec = 4  # Number of sectors
-    reflection = np.array([], dtype=int).reshape(0, nsec)
-    inv_coords = np.array([], dtype=bool).reshape(0, 2)
-    for i in range(graph.shape[0]):
-        if all(graph[i, :] <= 0):
-            pp = i  # [1 1] sector
-            mp = np.nonzero(
-                np.prod(np.array([[-1, 1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [-1 1] sector
-            pm = np.nonzero(
-                np.prod(np.array([[1, -1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [1 -1] sector
-            mm = np.nonzero(
-                np.prod(np.array([[-1, -1]]) * graph == graph[i, :],
-                        axis=1))[0][0]  # [-1 -1] sector
-            reflection = np.append(reflection, [[pp, mp, pm, mm]], axis=0)
-            inv_coords = np.append(
-                inv_coords, np.array([graph[i, :] == 0]), axis=0)
+    if symmetry:
+        nsec = 4  # Number of sectors
+        reflection = np.array([], dtype=int).reshape(0, nsec)
+        inv_coords = np.array([], dtype=bool).reshape(0, 2)
+        for i in range(graph.shape[0]):
+            if all(graph[i, :] <= 0):
+                pp = i  # [1 1] sector
+                mp = np.nonzero(
+                    np.prod(np.array([[-1, 1]]) * graph == graph[i, :],
+                            axis=1))[0][0]  # [-1 1] sector
+                pm = np.nonzero(
+                    np.prod(np.array([[1, -1]]) * graph == graph[i, :],
+                            axis=1))[0][0]  # [1 -1] sector
+                mm = np.nonzero(
+                    np.prod(np.array([[-1, -1]]) * graph == graph[i, :],
+                            axis=1))[0][0]  # [-1 -1] sector
+                reflection = np.append(reflection, [[pp, mp, pm, mm]], axis=0)
+                inv_coords = np.append(
+                    inv_coords, np.array([graph[i, :] == 0]), axis=0)
+    else:
+        reflection = np.arange(graph.shape[0])[:, None]
+        inv_coords = np.zeros((graph.shape[0], 2), dtype=bool)
     return reflection, inv_coords

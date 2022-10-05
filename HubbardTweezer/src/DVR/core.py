@@ -11,6 +11,7 @@ from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 from time import time
 
+
 # Fundamental constants
 a0 = 5.29177E-11  # Bohr radius, in unit of meter
 # micron = 1000  # Length scale micrn, in unit of nm
@@ -188,13 +189,18 @@ class DVR:
                 0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
 
             # Input in unit of nm, converted to m
-            wx: Literal = 1E-6
-            if isinstance(trap[1], Iterable):  # Convert to np.array
-                wx = trap[1][0]  # In unit of nm
+            if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
+                wx: Number = trap[1][0]
+                self.wxy: np.ndarray = np.ones(2)
+            elif isinstance(trap[1], Iterable):  # Convert to np.array
+                wx: Number = trap[1][0]  # In unit of nm
                 self.wxy: np.ndarray = np.array(
                     trap[1]) / wx  # wi in unit of wx
             elif isinstance(trap[1], Number):  # Number convert to np.array
-                wx = trap[1]  # In unit of nm
+                wx: Number = trap[1]  # In unit of nm
+                self.wxy: np.ndarray = np.ones(2)
+            else:
+                wx: Literal = 1000
                 self.wxy: np.ndarray = np.ones(2)
             self.w: Literal = wx * 1E-9  # Convert micron to m
 
@@ -355,9 +361,6 @@ class DVR:
     def H_op(self, T: list, V, no, psi0: np.ndarray):
         # Define Hamiltonian operator for sparse solver
 
-        self.p *= self.n != 0
-        self.dx *= self.n != 0
-
         psi0 = psi0.reshape(*no)
         psi: np.ndarray = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
         # T_xx' delta_yy' delta_zz'
@@ -399,6 +402,9 @@ class DVR:
                     .format(self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model,
                             k))
 
+            self.p *= self.n != 0
+            self.dx *= self.n != 0
+
             T = self.Tmat()
             V, no = self.Vmat()
             # for i in range(3):
@@ -408,18 +414,18 @@ class DVR:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
 
-            def applyH(psi) -> np.ndarray:
-                return self.H_op(T, V, no, psi)
+            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
+            H = LinearOperator((N, N), matvec=applyH)
 
             t0 = time()
             N = np.product(no)
-            H = LinearOperator((N, N), matvec=applyH)
 
             if k <= 0:
                 k = 10
             if self.absorber:
                 if self.verbosity > 2:
                     print('H_solver: diagonalize sparse non-hermitian matrix.')
+
                 E, W = ssla.eigs(H, k, which='SA')
             else:
                 if self.verbosity > 2:

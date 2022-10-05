@@ -8,7 +8,7 @@ import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from cycler import cycler
 
-from .output import DVRdynaOutput
+from .io import DVRDynamicsIO
 from .dynamics import *
 from .wavefunc import psi
 
@@ -224,7 +224,7 @@ def get_data(N_list, R0_list, dvr: DVRplot, t_step):
     def fn(i): return dvr.filename_gen(N_list, R0_list, t_step, i)
     data = []
     for i in range(len(N_list)):
-        io = DVRdynaOutput(wavefunc=dvr.wavefunc)
+        io = DVRDynamicsIO(wavefunc=dvr.wavefunc)
         io.read_file(fn(i))
         data.append(io)
         if dvr.quantity == 'trap':
@@ -618,7 +618,7 @@ def plot_wavefunction(N_list, R0_list, dvr: DVRplot, length=1):
         def fn(i): return dvr.filename_gen(N_list, R0_list, i, t_step)
 
         for i in range(len(N_list)):
-            io = DVRdynaOutput(wavefunc=dvr.wavefunc)
+            io = DVRDynamicsIO(wavefunc=dvr.wavefunc)
             io.read_file(fn(i))
 
             dx = dvr.dx_list[i][0]

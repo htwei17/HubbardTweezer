@@ -29,9 +29,9 @@ class HubbardGraph(HubbardEqualizer):
         self.graph = nx.DiGraph(self.edges, name='Lattice')
         self.pos = dict(
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-            (n, self.trap_centers[n]) for n in self.graph.nodes())
+            (n, self.wf_centers[n]) for n in self.graph.nodes())
 
-    def update_edge(self, label='param'):
+    def set_edges(self, label='param'):
         for link in self.graph.edges:
             if label == 'param':
                 # Label bond tunneling
@@ -50,17 +50,19 @@ class HubbardGraph(HubbardEqualizer):
             for edge in self.graph.edges
         ])
 
-    def update_node(self, label='param'):
-        self.pos = dict(
-            # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-            (n, self.trap_centers[n]) for n in self.graph.nodes())
+    def set_nodes(self, label='param'):
         if label == 'param':
             # Label onsite chemical potential
+            self.pos = dict(
+                (n, self.wf_centers[n]) for n in self.graph.nodes())
             depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
             self.node_label = dict(
                 (n, f'{depth[n]:.0f}') for n in self.graph.nodes)
         elif label == 'adjust':
             # Label trap offset
+            self.pos = dict(
+                # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
+                (n, self.trap_centers[n]) for n in self.graph.nodes())
             self.node_label = dict(
                 (n, f'{self.Voff[n]:.3g}') for n in self.graph.nodes)
         self.node_size = [i**2 * 600 for i in gmean(self.waists, axis=1)]
@@ -71,32 +73,45 @@ class HubbardGraph(HubbardEqualizer):
         # Add higher neighbor bonds
         # NOTE: explicit square lattice geometry assumed
         # FIXME: 3x2 lattice error as this gives an index 6
-        if not self.lattice_shape == 'square':
-            print('WARNING: nnn only supported for square lattices. Nothing doen.')
+        if self.lattice_shape == 'zigzag':
+            for i in range(min(limit, self.Nsite // 2)):
+                self.graph.add_edge(i, i + 1)
+        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'zigzag']:
+            if limit + 2 > self.Nsite:
+                limit = self.Nsite - 2
+            if center >= self.Nsite:
+                center = 0
+            if self.lattice_dim == 1:
+                for i in range(limit):
+                    self.graph.add_edge(center, i + 2)
+            elif self.lattice_dim == 2:
+                for i in range(2 * limit):
+                    self.graph.add_edge(center, i + 2)
+        else:
+            print(
+                f'WARNING: nnn not supported for {self.lattice_shape} lattice. \
+                    Nothing doen.')
             return
-        if limit + 2 > self.Nsite:
-            limit = self.Nsite - 2
-        if center >= self.Nsite:
-            center = 0
-        if self.lattice_dim == 1:
-            for i in range(limit):
-                self.graph.add_edge(center, i + 2)
-        elif self.lattice_dim == 2:
-            for i in range(2 * limit):
-                self.graph.add_edge(center, i + 2)
 
     def singleband_params(self, label='param', A=None, U=None):
         if label == 'param' and (A is None or U is None):
             self.singleband_Hubbard(u=True)
         elif label == 'adjust' and A is None:
             self.singleband_Hubbard(u=False)
+        elif label not in ['param', 'adjust']:
+            raise ValueError('Invalid label.')
 
     def draw_graph(self, label='param', nnn=False, A=None, U=None):
         self.singleband_params(label, A, U)
         if label == 'param' and nnn:
             self.add_nnn()
-        self.update_edge(label)
-        self.update_node(label)
+        if all(abs(self.wf_centers[:, 1]) < 1e-6):
+            self.lattice_dim = 1
+            self.lattice = np.array([self.Nsite, 1])
+            self.wf_centers[:, 1] = 0
+
+        self.set_edges(label)
+        self.set_nodes(label)
 
         if self.verbosity:
             print('\nStart to plot graph...')
@@ -115,21 +130,14 @@ class HubbardGraph(HubbardEqualizer):
                 fs = (3 * (self.lattice[0] - 1), 3 * (self.lattice[1] - 1))
         plt.figure(figsize=fs)
 
-        nx.draw_networkx_nodes(self.graph,
-                               pos=self.pos,
-                               node_color='#99CCFF',
-                               alpha=self.node_alpha,
-                               node_size=self.node_size,
-                               margins=margins)
-        nx.draw_networkx_labels(self.graph,
-                                pos=self.pos,
-                                font_color='#000066',
-                                font_size=14,
-                                labels=self.node_label)
-        if label == 'param':
-            self.draw_node_overhead_labels(
-                nnn, font_size=14, font_color='#FF8000')
+        self.draw_nodes(label, nnn, margins)
+        self.draw_edges()
 
+        plt.axis('off')
+        plt.savefig(
+            f'{self.lattice} networkx {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+
+    def draw_edges(self):
         link_list = list(self.graph.edges)
         isnn = np.array([])
         self.nn_edge_label = dict()
@@ -140,7 +148,7 @@ class HubbardGraph(HubbardEqualizer):
                 self.nn_edge_label[i] = self.edge_label[i]
             else:
                 self.nnn_edge_label[i] = self.edge_label[i]
-
+        edge_font_color = [0.256, 0.439, 0.588]
         for i in range(len(link_list)):
             el = link_list[i]
             cs = "arc3"  # rad=0, meaning straight line
@@ -160,16 +168,28 @@ class HubbardGraph(HubbardEqualizer):
                               self.nn_edge_label,
                               nnn=False,
                               font_size=14,
-                              font_color=[0.256, 0.439, 0.588])
+                              font_color=edge_font_color)
         self.draw_edge_labels(self.pos,
                               self.nnn_edge_label,
                               nnn=True,
                               font_size=14,
-                              font_color=[0.256, 0.439, 0.588])
+                              font_color=edge_font_color)
 
-        plt.axis('off')
-        plt.savefig(
-            f'{self.lattice} networkx {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+    def draw_nodes(self, label, nnn, margins):
+        nx.draw_networkx_nodes(self.graph,
+                               pos=self.pos,
+                               node_color='#99CCFF',
+                               alpha=self.node_alpha,
+                               node_size=self.node_size,
+                               margins=margins)
+        nx.draw_networkx_labels(self.graph,
+                                pos=self.pos,
+                                font_color='#000066',
+                                font_size=14,
+                                labels=self.node_label)
+        if label == 'param':
+            self.draw_node_overhead_labels(
+                nnn, font_size=14, font_color='#FF8000')
 
     def draw_node_overhead_labels(self,
                                   nnn,
@@ -182,12 +202,9 @@ class HubbardGraph(HubbardEqualizer):
         if ax is None:
             ax = plt.gca()
         if self.lattice_dim == 1:
-            if nnn:
-                shift = (0, 0.8)
-            else:
-                shift = (0, 0.05)
+            shift = (0, 0.8) if nnn else (0, 0.05)
         elif self.lattice_dim == 2:
-            shift = (-0.15, 0.15)
+            shift = (-0.1, 0.1)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
@@ -215,7 +232,7 @@ class HubbardGraph(HubbardEqualizer):
                          bbox=None,
                          horizontalalignment="center",
                          verticalalignment="center",
-                         ax=None,
+                         ax: plt.Axes = None,
                          rotate=True,
                          clip_on=True,
                          ):
@@ -229,10 +246,7 @@ class HubbardGraph(HubbardEqualizer):
             (x2, y2) = pos[n2]
             (x, y) = ((x1 + x2) / 2, (y1 + y2) / 2)
             if nnn:
-                if self.lattice_dim == 1:
-                    rad = 0.5
-                elif self.lattice_dim == 2:
-                    rad = 0.1
+                rad = 0.5 if self.lattice_dim == 1 else 0.1
                 (dx, dy) = (x2 - x1, y2 - y1)
                 (x, y) = (x + rad * dy, y - rad * dx)
 
