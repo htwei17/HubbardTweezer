@@ -119,7 +119,6 @@ class HubbardEqualizer(MLWF):
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
-        links = self.xy_links()
 
         # Equalize trap depth first, to make sure traps won't go too uneven
         # to have non-local WF. But this makes U to be more uneven.
@@ -128,9 +127,15 @@ class HubbardEqualizer(MLWF):
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
+        # Set target to be already limited in the bulk
         self.ghost_sites(ghost)
+        if self.masked_Nsite == 1:
+            raise ValueError(
+                "Equalize: only one site in the system, equalization is not valid.")
+
         maskedA = A[self.mask, :][:, self.mask]
         maskedU = U[self.mask] if u else None
+        links = self.xy_links(self.masked_links)
         target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
         # Voff_bak = self.Voff
         # ls_bak = self.trap_centers
@@ -266,6 +271,7 @@ class HubbardEqualizer(MLWF):
         else:
             self.masked_links = self.links
         self.mask = mask
+        self.masked_Nsite = np.sum(mask)
 
     def xy_boundaries(self, N):
         x_bdry = np.concatenate((np.arange(N), np.arange(-N, 0)))
@@ -273,13 +279,15 @@ class HubbardEqualizer(MLWF):
             (np.arange(0, self.Nsite, N), np.arange(N-1, self.Nsite, N)))
         return x_bdry, y_bdry
 
-    def xy_links(self):
+    def xy_links(self, links=None):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Check all possible cases
+        if links is None:
+            links = self.links
         if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
-            xlinks = abs(self.links[:, 0] - self.links[:, 1]) == 1
+            xlinks = abs(links[:, 0] - links[:, 1]) == 1
         else:
-            xlinks = np.tile(True, self.links.shape[0])
+            xlinks = np.tile(True, links.shape[0])
         ylinks = np.logical_not(xlinks)
         return xlinks, ylinks
 
@@ -478,6 +486,7 @@ class HubbardEqualizer(MLWF):
 
 
 # ================= GENERAL MINIMIZATION =================
+
 
     def _cost_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target
