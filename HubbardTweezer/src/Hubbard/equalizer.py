@@ -53,6 +53,7 @@ class HubbardEqualizer(MLWF):
             eqmethod: str = None,  # Minimize algorithm method
             nobounds: bool = False,  # Whether to use bounds or not
             waist='x',  # Waist to vary, None means no waist change
+            ghost: bool = False,  # Whether to use ghost atoms or not
             random: bool = False,  # Random initial guess
             iofile=None,  # Input/output file
             write_log: bool = False,  # Whether to write detailed log into iofile
@@ -88,6 +89,7 @@ class HubbardEqualizer(MLWF):
             self.equalize(target=eqtarget,
                           Ut=Ut, x0=x0,
                           random=random,
+                          ghost=ghost,
                           nobounds=nobounds,
                           callback=False,
                           iofile=iofile)
@@ -97,6 +99,7 @@ class HubbardEqualizer(MLWF):
                  Ut: float = None,  # Target onsite interaction in unit of tx
                  x0: np.ndarray = None,
                  weight: np.ndarray = np.ones(3),
+                 ghost: bool = False,
                  random: bool = False,
                  nobounds: bool = False,
                  callback: bool = False,
@@ -118,7 +121,10 @@ class HubbardEqualizer(MLWF):
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
-        target = self._set_targets(Ut, fix_u, fix_t, links, A, U)
+        self.ghost_sites(ghost)
+        maskedA = A[self.mask, :][:, self.mask]
+        maskedU = U[self.mask] if u else None
+        target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
         # Voff_bak = self.Voff
         # ls_bak = self.trap_centers
         # w_bak = self.waists
@@ -157,10 +163,6 @@ class HubbardEqualizer(MLWF):
             self.eqmethod = 'trf'
             print(
                 f'Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf.')
-
-        # if nobounds:
-        #     method = 'lm'
-        #     print(f'Method is set to {method} given unconstraint problem.')
 
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
             c = self.opt_func(point, info, links, target, weight,
@@ -226,6 +228,34 @@ class HubbardEqualizer(MLWF):
         print(f'Equalize: target onsite potential = {Vtarget}')
         return Vtarget, Utarget, txTarget, tyTarget
 
+    def ghost_sites(self, ghost: bool = True):
+        # Set ghost sites for 1D & 2D lattice
+        # If site is ghost, mask if False
+        mask = np.ones(self.Nsite, dtype=bool)
+        err = ValueError('Ghost sites not implemented for this lattice.')
+        if ghost:
+            if self.lattice_dim == 1:
+                mask[[0, -1]] = False
+            elif self.lattice_dim == 2:
+                if self.lattice_shape == 'square' \
+                        or self.lattice_shape == 'triangular' and not self.ls:
+                    Nx, Ny = self.size
+                    x_bdry = np.arange(0, self.Nsite, Ny)
+                    y_bdry = np.concatenate((np.arange(Ny), np.arange(-Ny, 0)))
+                    bdry = np.array([x_bdry, y_bdry])
+                    ladder_axis = np.nonzero(self.size == 2)[0]
+                    if ladder_axis.size != 0:
+                        mask[bdry[ladder_axis].flatten()] = False
+                else:
+                    raise err
+            else:
+                raise err
+            mask_idx = np.where(mask)[0]
+            self.masked_links = squeeze_idx(self.links, mask_idx)
+        else:
+            self.masked_links = self.links
+        self.mask = mask
+
     def xy_links(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Check all possible cases
@@ -235,6 +265,17 @@ class HubbardEqualizer(MLWF):
             xlinks = np.tile(True, self.links.shape[0])
         ylinks = np.logical_not(xlinks)
         return xlinks, ylinks
+
+    def nn_tunneling(self, A: np.ndarray):
+        # Pick up nearest neighbor tunnelings
+        # Not limited to specific geometry
+        if self.Nsite == 1:
+            nnt = np.zeros(1)
+        elif self.lattice_dim == 1:
+            nnt = np.diag(A, k=1)
+        else:
+            nnt = A[self.masked_links[:, 0], self.masked_links[:, 1]]
+        return nnt
 
     def trap_mat(self):
         # depth of each trap center
@@ -350,6 +391,13 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
+    def txy_target(self, nnt, links, func: Function = np.mean):
+        xlinks, ylinks = links
+        nntx = func(abs(nnt[xlinks]))  # Find x direction links
+        # Find y direction links, if lattice is 1D this is nan
+        nnty = func(abs(nnt[ylinks])) if any(ylinks == True) else None
+        return nntx, nnty
+
     def _set_t(self, A, links, target):
         links = self.xy_links() if links is None else links
         nnt = self.nn_tunneling(A)
@@ -401,10 +449,13 @@ class HubbardEqualizer(MLWF):
         if not isinstance(target, Iterable):
             target = (None, None, None, None)
 
+        maskedA = A[self.mask, :][:, self.mask]
+        maskedU = U[self.mask] if u else None
+
         if mode == 'cost':
-            return self._cost_func(point, info, scale_factor, report, (A, U), links, target, weight)
+            return self._cost_func(point, info, scale_factor, report, (maskedA, maskedU), links, target, weight)
         elif mode == 'res':
-            return self._res_func(point, info, scale_factor, report, (A, U), links, target, weight)
+            return self._res_func(point, info, scale_factor, report, (maskedA, maskedU), links, target, weight)
         else:
             raise ValueError(f"Equalize: mode {mode} not supported.")
 

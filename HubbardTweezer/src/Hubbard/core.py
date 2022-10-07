@@ -41,16 +41,16 @@ class MLWF(DVR):
 
         # Convert [n] to [n, 1]
         if self.Nsite == 1:
-            self.lattice = np.ones(1)
+            self.size = np.ones(1)
             self.lattice_dim = 1
         else:
             if lattice.size == 1:
-                self.lattice = np.resize(
+                self.size = np.resize(
                     np.pad(lattice, pad_width=(0, 1), constant_values=1), 2
                 )
                 self.lattice_dim = 1
             else:
-                self.lattice = lattice.copy()
+                self.size = lattice.copy()
                 eff_dim = (lattice > 1)  # * (np.array(lc) > 0)
                 self.lattice_dim = lattice[eff_dim].size
             if shape == 'ring':
@@ -70,7 +70,7 @@ class MLWF(DVR):
         print(
             f'lattice: lattice shape is {shape}; lattice constants set to: {lc}')
         self.tc0, self.links, self.reflection, self.inv_coords = lattice_graph(
-            self.lattice, shape, self.ls)
+            self.size, shape, self.ls)
         self.Nsite = self.tc0.shape[0]
 
         # Independent trap number under reflection symmetry
@@ -108,7 +108,7 @@ class MLWF(DVR):
         self.trap_centers = tc.copy()
         dx = self.dx.copy()
         lattice = np.resize(
-            np.pad(self.lattice, (0, 2), constant_values=1), dim)
+            np.pad(self.size, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
         if self.verbosity:
             print(
@@ -235,13 +235,6 @@ class MLWF(DVR):
                     target[self.reflection[row, :]] = info[row]
         else:
             target[:] = info
-
-    def txy_target(self, nnt, links, func: Function = np.mean):
-        xlinks, ylinks = links
-        nntx = func(abs(nnt[xlinks]))  # Find x direction links
-        # Find y direction links, if lattice is 1D this is nan
-        nnty = func(abs(nnt[ylinks])) if any(ylinks == True) else None
-        return nntx, nnty
 
     # TODO: Integrate multisector solver with DVR
     def solve_sector(self, sector: np.ndarray, k: int, E, W, parity):

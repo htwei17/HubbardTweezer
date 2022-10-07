@@ -149,4 +149,4 @@ class HubbardGraph(HubbardEqualizer):
         self.plot_edge()
 
         self.graph.render(
-            f'{self.lattice} graphviz {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.size} graphviz {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')

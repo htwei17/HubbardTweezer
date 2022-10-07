@@ -33,7 +33,7 @@ def lattice_graph(size: np.ndarray,
         hole = np.all(node_idx_pair % 2 == 0, axis=1)
         hole_idx = np.nonzero(hole)[0]
         nodes = nodes[~hole, :]
-        links = shift_links(links, hole_idx)
+        links = squeeze_idx(links, hole_idx)
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size, symmetry)
     elif shape == 'zigzag':
@@ -60,7 +60,7 @@ def lattice_graph(size: np.ndarray,
                            node_idx_pair[:, 0] % 3 == 0))
         hole_idx = np.nonzero(hole)[0]
         nodes = nodes[~hole, :]
-        links = shift_links(links, hole_idx)
+        links = squeeze_idx(links, hole_idx)
     elif shape == 'kagome':
         # Smallest reflection-symmetric kagome lattice plaquette has x size 4,
         # y size 5 (wchich will be automatically adjusted to be odd)
@@ -82,9 +82,9 @@ def lattice_graph(size: np.ndarray,
                            node_idx_pair[:, 0] % 2 == 0))
         hole_idx = np.nonzero(hole)[0]
         nodes = nodes[~hole, :]
-        links = shift_links(links, hole_idx)
+        links = squeeze_idx(links, hole_idx)
 
-    reflection, inv_coords = build_reflection(nodes, symmetry)
+    reflection, inv_coords = reflection_table(nodes, symmetry)
     return nodes, links, reflection, inv_coords
 
 
@@ -246,7 +246,7 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
     return nodes, links, node_idx_pair
 
 
-def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
+def squeeze_idx(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     # Shift indices of nodes in links to match the new graph
     links = links[~np.any(np.isin(links, hole_idx),
                           axis=1), :]  # Remove links to holes
@@ -261,7 +261,7 @@ def shift_links(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     return links
 
 
-def build_reflection(graph: np.ndarray, symmetry: bool = True):
+def reflection_table(graph: np.ndarray, symmetry: bool = True):
     # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other
