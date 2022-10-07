@@ -250,6 +250,9 @@ def squeeze_idx(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     # Shift indices of nodes in links to match the new graph
     links = links[~np.any(np.isin(links, hole_idx),
                           axis=1), :]  # Remove links to holes
+    if len(links) == 0:  # No links left
+        print('squeeze_idx: No links left')
+        return links
     max_idx = np.max(links)
     idx_wo_hole = np.arange(max_idx + 1, dtype=int)
     idx_wo_hole = idx_wo_hole[np.isin(idx_wo_hole, hole_idx) == False]

@@ -42,6 +42,13 @@ def _set_uv(uv, target, factor):
 
 
 class HubbardEqualizer(MLWF):
+    """
+    HubbardEqualizer: equalize trap parameters to generate Hubbard model parameters in fermionic tweezer array
+
+    Args:
+    -----------------
+
+    """
 
     def __init__(
             self,
@@ -240,21 +247,31 @@ class HubbardEqualizer(MLWF):
                 if self.lattice_shape == 'square' \
                         or self.lattice_shape == 'triangular' and not self.ls:
                     Nx, Ny = self.size
-                    x_bdry = np.arange(0, self.Nsite, Ny)
-                    y_bdry = np.concatenate((np.arange(Ny), np.arange(-Ny, 0)))
-                    bdry = np.array([x_bdry, y_bdry])
-                    ladder_axis = np.nonzero(self.size == 2)[0]
-                    if ladder_axis.size != 0:
-                        mask[bdry[ladder_axis].flatten()] = False
+                    if self.lattice_shape == 'square':
+                        x_bdry, y_bdry = self.xy_boundaries(Ny)
+                    elif self.lattice_shape == 'triangular':
+                        y_bdry, x_bdry = self.xy_boundaries(Nx)
+                    bdry = [x_bdry, y_bdry]
+                    mask_axis = np.nonzero(self.size > 2)[0]
+                    if mask_axis.size != 0:
+                        masked_idx = np.concatenate(
+                            [bdry[i] for i in mask_axis])
+                        mask[masked_idx] = False
                 else:
                     raise err
             else:
                 raise err
-            mask_idx = np.where(mask)[0]
-            self.masked_links = squeeze_idx(self.links, mask_idx)
+            masked_idx = np.where(~mask)[0]
+            self.masked_links = squeeze_idx(self.links, masked_idx)
         else:
             self.masked_links = self.links
         self.mask = mask
+
+    def xy_boundaries(self, N):
+        x_bdry = np.concatenate((np.arange(N), np.arange(-N, 0)))
+        y_bdry = np.concatenate(
+            (np.arange(0, self.Nsite, N), np.arange(N-1, self.Nsite, N)))
+        return x_bdry, y_bdry
 
     def xy_links(self):
         # Distinguish x and y n.n. bonds and target t_x t_y values
