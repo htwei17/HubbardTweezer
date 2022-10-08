@@ -220,8 +220,11 @@ G = HubbardGraph(
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-nnt = G.nn_tunneling(G.A)
-links = G.xy_links()
+maskedA = G.A[G.mask, :][:, G.mask]
+maskedU = G.U[G.mask]
+links = G.xy_links(G.masked_links)
+
+nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.min)
 # Print out Hubbard parameters
@@ -241,12 +244,12 @@ write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-Vtarget = np.mean(np.real(np.diag(G.A)))
+Vtarget = np.mean(np.real(np.diag(maskedA)))
 ttarget = G.txy_target(nnt, links)
-Utarget = np.mean(G.U)
-cu = G.u_cost_func(G.U, Utarget, G.sf)
-ct = G.t_cost_func(G.A, links, ttarget, G.sf)
-cv = G.v_cost_func(G.A, Vtarget, G.sf)
+Utarget = np.mean(maskedU)
+cu = G.u_cost_func(maskedU, Utarget, G.sf)
+ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
+cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
