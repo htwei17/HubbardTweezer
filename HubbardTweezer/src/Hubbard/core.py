@@ -1,4 +1,3 @@
-from pyclbr import Function
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract

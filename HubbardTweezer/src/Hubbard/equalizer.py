@@ -2,7 +2,7 @@ import numpy as np
 import numpy.linalg as la
 from numpy.linalg import LinAlgError
 from numbers import Number
-from typing import Iterable, Union
+from typing import Callable, Iterable, Union
 from scipy.optimize import minimize, least_squares
 from configobj import ConfigObj
 from time import time
@@ -416,7 +416,7 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-    def txy_target(self, nnt, links, func: Function = np.mean):
+    def txy_target(self, nnt, links, func: Callable = np.mean):
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan
