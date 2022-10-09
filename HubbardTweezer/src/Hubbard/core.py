@@ -2,7 +2,7 @@ import numpy as np
 from typing import Iterable
 from opt_einsum import contract
 from time import time
-from itertools import product, permutations
+from itertools import product
 import numpy.linalg as la
 import torch
 
@@ -10,7 +10,7 @@ from .optimize import riemann_optimize
 from .lattice import *
 from DVR.core import *
 from DVR.wavefunc import psi
-from tools.integrate import romb3d
+from tools.integrate import romb3d, trapz3dnp
 from tools.point_match import nearest_match
 
 
@@ -483,7 +483,8 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
     Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    Uint_onsite = romb3d(wannier, dx)
+    Uint_onsite = trapz3dnp(wannier, x)
+    # Uint_onsite = romb3d(wannier, dx)
     if dvr.model == "sho":
         print(
             f"Test with analytic calculation on {i + 1}-th site",
