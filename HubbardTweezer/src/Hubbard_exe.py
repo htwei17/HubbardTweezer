@@ -271,7 +271,7 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    A, U = optimize(G, *eig_sol)
+    A, U = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(A[i]))

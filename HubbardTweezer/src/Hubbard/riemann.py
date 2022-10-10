@@ -23,7 +23,7 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     return o.real
 
 
-def riemann_optimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.ndarray:
+def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.ndarray:
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
     verbosity = verbosity if verbosity <= 2 else 2

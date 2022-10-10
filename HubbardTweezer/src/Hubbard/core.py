@@ -6,7 +6,7 @@ from itertools import product
 import numpy.linalg as la
 import torch
 
-from .optimize import riemann_optimize
+from .riemann import riemann_minimize
 from .lattice import *
 from DVR.core import *
 from DVR.wavefunc import psi
@@ -197,7 +197,7 @@ class MLWF(DVR):
         E = E[0]
         W = W[0]
         p = p[0]
-        self.A, V = singleband_optimize(self, E, W, p, x0)
+        self.A, V = singleband_WF(self, E, W, p, x0)
         if offset:
             # Shift onsite potential to zero average
             self.A -= np.mean(np.real(np.diag(self.A))) * \
@@ -382,7 +382,7 @@ class MLWF(DVR):
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
+def singleband_WF(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
@@ -399,7 +399,7 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
             wf_centers = np.array([X[order], np.zeros_like(X)]).T
         else:
             # In high dimension, X, Y, Z don't commute
-            solution = riemann_optimize(R, x0, dvr.verbosity)
+            solution = riemann_minimize(R, x0, dvr.verbosity)
             U = site_order(dvr, solution, R)
             wf_centers = np.array([np.diag(U.conj().T @ R[i] @ U)
                                    for i in range(dvr.lattice_dim)]).T
@@ -416,12 +416,12 @@ def singleband_optimize(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) ->
     return A, U
 
 
-def optimize(dvr: MLWF, E, W, parity, offset=True):
+def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
     # Multiband optimization
     A = []
     w = []
     for b in range(dvr.bands):
-        t_ij, w_mu = singleband_optimize(dvr, E[b], W[b], parity[b])
+        t_ij, w_mu = singleband_WF(dvr, E[b], W[b], parity[b])
         if b == 0:
             # Shift onsite potential to zero average
             # Multi-band can only be shifted globally by 1st band
