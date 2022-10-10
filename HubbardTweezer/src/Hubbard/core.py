@@ -4,7 +4,6 @@ from opt_einsum import contract
 from time import time
 from itertools import product
 import numpy.linalg as la
-import torch
 
 from .riemann import riemann_minimize
 from .lattice import *
