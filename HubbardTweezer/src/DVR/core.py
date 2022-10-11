@@ -132,7 +132,7 @@ class DVR:
             laser: float = 780,  # 780nm, laser wavelength in unit of nm
             # Rayleigh range input by hand, in unit of nm
             zR: Union[None, float] = None,
-            symmetry: bool = False,
+            symmetry: bool = True,
             # Parity of each dimension, used when symmetry is True
             parity: Union[None, np.ndarray] = None,
             absorber: bool = False,

@@ -84,6 +84,12 @@ class HubbardEqualizer(MLWF):
             print('Equalize: scale_factor is not a number. Set to None.')
             self.sf = None
 
+        # Set target to be already limited in the bulk
+        self.ghost_sites(ghost)
+        if self.masked_Nsite == 1:
+            raise ValueError(
+                "Equalize: only one site in the system, equalization is not valid.")
+
         if equalize:
             if self.lattice_dim > 1 and self.waist_dir != None \
                     and self.waist_dir != 'xy':
@@ -96,7 +102,6 @@ class HubbardEqualizer(MLWF):
             self.equalize(target=eqtarget,
                           Ut=Ut, x0=x0,
                           random=random,
-                          ghost=ghost,
                           nobounds=nobounds,
                           callback=False,
                           iofile=iofile)
@@ -106,7 +111,6 @@ class HubbardEqualizer(MLWF):
                  Ut: float = None,  # Target onsite interaction in unit of tx
                  x0: np.ndarray = None,
                  weight: np.ndarray = np.ones(3),
-                 ghost: bool = False,
                  random: bool = False,
                  nobounds: bool = False,
                  callback: bool = False,
@@ -122,16 +126,11 @@ class HubbardEqualizer(MLWF):
 
         # Equalize trap depth first, to make sure traps won't go too uneven
         # to have non-local WF. But this makes U to be more uneven.
-        # self.equalize_trap_depth()
-        # print(f"Equalize: trap depths equalzlied to {self.Voff}.")
+        if self.lattice_shape in ['triangular', 'zigzag'] and not self.ls:
+            self.equalize_trap_depth()
+            print(f"Equalize: trap depths equalzlied to {self.Voff}.")
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
-
-        # Set target to be already limited in the bulk
-        self.ghost_sites(ghost)
-        if self.masked_Nsite == 1:
-            raise ValueError(
-                "Equalize: only one site in the system, equalization is not valid.")
 
         maskedA = A[self.mask, :][:, self.mask]
         maskedU = U[self.mask] if u else None
@@ -272,6 +271,7 @@ class HubbardEqualizer(MLWF):
             self.masked_links = self.links
         self.mask = mask
         self.masked_Nsite = np.sum(mask)
+        print('Equalize: ghost sites are set.')
 
     def xy_boundaries(self, N):
         x_bdry = np.concatenate((np.arange(N), np.arange(-N, 0)))
@@ -284,7 +284,8 @@ class HubbardEqualizer(MLWF):
         # FIXME: Check all possible cases
         if links is None:
             links = self.links
-        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
+        if not self.isotropic and \
+                self.lattice_shape in ['square', 'Lieb', 'triangular', 'honeycomb', 'kagome']:
             xlinks = abs(links[:, 0] - links[:, 1]) == 1
         else:
             xlinks = np.tile(True, links.shape[0])
@@ -486,7 +487,6 @@ class HubbardEqualizer(MLWF):
 
 
 # ================= GENERAL MINIMIZATION =================
-
 
     def _cost_func(self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w):
         Vtarget, Utarget, txTarget, tyTarget = target

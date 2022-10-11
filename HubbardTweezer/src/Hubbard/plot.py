@@ -107,7 +107,7 @@ class HubbardGraph(HubbardEqualizer):
             self.add_nnn()
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
             self.lattice_dim = 1
-            self.lattice = np.array([self.Nsite, 1])
+            self.size = np.array([self.Nsite, 1])
             self.wf_centers[:, 1] = 0
 
         self.set_edges(label)
@@ -117,17 +117,13 @@ class HubbardGraph(HubbardEqualizer):
             print('\nStart to plot graph...')
 
         if self.lattice_dim == 1:
-            fs = (4 * (self.lattice[0] - 1), 2)
-            if nnn:
-                margins = (0.05, 1)
-            else:
-                margins = (0.05, 0.5)
+            fs = (3 * (self.size[0] - 1), 3)
+            margins = (2e-2, 1)if nnn else (2e-2, 0.5)
         elif self.lattice_dim == 2:
             margins = (0.1, 0.15)
+            fs = (3 * (self.size[0] - 1), 3 * (self.size[1] - 1))
             if self.lattice_shape == 'ring':
-                fs = (3 * (self.lattice[0] - 1), 3 * (self.lattice[0] - 1))
-            else:
-                fs = (3 * (self.lattice[0] - 1), 3 * (self.lattice[1] - 1))
+                fs[1] = fs[0]
         plt.figure(figsize=fs)
 
         self.draw_nodes(label, nnn, margins)
@@ -135,7 +131,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis('off')
         plt.savefig(
-            f'{self.lattice} networkx {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.size} nx {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
 
     def draw_edges(self):
         link_list = list(self.graph.edges)
@@ -185,7 +181,7 @@ class HubbardGraph(HubbardEqualizer):
         nx.draw_networkx_labels(self.graph,
                                 pos=self.pos,
                                 font_color='#000066',
-                                font_size=14,
+                                font_size=12,
                                 labels=self.node_label)
         if label == 'param':
             self.draw_node_overhead_labels(
@@ -193,7 +189,7 @@ class HubbardGraph(HubbardEqualizer):
 
     def draw_node_overhead_labels(self,
                                   nnn,
-                                  font_size=16,
+                                  font_size=14,
                                   font_color="k",
                                   font_family="sans-serif",
                                   font_weight="normal",
@@ -202,9 +198,9 @@ class HubbardGraph(HubbardEqualizer):
         if ax is None:
             ax = plt.gca()
         if self.lattice_dim == 1:
-            shift = (0, 0.8) if nnn else (0, 0.05)
+            shift = (0, 0.02) if nnn else (0, 0.05)
         elif self.lattice_dim == 2:
-            shift = (-0.1, 0.1)
+            shift = (-0.2, 0.2)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
@@ -246,7 +242,7 @@ class HubbardGraph(HubbardEqualizer):
             (x2, y2) = pos[n2]
             (x, y) = ((x1 + x2) / 2, (y1 + y2) / 2)
             if nnn:
-                rad = 0.5 if self.lattice_dim == 1 else 0.1
+                rad = 0.013 if self.lattice_dim == 1 else 0.1
                 (dx, dy) = (x2 - x1, y2 - y1)
                 (x, y) = (x + rad * dy, y - rad * dx)
 

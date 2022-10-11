@@ -1,3 +1,4 @@
+from distutils.log import warn
 import numpy as np
 from typing import Iterable
 from opt_einsum import contract
@@ -58,12 +59,17 @@ class MLWF(DVR):
         if isinstance(lc, Iterable) and len(lc) == 1:
             lc: Number = lc[0]
         if isinstance(lc, Number):
+            self.isotropic = True
             if shape in ["triangular", "honeycomvb", "kagome", "zigzag"]:
                 # For equilateral triangle
                 lc: tuple = (lc, np.sqrt(3) / 2 * lc)
             else:
-                # For squre
+                # For squre and others
                 lc: tuple = (lc, lc)
+        # Confirm (lc, lc) case that the lattice is isotropic
+        if shape not in ["triangular", "honeycomvb",
+                         "kagome", "zigzag"] and lc[0] == lc[1]:
+            self.isotropic = True
 
         print(
             f'lattice: lattice shape is {shape}; lattice constants set to: {lc}')
@@ -133,6 +139,7 @@ class MLWF(DVR):
         lattice: np.ndarray = np.array(
             [2], dtype=int),  # Square lattice dimensions
         lc=(1520, 1690),  # Lattice constant, in unit of nm
+        isotropic: bool = False,  # Check if the lattice is isotropic
         ascatt=1770,  # Scattering length, in unit of Bohr radius, default 1770
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
@@ -147,6 +154,7 @@ class MLWF(DVR):
         self.dim = dim
         self.bands = band
         self.ls = lattice_symmetry
+        self.isotropic = isotropic
         if shape == "zigzag":
             self.ls = False
         n = np.zeros(3, dtype=int)
@@ -304,8 +312,8 @@ class MLWF(DVR):
             print(f'Energies: {E_sb}')
             if self.ls:
                 print(f'parities: {[p_sb]}')
-        elif E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
-            print('Wannier WARNING: band gap is smaller than band width.')
+        elif self.verbosity > 1 and E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
+            print('Wannier warning: band gap is smaller than band width.')
 
         E_sb = E_sb[:k]
         p_sb = p_sb[:k]
