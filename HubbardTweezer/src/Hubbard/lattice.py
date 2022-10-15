@@ -39,6 +39,9 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'honeycomb':
         nodes, links = hc_lattice(size)
     elif shape == 'defecthoneycomb':
+        # Stone-Wales defect
+        # inspired by 10.1103/PhysRevE.93.042132
+        # and 10.1109/ICONSET.2011.6167932
         nodes, links = defect_hc_lattice(size)
     elif shape == 'kagome':
         nodes, links = kagome_lattice(size)
@@ -334,6 +337,7 @@ def defect_hc_lattice(size):
     site1 = Nsite // 2 - 1
     site2 = Nsite // 2
     # Rotate site1 & site2 by pi/2
+    # NOTE: since ax != ay, the trap spacing might be changed
     nodes[site1:site1+2, :] = nodes[site1:site1+2, :][:, ::-1]
     # Reconnect links
     site1_obliq_links = np.logical_and(
