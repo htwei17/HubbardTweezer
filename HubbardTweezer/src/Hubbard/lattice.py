@@ -1,3 +1,5 @@
+import cmath
+from os import major
 from typing import Iterable
 import numpy as np
 
@@ -24,16 +26,7 @@ def lattice_graph(size: np.ndarray,
     elif shape == 'square':
         nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
-        # Build Lieb lattice graph
-        size[size < 3] == 3  # Smallest Lieb lattice plaquette has size 3
-        size[size % 2 == 0] += 1  # Make sure size is odd
-        print(f'Lieb lattice size adjust to: {size}')
-        nodes, links, node_idx_pair = sqr_lattice(size)
-        # Remove holes from square lattice to make Lieb lattice
-        hole = np.all(node_idx_pair % 2 == 0, axis=1)
-        hole_idx = np.nonzero(hole)[0]
-        nodes = nodes[~hole, :]
-        links = squeeze_idx(links, hole_idx)
+        nodes, links = Lieb_lattice(size)
     elif shape == 'triangular':
         nodes, links, __ = tri_lattice(size, symmetry)
     elif shape == 'zigzag':
@@ -44,46 +37,18 @@ def lattice_graph(size: np.ndarray,
             np.array([size[0], 2], dtype=int), symmetry)
         links = links[abs(links[:, 0] - links[:, 1]) != 1]
     elif shape == 'honeycomb':
-        # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
-        size[size < 3] == 3
-        # Make sure x dimension size is integer multiple of 3
-        if size[0] % 3 != 0:
-            size[0] += 3 - size[0] % 3
-        print(f'Honeycomb lattice size adjust to: {size}')
-        nodes, links, node_idx_pair = tri_lattice(size)
-        # Remove holes from square lattice to make honeycomb lattice
-        hole = np.logical_and(node_idx_pair[:, 1] % 2 == 0,
-                              node_idx_pair[:, 0] % 3 == 2)
-        hole = np.logical_or(
-            hole,
-            np.logical_and(node_idx_pair[:, 1] % 2 == 1,
-                           node_idx_pair[:, 0] % 3 == 0))
-        hole_idx = np.nonzero(hole)[0]
-        nodes = nodes[~hole, :]
-        links = squeeze_idx(links, hole_idx)
+        nodes, links = hc_lattice(size)
+    elif shape == 'defecthoneycomb':
+        nodes, links = defect_hc_lattice(size)
     elif shape == 'kagome':
-        # Smallest reflection-symmetric kagome lattice plaquette has x size 4,
-        # y size 5 (wchich will be automatically adjusted to be odd)
-        size[size < 4] == 4
-        # Reflection-symmetric kagome lattice always needs y size to be 4n+1
-        if size[1] % 4 != 1:
-            size[1] = 4 * (size[1] // 4) + 1
-        # Make sure x dimension size is even
-        if size[0] % 2 != 0:
-            size[0] += 1
-        print(f'Kagome lattice size adjust to: {size}')
-        nodes, links, node_idx_pair = tri_lattice(size)
-        # Remove holes from square lattice to make kagome lattice
-        hole = np.logical_and(node_idx_pair[:, 1] % 4 == 1,
-                              node_idx_pair[:, 0] % 2 == 1)
-        hole = np.logical_or(
-            hole,
-            np.logical_and(node_idx_pair[:, 1] % 4 == 3,
-                           node_idx_pair[:, 0] % 2 == 0))
-        hole_idx = np.nonzero(hole)[0]
-        nodes = nodes[~hole, :]
-        links = squeeze_idx(links, hole_idx)
-
+        nodes, links = kagome_lattice(size)
+    elif shape == 'Penrose':
+        # Not useful as the diagonal distance is smaller than the bond length
+        # Not yet finished
+        nodes, links = penrose_tiling(size[0])
+    else:
+        raise ValueError(f'lattice: Unknown shape {shape}.')
+    
     reflection, inv_coords = reflection_table(nodes, symmetry)
     return nodes, links, reflection, inv_coords
 
@@ -125,6 +90,66 @@ def quadrant_ring(n, theta, radius, idx, sectors, nodes):
     return nodes
 
 
+def penrose_tiling(size: int) -> np.ndarray:
+    # Generate coordinates of n layers on a Penrose tiling,
+    # with each pair of sites separated by 1
+    # Indexing is COUNTER-CLOCKWISE
+
+    n = size
+    print(f'Penrose size adjust to: {size}')
+    __, nodes = penrose_triangles(n)
+    links = np.array([[i, (i + 1) % size] for i in range(size)])
+    return nodes, links
+
+
+def penrose_triangles(layer: int) -> np.ndarray:
+    # Generate coordinates of n layers on a Penrose tiling,
+    # with each pair of sites separated by 1
+    # Indexing is COUNTER-CLOCKWISE
+
+    # Compute the lateral length of the triangle
+    r = golden_ratio**(layer - 1)
+    # Create wheel of red triangles around the origin
+    fold = 10
+    triangles = np.empty((fold, 4), dtype=complex)
+    nodes = np.zeros((1, 2), dtype=float)
+    for i in range(fold):
+        B = cmath.rect(r, (2*i - 1) * np.pi / fold)
+        C = cmath.rect(r, (2*i + 1) * np.pi / fold)
+        nodes = np.append(nodes, np.array([B.real, B.imag])[None], axis=0)
+        if i % 2 == 0:
+            B, C = C, B  # Make sure to mirror every second triangle
+        triangles[i, :] = np.array([0, 0j, B, C])
+    print('1st layer done.')
+    for i in range(layer - 1):
+        triangles, nodes = subdivide(triangles, nodes)
+        print(f'{i+2}th layer done.')
+    return triangles, nodes
+
+
+golden_ratio = (1 + np.sqrt(5)) / 2
+
+
+def subdivide(triangles: np.ndarray, nodes: np.ndarray) -> np.ndarray:
+    result = np.empty((0, 4), dtype=complex)
+    for color, A, B, C in triangles:
+        if color == 0:
+            # Subdivide red triangle
+            P = A + (B - A) / golden_ratio
+            nodes = np.append(nodes, np.array([P.real, P.imag])[None], axis=0)
+            result = np.append(
+                result, [(0, C, P, B), (1, P, C, A)], axis=0)
+        else:
+            # Subdivide blue triangle
+            Q = B + (A - B) / golden_ratio
+            R = B + (C - B) / golden_ratio
+            nodes = np.concatenate(
+                (nodes, np.array([Q.real, Q.imag], [R.real, R.imag])), axis=0)
+            result = np.append(
+                result, [(1, R, C, A), (1, Q, R, B), (0, R, Q, A)], axis=0)
+    return result, nodes
+
+
 def sqr_lattice(size: np.ndarray):
     # Square and rectangular lattice graph builder
     # Also including 1D open chain
@@ -157,7 +182,23 @@ def sqr_lattice(size: np.ndarray):
     return nodes, links, node_idx_pair
 
 
-def tri_lattice(size: np.ndarray, symmetry: bool = True):
+def Lieb_lattice(size):
+    # Build Lieb lattice graph
+    size[size < 3] == 3  # Smallest Lieb lattice plaquette has size 3
+    size[size % 2 == 0] += 1  # Make sure size is odd
+    print(f'Lieb lattice size adjust to: {size}')
+    nodes, links, node_idx_pair = sqr_lattice(size)
+    # Remove holes from square lattice to make Lieb lattice
+    hole = np.all(node_idx_pair % 2 == 0, axis=1)
+    hole_idx = np.nonzero(hole)[0]
+    nodes = nodes[~hole, :]
+    links = squeeze_idx(links, hole_idx)
+    return nodes, links
+
+
+def tri_lattice(size: np.ndarray,
+                major_centered: bool = True,
+                symmetry: bool = True):
     # Triangular lattice graph builder
     # NOTE: lc = (ax, ay) is given by hand.
     #       For equilateral triangle,
@@ -168,9 +209,14 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
     # NOTE: In this case, indexing is ROW-MAJOR.
     # NOTE that if given symmetry=True,
     # the triangular lattice is made to he reflection symmetric.
-    # E.g. * * * * *
+    # E.g. if major_centered=True, the lattice is made to be
+    #      * * * * *
     #     * * * * * *
     #      * * * * *
+    #      else
+    #     * * * * * *
+    #      * * * * *
+    #     * * * * * *
     # If given symmetry=False, the lattice is in the parallelogram shape.
     # E.g. * * * * *
     #       * * * * *
@@ -184,6 +230,7 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
     else:
         # Smallest triangular lattice plaquette has size 2 on each direction
         size[size < 2] == 2
+        major_centered = True  # No effect
     print(f'Triangular lattice size adjust to: {size}')
 
     edge = []
@@ -192,22 +239,28 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
     node_idx_pair = np.array([]).reshape(0, 2)
     links = np.array([], dtype=int).reshape(0, 2)
 
-    for i in range(size.size):
+    for i in range(size.size):  # Add major row., size[0] is major row size
         edge.append(np.arange(-(size[i] - 1) / 2, (size[i] - 1) / 2 + 1))
         edge_idx.append(np.arange(1, size[i] + 1, dtype=int))
 
-    if symmetry:  # For reflection symmetry, add minor rows w/ L-1 sites
+    if symmetry:  # For reflection symmetry, add minor row w/ L-1 sites
         edge.append(np.arange(-size[0] / 2 + 1, size[0] / 2))
         edge_idx.append(np.arange(1, size[0], dtype=int))
-    else:  # For no symmetry, add shifted majro rows w/ L sites
+    else:  # For no symmetry, add shifted major row w/ L sites
         edge.append(edge[0] - 0.25)
         edge[0] += 0.25
         edge_idx.append(np.arange(1, size[0] + 1, dtype=int))
 
     node_idx = 0  # Linear index is row (x) prefered
     for j in range(len(edge[1])):
-        # Major row & minor row
-        edge_i, edge_idx_i = (edge[0], edge_idx[0]) if j % 2 == 1 else (
+        # Determine major row & minor row
+        if major_centered:
+            # Even row is major row
+            major_row = j % 2 == 1
+        else:
+            # Odd row is major row
+            major_row = j % 2 == 0
+        edge_i, edge_idx_i = (edge[0], edge_idx[0]) if major_row else (
             edge[-1], edge_idx[-1])
         for i in range(len(edge_i)):
             nodes = np.append(nodes, [[edge_i[i], edge[1][j]]], axis=0)
@@ -218,7 +271,7 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
                 links = np.append(links, [[node_idx - 1, node_idx]], axis=0)
             if j > 0:  # Column link
                 if symmetry:
-                    if j % 2 == 1:  # Major row
+                    if major_row:  # Major row
                         if i > 0:  # Leftward link
                             links = np.append(links,
                                               [[node_idx - size[0], node_idx]],
@@ -244,6 +297,79 @@ def tri_lattice(size: np.ndarray, symmetry: bool = True):
             node_idx += 1
 
     return nodes, links, node_idx_pair
+
+
+def hc_lattice(size, lesshole: bool = True):
+    # Smallest reflection-symmetric honeycomb lattice plaquette has size 3
+    size[size < 3] == 3
+    # Make sure x dimension size is integer multiple of 3
+    if size[0] % 3 != 0:
+        size[0] += 3 - size[0] % 3
+    print(f'Honeycomb lattice size adjust to: {size}')
+    nodes, links, node_idx_pair = tri_lattice(
+        size, major_centered=lesshole, symmetry=True)
+    # Remove holes from square lattice to make honeycomb lattice
+    # if lesshole, in a way that less atoms are removed from the lattice
+
+    # Choose which one is major row
+    # NOTE: idx starts from 1
+    major_row = node_idx_pair[:, 1] % 2 == 0
+    if not lesshole:
+        major_row = ~major_row
+    hole = np.logical_and(major_row,
+                          node_idx_pair[:, 0] % 3 == 2)
+    hole = np.logical_or(hole,
+                         np.logical_and(np.logical_not(major_row),
+                                        node_idx_pair[:, 0] % 3 == 0))
+    hole_idx = np.nonzero(hole)[0]
+    nodes = nodes[~hole, :]
+    links = squeeze_idx(links, hole_idx)
+    return nodes, links
+
+
+def defect_hc_lattice(size):
+    # Reflection-symmetric Stone-Wales defect honeycomb lattice
+    nodes, links = hc_lattice(size, lesshole=False)
+    Nsite = len(nodes)
+    site1 = Nsite // 2 - 1
+    site2 = Nsite // 2
+    # Rotate site1 & site2 by pi/2
+    nodes[site1:site1+2, :] = nodes[site1:site1+2, :][:, ::-1]
+    # Reconnect links
+    site1_obliq_links = np.logical_and(
+        np.any(links == site1, axis=1), abs(links[:, 0] - links[:, 1]) != 1)
+    site2_obliq_links = np.logical_and(
+        np.any(links == site2, axis=1), abs(links[:, 0] - links[:, 1]) != 1)
+    site_to_link_site1 = links[site1_obliq_links][0, 0] + 1
+    site_to_link_site2 = links[site2_obliq_links][-1, -1] - 1
+    links[np.nonzero(site1_obliq_links)[0][-1], -1] = site_to_link_site1
+    links[np.nonzero(site2_obliq_links)[0][0], 0] = site_to_link_site2
+    return nodes, links
+
+
+def kagome_lattice(size):
+    # Smallest reflection-symmetric kagome lattice plaquette has x size 4,
+    # y size 5 (wchich will be automatically adjusted to be odd)
+    size[size < 4] == 4
+    # Reflection-symmetric kagome lattice always needs y size to be 4n+1
+    if size[1] % 4 != 1:
+        size[1] = 4 * (size[1] // 4) + 1
+        # Make sure x dimension size is even
+    if size[0] % 2 != 0:
+        size[0] += 1
+    print(f'Kagome lattice size adjust to: {size}')
+    nodes, links, node_idx_pair = tri_lattice(size, symmetry=True)
+    # Remove holes from square lattice to make kagome lattice
+    hole = np.logical_and(node_idx_pair[:, 1] % 4 == 1,
+                          node_idx_pair[:, 0] % 2 == 1)
+    hole = np.logical_or(
+        hole,
+        np.logical_and(node_idx_pair[:, 1] % 4 == 3,
+                       node_idx_pair[:, 0] % 2 == 0))
+    hole_idx = np.nonzero(hole)[0]
+    nodes = nodes[~hole, :]
+    links = squeeze_idx(links, hole_idx)
+    return nodes, links
 
 
 def squeeze_idx(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
