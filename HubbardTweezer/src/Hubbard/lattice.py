@@ -1,28 +1,60 @@
 import cmath
-from os import major
 from typing import Iterable
 import numpy as np
 
 
-def lattice_graph(size: np.ndarray,
-                  shape: str = 'square',
-                  symmetry: bool = True) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    # Square lattice graph builder
-    # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
-    # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
-    # nodes: each row is a coordinate (x, y) of one site
-    #        indicating the posistion of node (trap center)
-    # links: each row in links is a pair of node indices s.t.
-    #        graph[idx1], graph[idx2] are linked by bounds
+class Lattice:
+    def __init__(self, size: np.ndarray,
+                 shape: str = 'square',
+                 symmetry: bool = True):
+        # Abstract lattice graph class
+        # No lattice constant is encoded
+        # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
+        # NOTE: might not be very doable since the symmetries of trap are just x,y mirrors
+        # nodes: each row is a coordinate (x, y) of one site
+        #        indicating the posistion of node (trap center)
+        # links: each row in links is a pair of node indices s.t.
+        #        graph[idx1], graph[idx2] are linked by bounds
 
-    if isinstance(size, Iterable):
-        size = np.array(size)
+        self.N = np.prod(size)
+        self.shape = shape
+        self.symmetry = symmetry
 
+        # Convert [n] to [n, 1]
+        if self.N == 1:
+            self.size = np.ones(1)
+            self.dim = 1
+        else:
+            if size.size == 1:
+                self.size = np.resize(
+                    np.pad(size, pad_width=(0, 1), constant_values=1), 2
+                )
+                self.dim = 1
+            else:
+                self.size = size.copy()
+                eff_dim = (size > 1)  # * (np.array(lc) > 0)
+                self.dim = size[eff_dim].size
+            if shape == 'ring':
+                self.dim = 2
+
+        if isinstance(size, Iterable):
+            size = np.array(size)
+
+        self.nodes, self.links = build_lattice(size, shape, symmetry)
+        self.reflect, self.inv_coords = build_reflection(
+            self.nodes, symmetry)
+        # Adjust site number after adjust lattice by symmetry
+        self.N = self.nodes.shape[0]
+        # Independent trap number under reflection symmetry
+        self.Nindep = self.reflect.shape[0]
+
+
+def build_lattice(size, shape, symmetry):
     if np.prod(size) == 1:
         nodes = np.array([[0, 0]])
         links = np.array([]). reshape(0, 2)
     elif shape == 'ring':
-        nodes, links = ring_coord(size[0])
+        nodes, links = ring_lattice(size[0])
     elif shape == 'square':
         nodes, links, __ = sqr_lattice(size)
     elif shape == 'Lieb':
@@ -50,13 +82,11 @@ def lattice_graph(size: np.ndarray,
         # Not yet finished
         nodes, links = penrose_tiling(size[0])
     else:
-        raise ValueError(f'lattice: Unknown shape {shape}.')
-    
-    reflection, inv_coords = reflection_table(nodes, symmetry)
-    return nodes, links, reflection, inv_coords
+        raise ValueError(f'Lattice: Unknown shape {shape}.')
+    return nodes, links
 
 
-def ring_coord(size: int) -> np.ndarray:
+def ring_lattice(size: int) -> np.ndarray:
     # Generate coordinates of 4n points on a ring,
     # with each pair of sites separated by 1
 
@@ -394,7 +424,7 @@ def squeeze_idx(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
     return links
 
 
-def reflection_table(graph: np.ndarray, symmetry: bool = True):
+def build_reflection(graph: np.ndarray, symmetry: bool = True):
     # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other

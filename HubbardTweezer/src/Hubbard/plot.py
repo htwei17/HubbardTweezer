@@ -25,7 +25,7 @@ class HubbardGraph(HubbardEqualizer):
         # # Resize [n] to [n, 1]
         # self.lattice = np.resize(
         #     np.pad(self.lattice, pad_width=(0, 1), constant_values=1), 2)
-        self.edges = [tuple(row) for row in self.links]
+        self.edges = [tuple(row) for row in self.lattice.links]
         self.graph = nx.DiGraph(self.edges, name='Lattice')
         self.pos = dict(
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
@@ -73,23 +73,23 @@ class HubbardGraph(HubbardEqualizer):
         # Add higher neighbor bonds
         # NOTE: explicit square lattice geometry assumed
         # FIXME: 3x2 lattice error as this gives an index 6
-        if self.lattice_shape == 'zigzag':
+        if self.lattice.shape == 'zigzag':
             for i in range(min(limit, self.Nsite // 2)):
                 self.graph.add_edge(i, i + 1)
-        if self.lattice_shape in ['square', 'Lieb', 'triangular', 'zigzag']:
+        if self.lattice.shape in ['square', 'Lieb', 'triangular', 'zigzag']:
             if limit + 2 > self.Nsite:
                 limit = self.Nsite - 2
             if center >= self.Nsite:
                 center = 0
-            if self.lattice_dim == 1:
+            if self.lattice.dim == 1:
                 for i in range(limit):
                     self.graph.add_edge(center, i + 2)
-            elif self.lattice_dim == 2:
+            elif self.lattice.dim == 2:
                 for i in range(2 * limit):
                     self.graph.add_edge(center, i + 2)
         else:
             print(
-                f'WARNING: nnn not supported for {self.lattice_shape} lattice. \
+                f'WARNING: nnn not supported for {self.lattice.shape} lattice. \
                     Nothing doen.')
             return
 
@@ -106,7 +106,7 @@ class HubbardGraph(HubbardEqualizer):
         if label == 'param' and nnn:
             self.add_nnn()
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
-            self.lattice_dim = 1
+            self.lattice.dim = 1
             self.size = np.array([self.Nsite, 1])
             self.wf_centers[:, 1] = 0
 
@@ -116,13 +116,13 @@ class HubbardGraph(HubbardEqualizer):
         if self.verbosity:
             print('\nStart to plot graph...')
 
-        if self.lattice_dim == 1:
+        if self.lattice.dim == 1:
             fs = (3 * (self.size[0] - 1), 3)
             margins = (2e-2, 1)if nnn else (2e-2, 0.5)
-        elif self.lattice_dim == 2:
+        elif self.lattice.dim == 2:
             margins = (0.1, 0.15)
             fs = (3 * (self.size[0] - 1), 3 * (self.size[1] - 1))
-            if self.lattice_shape == 'ring':
+            if self.lattice.shape == 'ring':
                 fs[1] = fs[0]
         plt.figure(figsize=fs)
 
@@ -131,7 +131,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis('off')
         plt.savefig(
-            f'{self.size} nx {self.dim}d {self.lattice_shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label}.pdf')
 
     def draw_edges(self):
         link_list = list(self.graph.edges)
@@ -139,7 +139,7 @@ class HubbardGraph(HubbardEqualizer):
         self.nn_edge_label = dict()
         self.nnn_edge_label = dict()
         for i in link_list:
-            isnn = np.append(isnn, any((i == self.links).all(axis=1)))
+            isnn = np.append(isnn, any((i == self.lattice.links).all(axis=1)))
             if isnn[-1]:
                 self.nn_edge_label[i] = self.edge_label[i]
             else:
@@ -197,9 +197,9 @@ class HubbardGraph(HubbardEqualizer):
                                   ax: plt.Axes = None):
         if ax is None:
             ax = plt.gca()
-        if self.lattice_dim == 1:
+        if self.lattice.dim == 1:
             shift = (0, 0.02) if nnn else (0, 0.05)
-        elif self.lattice_dim == 2:
+        elif self.lattice.dim == 2:
             shift = (-0.2, 0.2)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
@@ -242,7 +242,7 @@ class HubbardGraph(HubbardEqualizer):
             (x2, y2) = pos[n2]
             (x, y) = ((x1 + x2) / 2, (y1 + y2) / 2)
             if nnn:
-                rad = 0.013 if self.lattice_dim == 1 else 0.1
+                rad = 0.013 if self.lattice.dim == 1 else 0.1
                 (dx, dy) = (x2 - x1, y2 - y1)
                 (x, y) = (x + rad * dy, y - rad * dx)
 
