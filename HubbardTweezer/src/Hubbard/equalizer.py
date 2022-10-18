@@ -337,7 +337,8 @@ class HubbardEqualizer(MLWF):
             wy = np.tile('y' in self.waist_dir, self.lattice.Nindep)
             self.w_dof = np.array([wx, wy]).T.reshape(-1)
 
-        tcx = np.array([not self.inv_coords[i, 0] for i in range(self.lattice.Nindep)])
+        tcx = np.array([not self.inv_coords[i, 0]
+                       for i in range(self.lattice.Nindep)])
         if self.lattice.dim == 1:
             tcy = np.tile(False, self.lattice.Nindep)
         else:
@@ -372,7 +373,8 @@ class HubbardEqualizer(MLWF):
         else:
             # v02 = np.ones(2 * self.lattice.Nindep)
             v02 = symm_fold(self.reflection, self.waists).flatten()
-            b2 = list(s2 for i in range(2 * self.lattice.Nindep) if self.w_dof[i])
+            b2 = list(s2 for i in range(
+                2 * self.lattice.Nindep) if self.w_dof[i])
             v02 = v02[self.w_dof]
 
         # Lattice spacing variation inital guess and bounds
@@ -519,6 +521,11 @@ class HubbardEqualizer(MLWF):
                     target: tuple[float, ...], tfactor: float) -> float:
         nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
             A, links, target)
+        if tfactor is None:
+            tfactor = np.min([txTarget, tyTarget]
+                             ) if tyTarget != None else txTarget
+        print(
+            f'nn tunneling = {nnt} target = {txTarget} {tyTarget} factor = {tfactor}')
         ct = np.mean((abs(nnt[xlinks]) - txTarget)**2) / tfactor**2
         if tyTarget != None:
             ct += np.mean((abs(nnt[ylinks]) - tyTarget)**2) / tfactor**2
@@ -569,6 +576,9 @@ class HubbardEqualizer(MLWF):
                    target: tuple[float, ...], tfactor: float) -> np.ndarray:
         nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(
             A, links, target)
+        if tfactor is None:
+            tfactor = np.min([txTarget, tyTarget]
+                             ) if tyTarget != None else txTarget
         ct = (abs(nnt[xlinks]) - txTarget) / \
             (tfactor * np.sqrt(np.sum(xlinks)))
         if tyTarget != None:

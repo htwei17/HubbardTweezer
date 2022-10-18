@@ -74,12 +74,12 @@ class HubbardGraph(HubbardEqualizer):
         # NOTE: explicit square lattice geometry assumed
         # FIXME: 3x2 lattice error as this gives an index 6
         if self.lattice.shape == 'zigzag':
-            for i in range(min(limit, self.Nsite // 2)):
+            for i in range(min(limit, self.lattice.N // 2)):
                 self.graph.add_edge(i, i + 1)
         if self.lattice.shape in ['square', 'Lieb', 'triangular', 'zigzag']:
-            if limit + 2 > self.Nsite:
-                limit = self.Nsite - 2
-            if center >= self.Nsite:
+            if limit + 2 > self.lattice.N:
+                limit = self.lattice.N - 2
+            if center >= self.lattice.N:
                 center = 0
             if self.lattice.dim == 1:
                 for i in range(limit):
@@ -107,7 +107,7 @@ class HubbardGraph(HubbardEqualizer):
             self.add_nnn()
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
             self.lattice.dim = 1
-            self.size = np.array([self.Nsite, 1])
+            self.lattice.size = np.array([self.lattice.N, 1])
             self.wf_centers[:, 1] = 0
 
         self.set_edges(label)
@@ -117,13 +117,14 @@ class HubbardGraph(HubbardEqualizer):
             print('\nStart to plot graph...')
 
         if self.lattice.dim == 1:
-            fs = (3 * (self.size[0] - 1), 3)
-            margins = (2e-2, 1)if nnn else (2e-2, 0.5)
+            fs = [3 * (self.lattice.size[0] - 1), 3]
+            margins = (2e-2, 1) if nnn else (2e-2, 0.5)
         elif self.lattice.dim == 2:
-            margins = (0.1, 0.15)
-            fs = (3 * (self.size[0] - 1), 3 * (self.size[1] - 1))
+            fs = [3 * (self.lattice.size[0] - 1),
+                  3 * (self.lattice.size[1] - 1)]
             if self.lattice.shape == 'ring':
                 fs[1] = fs[0]
+            margins = (0.1, 0.15)
         plt.figure(figsize=fs)
 
         self.draw_nodes(label, nnn, margins)
@@ -131,7 +132,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis('off')
         plt.savefig(
-            f'{self.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label}.pdf')
 
     def draw_edges(self):
         link_list = list(self.graph.edges)
