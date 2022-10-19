@@ -337,12 +337,12 @@ class HubbardEqualizer(MLWF):
             wy = np.tile('y' in self.waist_dir, self.lattice.Nindep)
             self.w_dof = np.array([wx, wy]).T.reshape(-1)
 
-        tcx = np.array([not self.inv_coords[i, 0]
+        tcx = np.array([not self.lattice.inv_coords[i, 0]
                        for i in range(self.lattice.Nindep)])
         if self.lattice.dim == 1:
             tcy = np.tile(False, self.lattice.Nindep)
         else:
-            tcy = np.array([not self.inv_coords[i, 1]
+            tcy = np.array([not self.lattice.inv_coords[i, 1]
                             for i in range(self.lattice.Nindep)])
         self.tc_dof = np.array([tcx, tcy]).T.reshape(-1)
 
@@ -355,7 +355,7 @@ class HubbardEqualizer(MLWF):
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
         # v01 = np.ones(self.lattice.Nindep)
-        v01 = symm_fold(self.reflection, self.Voff)
+        v01 = symm_fold(self.lattice.reflect, self.Voff)
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.lattice.Nindep))
         else:
@@ -372,7 +372,7 @@ class HubbardEqualizer(MLWF):
             b2 = []
         else:
             # v02 = np.ones(2 * self.lattice.Nindep)
-            v02 = symm_fold(self.reflection, self.waists).flatten()
+            v02 = symm_fold(self.lattice.reflect, self.waists).flatten()
             b2 = list(s2 for i in range(
                 2 * self.lattice.Nindep) if self.w_dof[i])
             v02 = v02[self.w_dof]
@@ -384,7 +384,7 @@ class HubbardEqualizer(MLWF):
             s3 = (-np.inf, np.inf)
         else:
             s3 = (1 - 1 / self.lc[0]) / 2
-        v03 = symm_fold(self.reflection, self.trap_centers).flatten()
+        v03 = symm_fold(self.lattice.reflect, self.trap_centers).flatten()
         b3 = list((v03[i] - s3, v03[i] + s3)
                   for i in range(2 * self.lattice.Nindep) if self.tc_dof[i])
         v03 = v03[self.tc_dof]

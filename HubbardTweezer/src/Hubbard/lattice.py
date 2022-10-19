@@ -34,15 +34,16 @@ class Lattice:
                 self.size = size.copy()
                 eff_dim = (size > 1)  # * (np.array(lc) > 0)
                 self.dim = size[eff_dim].size
-            if shape == 'ring':
+            if self.shape == 'ring':
                 self.dim = 2
 
         if isinstance(size, Iterable):
             size = np.array(size)
 
-        self.nodes, self.links = build_lattice(size, shape, symmetry)
+        self.nodes, self.links = build_lattice(
+            self.size, self.shape, self.symmetry)
         self.reflect, self.inv_coords = build_reflection(
-            self.nodes, symmetry)
+            self.nodes, self.symmetry)
         # Adjust site number after adjust lattice by symmetry
         self.N = self.nodes.shape[0]
         # Independent trap number under reflection symmetry
