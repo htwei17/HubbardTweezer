@@ -1,5 +1,6 @@
 from distutils.log import warn
 import numpy as np
+from numpy.linalg import LinAlgError
 from typing import Iterable
 from opt_einsum import contract
 from time import time
@@ -119,6 +120,7 @@ class MLWF(DVR):
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
         lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
+        equalize_V0: bool = True,  # Equalize trap depths V0 for all traps first
         dim: int = 3,
         *args,
         **kwargs,
@@ -149,6 +151,11 @@ class MLWF(DVR):
         self.wxy0 = self.wxy.copy()
         self.waists = np.ones((self.lattice.N, 2))
 
+        # Equalize trap depth first, to make sure traps won't go too uneven
+        # to have non-local WF. But this makes U to be more uneven.
+        if equalize_V0:
+            self.equalize_trap_depths()
+
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
         V = 0
@@ -166,30 +173,60 @@ class MLWF(DVR):
         return V
 
     def singleband_Hubbard(
-        self, u=False, x0=None, offset=True, eig_sol=None
+        self, u=False, x0=None, offset=True, band=1, eig_sol=None
     ):
 
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
-        self.bands = 1
+        if band == 1:
+            self.bands = 1
         if eig_sol != None:
             E, W, p = eig_sol
         else:
             E, W, p = self.eigen_basis()
-        E = E[0]
-        W = W[0]
-        p = p[0]
+        E = E[band - 1]
+        W = W[band - 1]
+        p = p[band - 1]
         self.A, V = singleband_WF(self, E, W, p, x0)
-        if offset:
+        if isinstance(offset, Number):
+            zero = offset
+        elif offset:
             # Shift onsite potential to zero average
-            self.A -= np.mean(np.real(np.diag(self.A))) * \
+            zero = np.mean(np.real(np.diag(self.A))) * \
                 np.eye(self.A.shape[0])
+        else:
+            zero = 0
+        self.A -= zero
 
         if u and self.verbosity:
             print("Calculate U.")
         self.U = singleband_interaction(self, V, V, W, W, p, p) if u else None
         self.bands = band_bak
         return self.A, self.U, V
+
+    def trap_mat(self):
+        # depth of each trap center
+        tc = np.zeros((self.lattice.N, dim))
+        vij = np.ones((self.lattice.N, self.lattice.N))
+        for i in range(self.lattice.N):
+            tc[i, :] = np.append(self.trap_centers[i], 0)
+            for j in range(i):
+                vij[i, j] = -DVR.Vfun(self, *(tc[i] - tc[j]))
+                vij[j, i] = vij[i, j]  # Potential is symmetric in distance
+        return vij
+
+    def equalize_trap_depths(self):
+        vij = self.trap_mat()
+        # Set trap depth target to be the deepest one
+        Vtarget = np.max(vij @ np.ones(self.lattice.N))
+        try:
+            # Equalize trap depth
+            # Powered to compensate for trap unevenness
+            self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N))**2
+            if self.verbosity:
+                print(f"Equalize: trap depths equalzlied to {self.Voff}.")
+        except:
+            raise LinAlgError('Homogenize: failed to solve for Voff.')
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
@@ -211,7 +248,8 @@ class MLWF(DVR):
                 if graph:  # Symmetrize graph node coordinates
                     # NOTE: repeated nodes will be removed
                     info[row][self.lattice.inv_coords[row]] = 0
-                    target[self.lattice.reflect[row, :]] = parity * info[row][None]
+                    target[self.lattice.reflect[row, :]
+                           ] = parity * info[row][None]
                 else:  # Symmetrize trap depth
                     target[self.lattice.reflect[row, :]] = info[row]
         else:
@@ -308,9 +346,8 @@ class MLWF(DVR):
         # NOTE: This is not the same as the X 'opterator', as DVR basis
         #       is not invariant subspace of X. So X depends on DBR basis choice.
         R = []
-        # For 2D lattice band building keep single p_z = 1 or -1 sector,
-        # Z is always zero. Explained below.
-        for i in range(dim - 1):
+        # For 2D lattice keeps single p_z = 1 or -1 sector,
+        for i in range(dim):
             if self.nd[i]:
                 Rx = self.Xmat_1d(W, parity, i)
                 if Rx is not None:
@@ -319,6 +356,7 @@ class MLWF(DVR):
 
     def Xmat_1d(self, W, parity: np.ndarray, i: int):
         Rx = np.zeros((self.lattice.N, self.lattice.N))
+        # Permute the dimension to contract to the 1st
         idx = np.roll(np.arange(dim, dtype=int), -i)
         if any(parity[:, i] == 0):
             # X = x_i delta_ij for non-symmetrized basis
@@ -332,25 +370,23 @@ class MLWF(DVR):
                     Rx[k, j] = Rx[j, k].conj()
         elif any(parity[:, i] == 1) and any(parity[:, i] == -1):
             # Get X^pp'_ij matrix rep for Delta^p_i, p the parity.
-            # This matrix is nonzero only when p!=p':
+            # For direction a = x, matrix is nonzero only when p_a != p'_a:
             # X^pp'_ij = x_i delta_ij with p_x * p'_x = -1
+            # For direction a != x, matrix is nonzero only when p_a = p'_a
             # As 1 and -1 sector have a dimension difference,
-            # the matrix X is alsways a n-diagonal matrix
-            # with n-by-n+1 or n+1-by-n dimension
-            # So, Z is always zero, as we only keep single p_z sector
+            # the matrix X is alsways an n-by-n+1
+            # or n+1-by-n matrix with n diagonals
+            # PS: Z is zero for singleband, as we only keep single p_z sector
             x = np.arange(1, self.n[i] + 1) * self.dx[i]
             lenx = len(x)
             for j in range(self.lattice.N):
                 # If no absorber, W is real
                 # This cconjugate does not change dtype of real W
-                # It is only used in case of absorber
                 Wj = np.transpose(W[j], idx)[-lenx:, :, :].conj()
                 for k in range(j + 1, self.lattice.N):
-                    pjk = (
-                        parity[j, idx[idx < dim - 1]]
-                        * parity[k, idx[idx < dim - 1]]
-                    )
-                    if pjk[0] == -1 and pjk[1:] == 1:
+                    pjk = parity[j, idx] * parity[k, idx]
+                    if pjk[0] == -1 and all(pjk[1:] == 1):
+                        # Nonezero when only 1st dim parity differs for j and k states
                         Wk = np.transpose(W[k], idx)[-lenx:, :, :]
                         # Unitary transform X from DVR basis to single-body eigenbasis
                         Rx[j, k] = contract("ijk,i,ijk", Wj, x, Wk)
@@ -371,7 +407,7 @@ def singleband_WF(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple
     t0 = time()
     if dvr.lattice.N > 1:
         R = dvr.Xmat(W, parity)
-        if dvr.lattice.dim == 1 and eig1d:
+        if len(R) == 1 and eig1d:
             # If only one R given, the problem is simply diagonalization
             # solution is eigenstates of operator X
             X, solution = la.eigh(R[0])

@@ -93,16 +93,16 @@ class HubbardGraph(HubbardEqualizer):
                     Nothing doen.')
             return
 
-    def singleband_params(self, label='param', A=None, U=None):
+    def singleband_params(self, label='param', band=1, A=None, U=None):
         if label == 'param' and (A is None or U is None):
-            self.singleband_Hubbard(u=True)
+            self.singleband_Hubbard(u=True, band=band)
         elif label == 'adjust' and A is None:
-            self.singleband_Hubbard(u=False)
+            self.singleband_Hubbard(u=False, band=band)
         elif label not in ['param', 'adjust']:
             raise ValueError('Invalid label.')
 
-    def draw_graph(self, label='param', nnn=False, A=None, U=None):
-        self.singleband_params(label, A, U)
+    def draw_graph(self, label='param', band=1, nnn=False, A=None, U=None):
+        self.singleband_params(label, band, A, U)
         if label == 'param' and nnn:
             self.add_nnn()
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
@@ -132,7 +132,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis('off')
         plt.savefig(
-            f'{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label}.pdf')
+            f'{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf')
 
     def draw_edges(self):
         link_list = list(self.graph.edges)
@@ -199,7 +199,7 @@ class HubbardGraph(HubbardEqualizer):
         if ax is None:
             ax = plt.gca()
         if self.lattice.dim == 1:
-            shift = (0, 0.02) if nnn else (0, 0.05)
+            shift = (0, 0.02)
         elif self.lattice.dim == 2:
             shift = (-0.2, 0.2)
         self.overhead_pos = dict(

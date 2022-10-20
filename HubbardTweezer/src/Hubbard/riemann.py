@@ -6,9 +6,9 @@ import pymanopt
 def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Cost function to Wannier optimize
     o = 0
-    for i in range(len(R)):
+    for Ri in R:
         # R is real-symmetric if no absorber
-        X = U.conj().T @ R[i] @ U
+        X = U.conj().T @ Ri @ U
         Xp = X - torch.diag(torch.diag(X))
         o += torch.trace(torch.matrix_power(Xp, 2))
     # X must be hermitian, so is Xp
