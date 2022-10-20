@@ -1,6 +1,5 @@
 import numpy as np
 import numpy.linalg as la
-from numpy.linalg import LinAlgError
 from numbers import Number
 from typing import Callable, Iterable, Union
 from scipy.optimize import minimize, least_squares
@@ -124,12 +123,6 @@ class HubbardEqualizer(MLWF):
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
-
-        # Equalize trap depth first, to make sure traps won't go too uneven
-        # to have non-local WF. But this makes U to be more uneven.
-        if self.lattice.shape in ['triangular', 'zigzag'] and not self.ls:
-            self.equalize_trap_depth()
-            print(f"Equalize: trap depths equalzlied to {self.Voff}.")
 
         A, U, V = self.singleband_Hubbard(u=u, offset=True)
 
@@ -303,28 +296,6 @@ class HubbardEqualizer(MLWF):
         else:
             nnt = A[self.masked_links[:, 0], self.masked_links[:, 1]]
         return nnt
-
-    def trap_mat(self):
-        # depth of each trap center
-        tc = np.zeros((self.lattice.N, dim))
-        vij = np.ones((self.lattice.N, self.lattice.N))
-        for i in range(self.lattice.N):
-            tc[i, :] = np.append(self.trap_centers[i], 0)
-            for j in range(i):
-                vij[i, j] = -DVR.Vfun(self, *(tc[i] - tc[j]))
-                vij[j, i] = vij[i, j]  # Potential is symmetric in distance
-        return vij
-
-    def equalize_trap_depth(self):
-        vij = self.trap_mat()
-        # Set trap depth target to be the deepest one
-        Vtarget = np.max(vij @ np.ones(self.lattice.N))
-        try:
-            # Equalize trap depth
-            # Powered to compensate for trap unevenness
-            self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N))**2
-        except:
-            raise LinAlgError('Homogenize: failed to solve for Voff.')
 
     def eff_dof(self):
         # Record all free DoFs in the function
