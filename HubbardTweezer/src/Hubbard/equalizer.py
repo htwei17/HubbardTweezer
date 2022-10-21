@@ -244,7 +244,7 @@ class HubbardEqualizer(MLWF):
             elif self.lattice.dim == 2:
                 if self.lattice.shape == 'square' \
                         or self.lattice.shape == 'triangular' and not self.ls:
-                    Nx, Ny = self.size
+                    Nx, Ny = self.lattice.size
                     if self.lattice.shape == 'square':
                         x_bdry, y_bdry = self.xy_boundaries(Ny)
                     elif self.lattice.shape == 'triangular':
