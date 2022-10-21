@@ -1,4 +1,3 @@
-from distutils.log import warn
 import numpy as np
 from numpy.linalg import LinAlgError
 from typing import Iterable
@@ -188,15 +187,14 @@ class MLWF(DVR):
         W = W[band - 1]
         p = p[band - 1]
         self.A, V = singleband_WF(self, E, W, p, x0)
-        if isinstance(offset, Number):
-            zero = offset
-        elif offset:
+        if offset is True:
             # Shift onsite potential to zero average
-            zero = np.mean(np.real(np.diag(self.A))) * \
-                np.eye(self.A.shape[0])
+            self.zero = np.mean(np.real(np.diag(self.A)))
+        elif isinstance(offset, Number):
+            self.zero = offset
         else:
-            zero = 0
-        self.A -= zero
+            self.zero = 0
+        self.A -= self.zero * np.eye(self.A.shape[0])
 
         if u and self.verbosity:
             print("Calculate U.")
@@ -477,10 +475,12 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
     # Interaction between i band and j band
     Uint = np.zeros((dvr.bands, dvr.bands, dvr.lattice.N))
     for i in range(dvr.bands):
-        for j in range(dvr.bands):
+        for j in range(i, dvr.bands):
             Uint[i, j, :] = singleband_interaction(
                 dvr, U[i], U[j], W[i], W[j], parity[i], parity[j]
             )
+            if i != j:
+                Uint[j, i, :] = Uint[i, j, :]
     return Uint
 
 

@@ -271,7 +271,7 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    A, U = multiband_WF(G, *eig_sol)
+    A, W = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(A[i]))
@@ -279,10 +279,10 @@ if G.bands > 1:
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
 
-    V = interaction(G, U, *eig_sol[1:])
+    U = interaction(G, W, *eig_sol[1:])
     for i in range(band):
         for j in range(band):
-            values[f"U_{i+1}{j+1}_i"] = V[i, j]
+            values[f"U_{i+1}{j+1}_i"] = U[i, j]
 
     rep.create_report(report, "Multiband_Parameters", **values)
 
