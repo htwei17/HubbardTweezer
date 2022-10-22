@@ -436,6 +436,7 @@ def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
     # Multiband optimization
     A = []
     w = []
+    wf_centers = []
     for b in range(dvr.bands):
         t_ij, w_mu = singleband_WF(dvr, E[b], W[b], parity[b])
         if b == 0:
@@ -447,7 +448,8 @@ def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
                 zero = 0
         A.append(t_ij - zero * np.eye(t_ij.shape[0]))
         w.append(w_mu)
-    return A, w
+        wf_centers.append(dvr.wf_centers)
+    return A, w, wf_centers
 
 
 # =============================================================================

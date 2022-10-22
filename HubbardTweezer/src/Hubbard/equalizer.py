@@ -77,7 +77,7 @@ class HubbardEqualizer(MLWF):
             self.eqmethod = 'Nelder-Mead' if waist == None else 'trf'
         else:
             self.eqmethod = 'Nelder-Mead' if eqmethod == 'NM' else eqmethod
-        self.log = write_log
+        self.log = False if not equalize else write_log
         if isinstance(scale_factor, Number):
             self.sf = scale_factor
         else:
@@ -250,7 +250,7 @@ class HubbardEqualizer(MLWF):
                     elif self.lattice.shape == 'triangular':
                         y_bdry, x_bdry = self.xy_boundaries(Nx)
                     bdry = [x_bdry, y_bdry]
-                    mask_axis = np.nonzero(self.size > 2)[0]
+                    mask_axis = np.nonzero(self.lattice.size > 2)[0]
                     if mask_axis.size != 0:
                         masked_idx = np.concatenate(
                             [bdry[i] for i in mask_axis])

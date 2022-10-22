@@ -271,14 +271,15 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    A, W = multiband_WF(G, *eig_sol)
+    A, W, wf_centers = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(A[i]))
         tij = abs(np.real(A[i] - np.diag(Vi)))
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
-
+        values[f"wf_{i+1}_centers"] = wf_centers[i]
+        
     U = interaction(G, W, *eig_sol[1:])
     for i in range(band):
         for j in range(band):

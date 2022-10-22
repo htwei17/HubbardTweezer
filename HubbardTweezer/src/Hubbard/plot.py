@@ -3,32 +3,49 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.path import Path
 from matplotlib.markers import MarkerStyle
-from scipy.stats.mstats import gmean
 
 from .equalizer import *
 
-LINE_WIDTH = 3
+LINE_WIDTH = 6
 FONT_FAMILY = 'cursive'
-# BOND_COLOR = 'olive'
-BOND_COLOR = '#4AC26D'
-# BOND_TEXT_COLOR = 'darkkhaki'
-BOND_TEXT_COLOR = np.array([0.122972391,	0.63525259,	0.529459411])
-# BOND_TEXT_COLOR = [0.256, 0.439, 0.588]
-BOND_TEXT_SIZE = 28
-# BOND_COLOR = '#606060'
-# NODE_COLOR = '#99CCFF'
-# NODE_COLOR = 'turquoise'
-NODE_COLOR = '#BFDF25'
+# FONT_FAMILY = 'fantasy'
+# BOND_COLOR = '#4AC26D'
+# BOND_TEXT_COLOR = np.array([0.122972391,	0.63525259,	0.529459411])
+BOND_TEXT_COLOR = 'darkcyan'
+BOND_TEXT_SIZE = 32
+NODE_SIZE = 1200
+# NODE_COLOR = '#BFDF25'
 NODE_EDGE_WIDTH = LINE_WIDTH
-# NODE_TEXT_COLOR = 'teal'
-NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
-NODE_TEXT_SIZE = 18
-# NODE_TEXT_COLOR = '#000066'
-# OVERHEAD_COLOR = '#FF8000'
-# OVERHEAD_COLOR = 'darkviolet'
-OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
-OVERHEAD_SUZE = 20
-FONT_WEIGHT = 'bold'
+# NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
+NODE_TEXT_SIZE = 20
+# OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
+OVERHEAD_COLOR = 'firebrick'
+OVERHEAD_SUZE = 22
+FONT_WEIGHT = 1000
+
+color_scheme1 = {
+    'bond': 'teal',
+    'bond_text': 'darkcyan',
+    'node': 'paleturquoise',
+    'node_text': 'darkslateblue',
+    'overhead': 'firebrick',
+}
+
+color_scheme2 = {
+    'bond': 'teal',
+    'bond_text': 'darkcyan',
+    'node': 'paleturquoise',
+    'node_text': 'darkslateblue',
+    'overhead': 'firebrick',
+}
+
+color_scheme3 = {
+    'bond': 'teal',
+    'bond_text': 'darkcyan',
+    'node': 'paleturquoise',
+    'node_text': 'darkslateblue',
+    'overhead': 'firebrick',
+}
 
 params = {
     # 'figure.dpi': 300,
@@ -96,7 +113,7 @@ class HubbardGraph(HubbardEqualizer):
             self.pos = dict(
                 (n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, '') for n in self.graph.nodes)
-        self.node_size = self.waists[:, 0]**2 * 600
+        self.node_size = self.waists[:, 0]**2 * NODE_SIZE
         max_depth = np.max(abs(self.Voff))
         self.node_alpha = (self.Voff / max_depth) ** 10
 
@@ -135,9 +152,17 @@ class HubbardGraph(HubbardEqualizer):
     def draw_graph(self, label='param', band=1, nnn=False, A=None, U=None):
         if isinstance(band, int):
             self.singleband_params(label, band, A, U)
+            if band == 1:
+                self.color = color_scheme1
+            elif band == 2:
+                self.color = color_scheme2
         elif isinstance(band, Iterable):
             label = 'interband'
-            self.U = U[band[0] - 1, band[1] - 1]
+            if U.ndim == 1:
+                self.U = U
+            else:
+                self.U = U[band[0] - 1, band[1] - 1]
+            self.color = color_scheme3
         else:
             raise ValueError(f'Invalid band argument {band}.')
         if label == 'param' and nnn:
@@ -161,7 +186,7 @@ class HubbardGraph(HubbardEqualizer):
                   3 * (self.lattice.size[1] - 1)]
             if self.lattice.shape == 'ring':
                 fs[1] = fs[0]
-            margins = (0.1, 0.15)
+            margins = (0.2, 0.15)
         plt.figure(figsize=fs)
 
         self.draw_nodes(label, nnn, margins)
@@ -193,23 +218,23 @@ class HubbardGraph(HubbardEqualizer):
                                    arrows=True,
                                    arrowstyle='-',
                                    edgelist=[el],
-                                   edge_color=BOND_COLOR,
+                                   edge_color=self.color['bond'],
                                    connectionstyle=cs,
                                    alpha=np.sqrt(self.edge_alpha[i]),
                                    width=LINE_WIDTH,
-                                   min_source_margin=10 + LINE_WIDTH,
-                                   min_target_margin=10 + LINE_WIDTH)
+                                   min_source_margin=12 + LINE_WIDTH,
+                                   min_target_margin=12 + LINE_WIDTH)
         if label in ['param', 'adjust']:
             self.draw_edge_labels(self.pos,
                                   self.nn_edge_label,
                                   nnn=False,
                                   font_size=NODE_TEXT_SIZE,
-                                  font_color=BOND_TEXT_COLOR)
+                                  font_color=self.color['bond_text'])
             self.draw_edge_labels(self.pos,
                                   self.nnn_edge_label,
                                   nnn=True,
                                   font_size=NODE_TEXT_SIZE,
-                                  font_color=BOND_TEXT_COLOR)
+                                  font_color=self.color['bond_text'])
 
     def draw_nodes(self, label, nnn, margins):
         fillstyle = 'none' if label == 'interband' else 'full'
@@ -219,7 +244,7 @@ class HubbardGraph(HubbardEqualizer):
             nx.draw_networkx_nodes(self.graph,
                                    pos=self.pos,
                                    nodelist=[node_list[i]],
-                                   node_color=NODE_COLOR,
+                                   node_color=self.color['node'],
                                    node_shape=MarkerStyle(
                                        marker=em,
                                        fillstyle=fillstyle),
@@ -231,12 +256,13 @@ class HubbardGraph(HubbardEqualizer):
             nx.draw_networkx_labels(self.graph,
                                     pos=self.pos,
                                     font_family=FONT_FAMILY,
-                                    font_color=NODE_TEXT_COLOR,
+                                    font_color=self.color['node_text'],
                                     font_size=NODE_TEXT_SIZE,
+                                    font_weight=FONT_WEIGHT,
                                     labels=self.node_label)
         if label in ['param', 'interband']:
             self.draw_node_overhead_labels(
-                nnn, font_size=OVERHEAD_SUZE, font_color=OVERHEAD_COLOR)
+                nnn, font_size=OVERHEAD_SUZE, font_color=self.color['overhead'])
 
     def draw_node_overhead_labels(self,
                                   nnn,
@@ -251,7 +277,7 @@ class HubbardGraph(HubbardEqualizer):
         if self.lattice.dim == 1:
             shift = (0, 0.02) if nnn else (0, 0.03)
         elif self.lattice.dim == 2:
-            shift = (-0.2, 0.2)
+            shift = (-0.35, 0.35)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
@@ -280,7 +306,7 @@ class HubbardGraph(HubbardEqualizer):
                          horizontalalignment="center",
                          verticalalignment="center",
                          ax: plt.Axes = None,
-                         rotate=True,
+                         rotate=False,
                          clip_on=True,
                          ):
         if ax is None:
