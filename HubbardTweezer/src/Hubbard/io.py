@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Iterable
+from typing import Iterable, Union
 import tools.reportIO as rep
 from configobj import ConfigObj
 import numpy as np
@@ -159,26 +159,39 @@ def read_Hubbard(report: ConfigObj, band: int = 1):
     return U, A, wc
 
 
-def update_saved_data(report: ConfigObj, G):
-    G.U, G.A, __ = read_Hubbard(report)
-    G.A = G.A - np.eye(G.A.shape[0]) * np.mean(np.diag(G.A))
-    Vi = np.real(np.diag(G.A))
-    tij = abs(np.real(G.A - np.diag(Vi)))
-    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U}
-    rep.create_report(report, "Singleband_Parameters", **values)
+def update_saved_data(report: Union[ConfigObj, str], G):
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    read_trap(report, G)
+    eig_sol = G.eigen_basis()
+    G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+    maskedA = G.A[G.mask, :][:, G.mask]
+    maskedU = G.U[G.mask]
+    links = G.xy_links(G.masked_links)
+
+    nnt = G.nn_tunneling(maskedA)
+    if G.sf == None:
+        G.sf, __ = G.txy_target(nnt, links, np.min)
+
+    # ====== Write output ======
+    write_singleband(report, G)
+    write_trap_params(report, G)
 
 
-def read_trap(report: ConfigObj, G):
+def read_trap(report: Union[ConfigObj, str], G):
+    if isinstance(report, str):
+        report = rep.get_report(report)
     G.Voff, G.trap_centers, G.waists, G.sf = read_trap_params(
         report)
     return G
 
 
-def read_trap_params(report: ConfigObj):
+def read_trap_params(report: Union[ConfigObj, str]):
     """
     Read equalized trap parameters from file.
     """
-    report = rep.get_report(report)
+    if isinstance(report, str):
+        report = rep.get_report(report)
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
@@ -186,11 +199,12 @@ def read_trap_params(report: ConfigObj):
     return Voff, tc, w, sf
 
 
-def read_target(report: ConfigObj):
+def read_target(report: Union[ConfigObj, str]):
     """
     Read target parameters from file.
     """
-    report = rep.get_report(report)
+    if isinstance(report, str):
+        report = rep.get_report(report)
     Utarget = rep.a(report, "Equalization_Result", "U_target")
     ttarget = rep.a(report, "Equalization_Result", "t_target")
     Vtarget = rep.a(report, "Equalization_Result", "V_target")
@@ -198,8 +212,9 @@ def read_target(report: ConfigObj):
     return Utarget, txTarget, tyTarget, Vtarget
 
 
-def read_file(fn: str, G, band: int = 1):
-    report = rep.get_report(fn)
+def read_file(report: Union[ConfigObj, str], G, band: int = 1):
+    if isinstance(report, str):
+        report = rep.get_report(report)
     read_trap(report, G)
     G.U, G.A, G.wf_centers = read_Hubbard(report, band=band)
     if G.wf_centers is None:

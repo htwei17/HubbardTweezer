@@ -32,19 +32,19 @@ color_scheme1 = {
 }
 
 color_scheme2 = {
-    'bond': 'teal',
-    'bond_text': 'darkcyan',
-    'node': 'paleturquoise',
-    'node_text': 'darkslateblue',
-    'overhead': 'firebrick',
+    'bond': 'goldenrod',
+    'bond_text': 'olive',
+    'node': 'wheat',
+    'node_text': 'darkolivegreen',
+    'overhead': 'saddlebrown',
 }
 
 color_scheme3 = {
-    'bond': 'teal',
+    'bond': 'olivedrab',
     'bond_text': 'darkcyan',
-    'node': 'paleturquoise',
+    'node': 'greenyellow',
     'node_text': 'darkslateblue',
-    'overhead': 'firebrick',
+    'overhead': 'darkred',
 }
 
 params = {
@@ -217,6 +217,7 @@ class HubbardGraph(HubbardEqualizer):
                                    self.pos,
                                    arrows=True,
                                    arrowstyle='-',
+                                   style='dashed' if label == 'interband' else 'solid',
                                    edgelist=[el],
                                    edge_color=self.color['bond'],
                                    connectionstyle=cs,
