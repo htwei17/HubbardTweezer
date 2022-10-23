@@ -37,29 +37,7 @@ class MLWF(DVR):
 
         self.lattice = Lattice(lattice, shape, self.ls)
 
-        # Convert lc to (lc, lc) or the other if only one number is given
-        if isinstance(lc, Iterable) and len(lc) == 1:
-            lc: Number = lc[0]
-        if isinstance(lc, Number):
-            self.isotropic = True
-            if shape in ["triangular", "honeycomvb", "kagome", "zigzag"]:
-                # For equilateral triangle
-                lc: tuple = (lc, np.sqrt(3) / 2 * lc)
-            else:
-                # For squre and others
-                lc: tuple = (lc, lc)
-        # Confirm (lc, lc) case that the lattice is isotropic
-        if shape not in ["triangular", "honeycomvb",
-                         "kagome", "zigzag"] and lc[0] == lc[1]:
-            self.isotropic = True
-        print(
-            f'Lattice: lattice shape is {shape}; lattice constants set to: {lc}')
-
-        # Set lattice constants in unit of wx
-        if self.model == "Gaussian":
-            self.lc = np.array(lc) * 1e-9 / self.w
-        elif self.model == "sho":
-            self.lc = np.array(lc)
+        self.set_lc(lc, shape)
 
         # Assume WF are localized at trap centers, location in unit of wx
         self.tc0 = self.lattice.nodes * self.lc
@@ -74,12 +52,39 @@ class MLWF(DVR):
             print(f"lattice: lattice shape is {shape}")
             print(f"lattice: Full lattice sizes: {lattice}")
             if self.verbosity > 1:
-                print(f"lattice: lattice constants: {lc}w")
+                print(f"lattice: lattice constants: {self.lc}w")
                 print(f"lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
+
+    def set_lc(self, lc, shape):
+        # Convert lc to (lc, lc) or the other if only one number is given
+        if isinstance(lc, Iterable) and len(lc) == 1:
+            lc: Number = lc[0]
+
+        tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb",
+                            "kagome", "zigzag"]
+        if isinstance(lc, Number):
+            self.isotropic = True
+            if shape in tri_lattice_list:
+                # For equilateral triangle
+                lc: tuple = (lc, np.sqrt(3) / 2 * lc)
+            else:
+                # For squre and others
+                lc: tuple = (lc, lc)
+        # Confirm (lc, lc) case that the lattice is isotropic
+        if shape not in tri_lattice_list and lc[0] == lc[1]:
+            self.isotropic = True
+        print(
+            f'Lattice: lattice shape is {shape}; lattice constants set to: {lc}')
+
+        # Set lattice constants in unit of wx
+        if self.model == "Gaussian":
+            self.lc = np.array(lc) * 1e-9 / self.w
+        elif self.model == "sho":
+            self.lc = np.array(lc)
 
     def update_lattice(self, tc: np.ndarray):
         # Update DVR grids when trap centers are shifted

@@ -369,7 +369,7 @@ def defect_hc_lattice(size):
     site2 = Nsite // 2
     # Rotate site1 & site2 by pi/2
     # NOTE: since ax != ay, the trap spacing might be changed
-    nodes[site1:site1+2, :] = nodes[site1:site1+2, :][:, ::-1]
+    nodes[site1:site1+2, :] = nodes[site1:site1+2, :][:, ::-1] * 2 / np.sqrt(3)
     # Reconnect links
     site1_obliq_links = np.logical_and(
         np.any(links == site1, axis=1), abs(links[:, 0] - links[:, 1]) != 1)
