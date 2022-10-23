@@ -13,6 +13,9 @@ from DVR.wavefunc import psi
 from tools.integrate import romb3d, trapz3dnp
 from tools.point_match import nearest_match
 
+tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb",
+                    "kagome", "zigzag"]
+
 
 class MLWF(DVR):
     """Maximally localized Wannier function
@@ -63,9 +66,6 @@ class MLWF(DVR):
         # Convert lc to (lc, lc) or the other if only one number is given
         if isinstance(lc, Iterable) and len(lc) == 1:
             lc: Number = lc[0]
-
-        tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb",
-                            "kagome", "zigzag"]
         if isinstance(lc, Number):
             self.isotropic = True
             if shape in tri_lattice_list:
@@ -124,7 +124,7 @@ class MLWF(DVR):
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
         lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
-        equalize_V0: bool = True,  # Equalize trap depths V0 for all traps first
+        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first
         dim: int = 3,
         *args,
         **kwargs,
@@ -491,7 +491,7 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
     return Uint
 
 
-def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray):
+def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray, intgrl: str = "romb") -> np.ndarray:
     t0 = time()
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
@@ -508,8 +508,10 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
     Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    Uint_onsite = trapz3dnp(wannier, x)
-    # Uint_onsite = romb3d(wannier, dx)
+    if intgrl == "romb":
+        Uint_onsite = romb3d(wannier, dx)
+    else:
+        Uint_onsite = trapz3dnp(wannier, x)
     if dvr.model == "sho":
         print(
             f"Test with analytic calculation on {i + 1}-th site",

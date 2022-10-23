@@ -147,7 +147,7 @@ ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
 a_s = rep.f(report, "Parameters", "scattering_length", 1000)
-V0 = rep.f(report, "Parameters", "V_0", 104.52)
+V0 = rep.f(report, "Parameters", "V0", 104.52)
 w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
 m = rep.f(report, "Parameters", "atom_mass", 6.015122)
 zR = rep.f(report, "Parameters", "zR", None)

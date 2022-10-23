@@ -22,6 +22,7 @@ NODE_TEXT_SIZE = 20
 OVERHEAD_COLOR = 'firebrick'
 OVERHEAD_SUZE = 22
 FONT_WEIGHT = 1000
+WAIST_SCALE = 4
 
 color_scheme1 = {
     'bond': 'teal',
@@ -113,7 +114,7 @@ class HubbardGraph(HubbardEqualizer):
             self.pos = dict(
                 (n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, '') for n in self.graph.nodes)
-        self.node_size = self.waists[:, 0]**2 * NODE_SIZE
+        self.node_size = self.waists[:, 0]**WAIST_SCALE * NODE_SIZE
         max_depth = np.max(abs(self.Voff))
         self.node_alpha = (self.Voff / max_depth) ** 10
 
@@ -194,7 +195,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis('off')
         plt.savefig(
-            f'{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf')
+            f'{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf', transparent=True, bbox_inches='tight')
 
     def draw_edges(self, label='param'):
         link_list = list(self.graph.edges)
@@ -241,7 +242,8 @@ class HubbardGraph(HubbardEqualizer):
         fillstyle = 'none' if label == 'interband' else 'full'
         node_list = list(self.graph.nodes)
         for i in range(len(node_list)):
-            em = eliptic_marker((self.waists[i, 1] / self.waists[i, 0])**2)
+            em = eliptic_marker(
+                (self.waists[i, 1] / self.waists[i, 0])**WAIST_SCALE)
             nx.draw_networkx_nodes(self.graph,
                                    pos=self.pos,
                                    nodelist=[node_list[i]],

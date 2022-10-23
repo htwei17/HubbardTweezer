@@ -178,6 +178,16 @@ def update_saved_data(report: Union[ConfigObj, str], G):
     write_trap_params(report, G)
 
 
+def update_tc(report: Union[ConfigObj, str], G):
+    # Update trap centers from unit of itself to unit of the waist.
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    read_trap(report, G)
+    G.trap_centers = rep.a(report, "Trap_Adjustments", "trap_centers")
+    G.trap_centers = G.trap_centers * G.lc
+    write_trap_params(report, G)
+
+
 def read_trap(report: Union[ConfigObj, str], G):
     if isinstance(report, str):
         report = rep.get_report(report)

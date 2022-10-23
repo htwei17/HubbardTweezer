@@ -61,13 +61,13 @@ def build_lattice(size, shape, symmetry):
     elif shape == 'Lieb':
         nodes, links = Lieb_lattice(size)
     elif shape == 'triangular':
-        nodes, links, __ = tri_lattice(size, symmetry)
+        nodes, links, __ = tri_lattice(size, symmetry=symmetry)
     elif shape == 'zigzag':
         # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
         # TODO: delete horizontal links
         symmetry = False
         nodes, links, __ = tri_lattice(
-            np.array([size[0], 2], dtype=int), symmetry)
+            np.array([size[0], 2], dtype=int), symmetry=symmetry)
         links = links[abs(links[:, 0] - links[:, 1]) != 1]
     elif shape == 'honeycomb':
         nodes, links = hc_lattice(size)
