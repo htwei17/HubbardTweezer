@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.path import Path
 from matplotlib.markers import MarkerStyle
+from matplotlib import font_manager as fm
+from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 from .equalizer import *
 
@@ -13,16 +15,18 @@ FONT_FAMILY = 'cursive'
 # BOND_TEXT_COLOR = np.array([0.122972391,	0.63525259,	0.529459411])
 BOND_TEXT_COLOR = 'darkcyan'
 BOND_TEXT_SIZE = 32
-NODE_SIZE = 1200
+NODE_SIZE = 2400
+MIN_GAP = 18
 # NODE_COLOR = '#BFDF25'
 NODE_EDGE_WIDTH = LINE_WIDTH
 # NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
-NODE_TEXT_SIZE = 20
+NODE_TEXT_SIZE = 28
 # OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
 OVERHEAD_COLOR = 'firebrick'
-OVERHEAD_SUZE = 22
+OVERHEAD_SUZE = 30
 FONT_WEIGHT = 1000
 WAIST_SCALE = 4
+SCALEBAR_TEXT_SIZE = 32
 
 color_scheme1 = {
     'bond': 'teal',
@@ -83,17 +87,20 @@ class HubbardGraph(HubbardEqualizer):
                 # Label bond length
                 length = la.norm(np.diff(self.trap_centers[link, :], axis=0))
             else:
-                length = 1
+                length = 1.
             self.graph[link[0]][link[1]]['weight'] = length
         self.edge_label = dict(
             (edge, f'{self.graph[edge[0]][edge[1]]["weight"]:.0f}')
             for edge in self.graph.edges)
-        max_len = max(dict(self.graph.edges).items(),
-                      key=lambda x: x[1]["weight"])[-1]["weight"]
         self.edge_alpha = np.array([
-            self.graph[edge[0]][edge[1]]["weight"] / max_len
+            self.graph[edge[0]][edge[1]]["weight"]
             for edge in self.graph.edges
         ])
+        is_masked_links = np.array(
+            [np.logical_or(self.mask[edge[0]], self.mask[edge[1]]) for edge in self.graph.edges])
+        max_len = max(self.edge_alpha[is_masked_links])
+        self.edge_alpha /= max_len
+        self.edge_alpha = np.clip(self.edge_alpha, 0., 1)
 
     def set_nodes(self, label='param'):
         if label == 'param':
@@ -115,8 +122,9 @@ class HubbardGraph(HubbardEqualizer):
                 (n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, '') for n in self.graph.nodes)
         self.node_size = self.waists[:, 0]**WAIST_SCALE * NODE_SIZE
-        max_depth = np.max(abs(self.Voff))
+        max_depth = np.max(abs(self.Voff[self.mask]))
         self.node_alpha = (self.Voff / max_depth) ** 10
+        self.node_alpha = np.clip(self.node_alpha, 0., 1)
 
     def add_nnn(self, center=0, limit=3):
         # Add higher neighbor bonds
@@ -183,15 +191,17 @@ class HubbardGraph(HubbardEqualizer):
             fs = [3 * (self.lattice.size[0] - 1), 3]
             margins = (5e-2, 0.8) if nnn else (2e-2, 0.5)
         elif self.lattice.dim == 2:
-            fs = [3 * (self.lattice.size[0] - 1),
-                  3 * (self.lattice.size[1] - 1)]
+            fs = [4 * (self.lattice.size[0] - 1),
+                  4 * (self.lattice.size[1] - 1)]
             if self.lattice.shape == 'ring':
                 fs[1] = fs[0]
-            margins = (0.2, 0.15)
+            margins = (
+                0.2 / np.sqrt(self.lattice.size[0] - 2), 0.2 / np.sqrt(self.lattice.size[1] - 2))
         plt.figure(figsize=fs)
 
         self.draw_nodes(label, nnn, margins)
         self.draw_edges(label)
+        self.add_scalebar(color=self.color['bond'])
 
         plt.axis('off')
         plt.savefig(
@@ -213,7 +223,7 @@ class HubbardGraph(HubbardEqualizer):
             cs = "arc3"  # rad=0, meaning straight line
             # For all further neighbor edges, use curved lines
             if not isnn[i]:
-                cs = "arc3,rad=0.2"  # rad=0.2, meaning C1 to C0-C2 is 0.2 * C0-C2 distance
+                cs = "arc3,rad=0.3"  # rad=0.2, meaning C1 to C0-C2 is 0.2 * C0-C2 distance
             nx.draw_networkx_edges(self.graph,
                                    self.pos,
                                    arrows=True,
@@ -224,8 +234,8 @@ class HubbardGraph(HubbardEqualizer):
                                    connectionstyle=cs,
                                    alpha=np.sqrt(self.edge_alpha[i]),
                                    width=LINE_WIDTH,
-                                   min_source_margin=12 + LINE_WIDTH,
-                                   min_target_margin=12 + LINE_WIDTH)
+                                   min_source_margin=MIN_GAP + LINE_WIDTH,
+                                   min_target_margin=MIN_GAP + LINE_WIDTH)
         if label in ['param', 'adjust']:
             self.draw_edge_labels(self.pos,
                                   self.nn_edge_label,
@@ -277,10 +287,11 @@ class HubbardGraph(HubbardEqualizer):
                                   ax: plt.Axes = None):
         if ax is None:
             ax = plt.gca()
+        # Shift in unit of w, since wy is not defined in 1D
         if self.lattice.dim == 1:
-            shift = (0, 0.02) if nnn else (0, 0.03)
+            shift = (0, 0.06) if nnn else (0, 0.04)
         elif self.lattice.dim == 2:
-            shift = (-0.35, 0.35)
+            shift = (-0.35, 0.3)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
@@ -322,7 +333,7 @@ class HubbardGraph(HubbardEqualizer):
             (x2, y2) = pos[n2]
             (x, y) = ((x1 + x2) / 2, (y1 + y2) / 2)
             if nnn:
-                rad = 0.0075 if self.lattice.dim == 1 else 0.1
+                rad = 0.025 if self.lattice.dim == 1 else 0.1
                 (dx, dy) = (x2 - x1, y2 - y1)
                 (x, y) = (x + rad * dy, y - rad * dx)
 
@@ -374,6 +385,18 @@ class HubbardGraph(HubbardEqualizer):
             labelbottom=False,
             labelleft=False,
         )
+
+    def add_scalebar(self, ax: plt.Axes = None, color='teal', scale=1.0, unit='$\mu$m'):
+        if ax is None:
+            ax = plt.gca()
+        fontprops = fm.FontProperties(size=SCALEBAR_TEXT_SIZE)
+        sb = AnchoredSizeBar(ax.transData,
+                             scale, f'{scale}' + unit, loc='lower right',
+                             pad=0.05,
+                             color=color,
+                             frameon=False,
+                             fontproperties=fontprops)
+        ax.add_artist(sb)
 
 
 def eliptic_marker(epsilon):
