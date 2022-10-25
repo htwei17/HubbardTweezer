@@ -176,7 +176,7 @@ V0 = 52.26"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1600, 1650
+lattice_const = 1550, 1600
 V0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
@@ -191,7 +191,7 @@ else
     TIME="00:40:00"
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1550,
-V_0 = 52.26"
+V0 = 52.26"
 fi
 
 # ========= Non-equalization =========
@@ -229,7 +229,7 @@ fi
 
 # ========= Write sbatch script =========
 echo "Lattice size is: $Lx,$Ly"
-JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
+JOB_NAME="autodiff_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
 
 SLURM_FN=$JOB_NAME.slurm
 rm $SLURM_FN
@@ -264,11 +264,12 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/1600/$JOB_NAME$LN_SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/autodiff/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
-cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
+cp -r \$SLURM_SUBMIT_DIR/src_autodiff \$WORK_DIR
 cd \$WORK_DIR
+mv src_autodiff src
 
 if [ -s \$FN ]; then
     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
@@ -302,7 +303,7 @@ echo \"I ran on: \$SLURM_NODELIST\"
 
 # Code run
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output/1600" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output/autodiff" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then

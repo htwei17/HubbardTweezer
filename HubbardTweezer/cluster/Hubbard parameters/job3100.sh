@@ -170,13 +170,13 @@ V0 = 73.0219"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'zigzag' ]; then
     # 2D triangular
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 2400, 1000
+lattice_const = 3100, 0
 V0 = 52.26"
     SYMMETRY=False
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1600, 1650
+lattice_const = 1550, 1600
 V0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
@@ -191,7 +191,7 @@ else
     TIME="00:40:00"
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1550,
-V_0 = 52.26"
+V0 = 52.26"
 fi
 
 # ========= Non-equalization =========
@@ -264,7 +264,7 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/1600/$JOB_NAME$LN_SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/3100/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
@@ -302,7 +302,7 @@ echo \"I ran on: \$SLURM_NODELIST\"
 
 # Code run
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output/1600" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output/3100" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then

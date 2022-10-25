@@ -25,7 +25,7 @@ NODE_TEXT_SIZE = 28
 OVERHEAD_COLOR = 'firebrick'
 OVERHEAD_SUZE = 30
 FONT_WEIGHT = 1000
-WAIST_SCALE = 4
+WAIST_SCALE = 3
 SCALEBAR_TEXT_SIZE = 32
 
 color_scheme1 = {
@@ -158,7 +158,7 @@ class HubbardGraph(HubbardEqualizer):
         elif label not in ['param', 'adjust']:
             raise ValueError('Invalid label.')
 
-    def draw_graph(self, label='param', band=1, nnn=False, A=None, U=None):
+    def draw_graph(self, label='param', band=1, nnn=False, A=None, U=None, scalebar=True):
         if isinstance(band, int):
             self.singleband_params(label, band, A, U)
             if band == 1:
@@ -188,20 +188,21 @@ class HubbardGraph(HubbardEqualizer):
             print('\nStart to plot graph...')
 
         if self.lattice.dim == 1:
-            fs = [3 * (self.lattice.size[0] - 1), 3]
-            margins = (5e-2, 0.8) if nnn else (2e-2, 0.5)
+            fs = [3.5 * (self.lattice.size[0] - 1), 3.5]
+            margins = (5e-2, 0.8) if nnn else (5e-2, 0.8)
         elif self.lattice.dim == 2:
-            fs = [4 * (self.lattice.size[0] - 1),
-                  4 * (self.lattice.size[1] - 1)]
+            fs = [3.5 * (self.lattice.size[0] - 1),
+                  3.5 * (self.lattice.size[1] - 1)]
             if self.lattice.shape == 'ring':
                 fs[1] = fs[0]
             margins = (
-                0.2 / np.sqrt(self.lattice.size[0] - 2), 0.2 / np.sqrt(self.lattice.size[1] - 2))
+                0.2 / np.sqrt(self.lattice.size[0] - 2), 0.25 / np.sqrt(self.lattice.size[1] - 2))
         plt.figure(figsize=fs)
 
         self.draw_nodes(label, nnn, margins)
         self.draw_edges(label)
-        self.add_scalebar(color=self.color['bond'])
+        if scalebar:
+            self.add_scalebar(color=self.color['bond'])
 
         plt.axis('off')
         plt.savefig(
@@ -289,9 +290,9 @@ class HubbardGraph(HubbardEqualizer):
             ax = plt.gca()
         # Shift in unit of w, since wy is not defined in 1D
         if self.lattice.dim == 1:
-            shift = (0, 0.06) if nnn else (0, 0.04)
+            shift = (0, 0.06) if nnn else (0, 0.05)
         elif self.lattice.dim == 2:
-            shift = (-0.35, 0.3)
+            shift = (-0.35, 0.35)
         self.overhead_pos = dict(
             (n, (self.pos[n][0] + shift[0], self.pos[n][1] + shift[1]))
             for n in self.graph.nodes())
@@ -391,8 +392,8 @@ class HubbardGraph(HubbardEqualizer):
             ax = plt.gca()
         fontprops = fm.FontProperties(size=SCALEBAR_TEXT_SIZE)
         sb = AnchoredSizeBar(ax.transData,
-                             scale, f'{scale}' + unit, loc='lower right',
-                             pad=0.05,
+                             scale, f'{scale}' + unit, loc='lower center',
+                             pad=0.01,
                              color=color,
                              frameon=False,
                              fontproperties=fontprops)

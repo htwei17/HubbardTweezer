@@ -2,7 +2,7 @@
 
 # ====== Default values ======
 # Lattice
-Lx=3
+Lx=5
 Ly=$Lx
 LATTICE_DIM=2
 SHAPE=square
@@ -176,7 +176,7 @@ V0 = 52.26"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1600, 1650
+lattice_const = 1550, 1600
 V0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
@@ -191,7 +191,7 @@ else
     TIME="00:40:00"
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1550,
-V_0 = 52.26"
+V0 = 52.26"
 fi
 
 # ========= Non-equalization =========
@@ -264,7 +264,7 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/1600/$JOB_NAME$LN_SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/ghost/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
@@ -283,6 +283,7 @@ laser_wavelength = 780
 shape = $SHAPE
 scattering_length = 1770
 dimension = $d
+ghost_sites = True
 waist_direction = $WAIST
 lattice_symmetry = $SYMMETRY
 equalize = $EQ_FLAG
@@ -302,7 +303,7 @@ echo \"I ran on: \$SLURM_NODELIST\"
 
 # Code run
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output/1600" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output/ghost" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then

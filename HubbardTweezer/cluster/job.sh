@@ -166,32 +166,32 @@ if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     # 2D triangular
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550,
-V_0 = 73.0219"
+V0 = 73.0219"
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'zigzag' ]; then
     # 2D triangular
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 2400, 1000
-V_0 = 52.26"
+V0 = 52.26"
     SYMMETRY=False
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550, 1600
-V_0 = 52.26"
+V0 = 52.26"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
     # Build a perfect ring s.t. no equalization needed
     Ly=1
     DIM_PARAM="lattice_size = $Lx, $Ly
 lattice_const = 1550,
-V_0 = 52.26"
+V0 = 52.26"
 else
     # 1D chain
     Ly=1
     TIME="00:40:00"
     DIM_PARAM="lattice_size = $Lx,
 lattice_const = 1550,
-V_0 = 52.26"
+V0 = 52.26"
 fi
 
 # ========= Non-equalization =========
