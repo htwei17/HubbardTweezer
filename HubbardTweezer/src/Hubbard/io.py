@@ -59,8 +59,8 @@ class EqulizeInfo(dict):
         if G.verbosity:
             print(f"Cost function by terms = {cvec}")
             print(f"Cost function total value fval = {fval}\n")
-            print(
-                f'i={self["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+        print(
+            f'i={self["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 
     def update_cost(self, cvec, fval, ctot):
         self['cost'] = np.append(self['cost'], cvec[None], axis=0)
