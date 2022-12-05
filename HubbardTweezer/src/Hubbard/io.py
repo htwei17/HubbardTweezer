@@ -1,4 +1,5 @@
-from typing import Iterable
+from numbers import Number
+from typing import Iterable, Union
 import tools.reportIO as rep
 from configobj import ConfigObj
 import numpy as np
@@ -58,8 +59,8 @@ class EqulizeInfo(dict):
         if G.verbosity:
             print(f"Cost function by terms = {cvec}")
             print(f"Cost function total value fval = {fval}\n")
-            print(
-                f'i={self["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
+        print(
+            f'i={self["Nfeval"]}\tc={cvec}\tc_i={fval}\tc_i//2-c_i={diff}')
 
     def update_cost(self, cvec, fval, ctot):
         self['cost'] = np.append(self['cost'], cvec[None], axis=0)
@@ -127,59 +128,105 @@ def write_singleband(report, G):
     # FIXME: If not final result, G.U might be None.
     Vi = np.real(np.diag(G.A))
     tij = abs(np.real(G.A - np.diag(Vi)))
-    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U}
+    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U,
+              "wf_centers": G.wf_centers}
     rep.create_report(report, "Singleband_Parameters", **values)
 
 
-def read_Hubbard(report: ConfigObj):
+def read_Hubbard(report: ConfigObj, band: int = 1):
     """
     Read parameters from file.
     """
-    report = rep.get_report(report)
-    U = rep.a(report, "Singleband_Parameters", "U_i")
-    Vi = rep.a(report, "Singleband_Parameters", "V_i")
-    tij = rep.a(report, "Singleband_Parameters", "t_ij")
-    A = np.diag(Vi) + tij
-    return U, A
+    if isinstance(band, Number):
+        if band == 1:
+            section = "Singleband_Parameters"
+            U = rep.a(report, section, "U_i")
+            Vi = rep.a(report, section, "V_i")
+            tij = rep.a(report, section, "t_ij")
+            wc = rep.a(report, section, "wf_centers")
+        else:
+            section = "Multiband_Parameters"
+            U = rep.a(report, section, f"U_{band}{band}_i")
+            Vi = rep.a(report, section, f"V_{band}_i")
+            tij = rep.a(report, section, f"t_{band}_ij")
+            wc = rep.a(report, section, f"wf_{band}_centers")
+        A = np.diag(Vi) + tij
+    elif isinstance(band, Iterable):
+        section = "Multiband_Parameters"
+        U = rep.a(report, section, f"U_{band[0]}{band[1]}_i")
+        A = None
+        wc = None
+    return U, A, wc
 
 
-def update_saved_data(report: ConfigObj, G):
-    G.U, G.A = read_Hubbard(report)
-    G.A = G.A - np.eye(G.A.shape[0]) * np.mean(np.diag(G.A))
-    Vi = np.real(np.diag(G.A))
-    tij = abs(np.real(G.A - np.diag(Vi)))
-    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U}
-    rep.create_report(report, "Singleband_Parameters", **values)
+def update_saved_data(report: Union[ConfigObj, str], G):
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    read_trap(report, G)
+    eig_sol = G.eigen_basis()
+    G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+    maskedA = G.A[G.mask, :][:, G.mask]
+    maskedU = G.U[G.mask]
+    links = G.xy_links(G.masked_links)
+
+    nnt = G.nn_tunneling(maskedA)
+    if G.sf == None:
+        G.sf, __ = G.txy_target(nnt, links, np.min)
+
+    # ====== Write output ======
+    write_singleband(report, G)
+    write_trap_params(report, G)
 
 
-def read_trap(report: ConfigObj, G):
-    G.Voff, G.trap_centers, G.wf_centers, G.waists, G.sf = read_trap_params(
+def update_tc(report: Union[ConfigObj, str], G):
+    # Update trap centers from unit of itself to unit of the waist.
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    read_trap(report, G)
+    G.trap_centers = rep.a(report, "Trap_Adjustments", "trap_centers")
+    G.trap_centers = G.trap_centers * G.lc
+    write_trap_params(report, G)
+
+
+def read_trap(report: Union[ConfigObj, str], G):
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    G.Voff, G.trap_centers, G.waists, G.sf = read_trap_params(
         report)
-    if G.wf_centers.size == 0:
-        G.wf_centers = G.trap_centers * G.lc
     return G
 
 
-def read_trap_params(report: ConfigObj):
+def read_trap_params(report: Union[ConfigObj, str]):
     """
     Read equalized trap parameters from file.
     """
-    report = rep.get_report(report)
+    if isinstance(report, str):
+        report = rep.get_report(report)
     Voff = rep.a(report, "Trap_Adjustments", "V_offset")
     tc = rep.a(report, "Trap_Adjustments", "trap_centers")
-    wc = rep.a(report, "Trap_Adjustments", "wf_centers")
     w = rep.a(report, "Trap_Adjustments", "waist_factors")
     sf = rep.f(report, "Equalization_Result", "scale_factor")
-    return Voff, tc, wc, w, sf
+    return Voff, tc, w, sf
 
 
-def read_target(report: ConfigObj):
+def read_target(report: Union[ConfigObj, str]):
     """
     Read target parameters from file.
     """
-    report = rep.get_report(report)
+    if isinstance(report, str):
+        report = rep.get_report(report)
     Utarget = rep.a(report, "Equalization_Result", "U_target")
     ttarget = rep.a(report, "Equalization_Result", "t_target")
     Vtarget = rep.a(report, "Equalization_Result", "V_target")
     txTarget, tyTarget = ttarget[0], ttarget[1]
     return Utarget, txTarget, tyTarget, Vtarget
+
+
+def read_file(report: Union[ConfigObj, str], G, band: int = 1):
+    if isinstance(report, str):
+        report = rep.get_report(report)
+    read_trap(report, G)
+    G.U, G.A, G.wf_centers = read_Hubbard(report, band=band)
+    if G.wf_centers is None:
+        G.wf_centers = G.trap_centers
+    return G

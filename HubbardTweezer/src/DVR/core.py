@@ -132,7 +132,7 @@ class DVR:
             laser: float = 780,  # 780nm, laser wavelength in unit of nm
             # Rayleigh range input by hand, in unit of nm
             zR: Union[None, float] = None,
-            symmetry: bool = False,
+            symmetry: bool = True,
             # Parity of each dimension, used when symmetry is True
             parity: Union[None, np.ndarray] = None,
             absorber: bool = False,
@@ -414,11 +414,10 @@ class DVR:
                 print("H_op: n={} dx={}w p={} {} operator constructed.".format(
                     self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
 
-            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
-            H = LinearOperator((N, N), matvec=applyH)
-
             t0 = time()
+            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
             N = np.product(no)
+            H = LinearOperator((N, N), matvec=applyH)
 
             if k <= 0:
                 k = 10

@@ -147,7 +147,7 @@ ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
 a_s = rep.f(report, "Parameters", "scattering_length", 1000)
-V0 = rep.f(report, "Parameters", "V_0", 104.52)
+V0 = rep.f(report, "Parameters", "V0", 104.52)
 w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
 m = rep.f(report, "Parameters", "atom_mass", 6.015122)
 zR = rep.f(report, "Parameters", "zR", None)
@@ -164,6 +164,7 @@ eqt = rep.s(report, "Parameters", "equalize_target", 'vT')
 wd = rep.s(report, "Parameters", "waist_direction", None)
 meth = rep.s(report, "Parameters", "method", 'trf')
 nb = rep.b(report, "Parameters", "no_bounds", False)
+gho = rep.b(report, "Parameters", "ghost_sites", False)
 r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
@@ -206,6 +207,7 @@ G = HubbardGraph(
     eqtarget=eqt,
     lattice_symmetry=ls,
     Ut=ut,
+    ghost=gho,
     random=r,
     x0=x0,
     scale_factor=sf,
@@ -218,8 +220,11 @@ G = HubbardGraph(
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-nnt = G.nn_tunneling(G.A)
-links = G.xy_links()
+maskedA = G.A[G.mask, :][:, G.mask]
+maskedU = G.U[G.mask]
+links = G.xy_links(G.masked_links)
+
+nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.min)
 # Print out Hubbard parameters
@@ -239,12 +244,12 @@ write_trap_params(report, G)
 eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-Vtarget = np.mean(np.real(np.diag(G.A)))
+Vtarget = np.mean(np.real(np.diag(maskedA)))
 ttarget = G.txy_target(nnt, links)
-Utarget = np.mean(G.U)
-cu = G.u_cost_func(G.U, Utarget, G.sf)
-ct = G.t_cost_func(G.A, links, ttarget, G.sf)
-cv = G.v_cost_func(G.A, Vtarget, G.sf)
+Utarget = np.mean(maskedU)
+cu = G.u_cost_func(maskedU, Utarget, G.sf)
+ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
+cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
@@ -266,18 +271,19 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    A, U = optimize(G, *eig_sol)
+    A, W, wf_centers = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(A[i]))
         tij = abs(np.real(A[i] - np.diag(Vi)))
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
+        values[f"wf_{i+1}_centers"] = wf_centers[i]
 
-    V = interaction(G, U, *eig_sol[1:])
+    U = interaction(G, W, *eig_sol[1:])
     for i in range(band):
         for j in range(band):
-            values[f"U_{i+1}{j+1}_i"] = V[i, j]
+            values[f"U_{i+1}{j+1}_i"] = U[i, j]
 
     rep.create_report(report, "Multiband_Parameters", **values)
 

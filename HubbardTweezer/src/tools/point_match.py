@@ -12,6 +12,7 @@ def nearest_match(site: np.ndarray, wf: np.ndarray) -> np.ndarray:
     dist_mat = cdist(site, wf, metric="euclidean")
     num_site = site.shape[0]
     num_wf = wf.shape[0]
+    threshold = 0.5 * num_site
     if num_site != num_wf:
         raise ValueError('Number of sites and WFs must be equal.')
 
@@ -52,7 +53,7 @@ def nearest_match(site: np.ndarray, wf: np.ndarray) -> np.ndarray:
                     order[i] = j
     else:
         print('WARNING: no solution found. Order is not changed.')
-    if solver.Objective().Value() > 0.5:  # If any WF is way too far from its site
+    if solver.Objective().Value() > threshold:  # If any WF is way too far from its site
         print(f'WARNING: total distance = {solver.Objective().Value()}.',
               'Assignment might be non-local.')
     return order
