@@ -3,4 +3,5 @@
 
 # Folders
 __pycache__
-Computation/src/test
+HubbardTweezer/src/test
+HubbardTweezer/cluster
