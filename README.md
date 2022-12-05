@@ -10,9 +10,9 @@
 
 ## Dependencies
 
-* [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch) (or [`autograd`](https://github.com/HIPS/autograd) by your preference)
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch)
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
-* [`networkx`](https://github.com/networkx/networkx) (or [`graphviz`](https://github.com/xflr6/graphviz))
+* [`networkx`](https://github.com/networkx/networkx)
 * `numpy`
 * `scipy`
 * `ortools`
