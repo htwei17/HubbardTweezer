@@ -1,6 +1,7 @@
 # HubbardTweezer: Hubbard parameter calculator for 1&2D optical tweezer array systems
 
 ![release](https://img.shields.io/github/v/release/Kvanti17/HubbardTweezer?color=green&include_prereleases)
+[![DOI](https://zenodo.org/badge/519873426.svg)](https://zenodo.org/badge/latestdoi/519873426)
 
 ## Features
 
