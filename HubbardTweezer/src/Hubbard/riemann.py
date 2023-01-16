@@ -39,7 +39,8 @@ def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.nda
         return cost_func(point, R)
 
     problem = pymanopt.Problem(manifold=manifold, cost=_cost_func)
-    # Positive definite programming, so use conjugate gradient
+    # By RMP 84.4(2012), cc is efficient
+    # Cost func is always positive but not quadratic in U
     optimizer = pymanopt.optimizers.ConjugateGradient(
         max_iterations=1000, min_step_size=1e-12, verbosity=verbosity)
     result = optimizer.run(
