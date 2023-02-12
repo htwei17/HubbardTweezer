@@ -1,87 +1,91 @@
 import numpy as np
-from DVR.dynamics import (DVRdynamics, DVRdynamics_exe, get_stop_time)
+from DVR.dynamics import DVRdynamics, DVRdynamics_exe, get_stop_time
 import argparse
 
-dsp = 'Tweezer stroboscopic dynamics by 3D DVR.'
+dsp = "Tweezer stroboscopic dynamics by 3D DVR."
 parser = argparse.ArgumentParser(description=dsp)
-parser.add_argument("-n",
-                    "--number",
-                    type=int,
-                    help="Number of grid points.",
-                    default=0)
-parser.add_argument("-f",
-                    "--freq",
-                    nargs="+",
-                    type=float,
-                    help="Frequencies: [initial final step] in unit of kHz.",
-                    default=[100, 240, 10])
+parser.add_argument(
+    "-n", "--number", type=int, help="Number of grid points.", default=0
+)
+parser.add_argument(
+    "-f",
+    "--freq",
+    nargs="+",
+    type=float,
+    help="Frequencies: [initial final step] in unit of kHz.",
+    default=[100, 240, 10],
+)
 parser.add_argument(
     "-R",
     "--range",
     nargs="+",
     type=float,
-    help=
-    "Spatial range in dynamics w/o absorption region: [Rx Ry Rz] in unit of w.",
-    default=[3, 3, 7.2])
+    help="Spatial range in dynamics w/o absorption region: [Rx Ry Rz] in unit of w.",
+    default=[3, 3, 7.2],
+)
 parser.add_argument(
     "-p",
     "--trap",
     nargs="+",
     type=float,
     help="Trap parameters of potential: [V_0 w] in unit of kHz and meter.",
-    default=[104.52, 1E-6])
+    default=[104.52, 1e-6],
+)
 parser.add_argument(
     "-t",
     "--time",
     nargs="+",
     type=float,
     help="Number of steps and stop time in second (1/omega): [step, st]",
-    default=[1000.0, 0])
-parser.add_argument("-d",
-                    "--dim",
-                    type=int,
-                    help="Dimension of the system.",
-                    default=3)
-parser.add_argument("-m",
-                    "--model",
-                    type=str,
-                    help="Model to calculate.",
-                    default='Gaussian')
-parser.add_argument("-sy",
-                    "--symmetry",
-                    action="store_false",
-                    help="Determine to use reflection symmetries or not.",
-                    default=True)
+    default=[1000.0, 0],
+)
+parser.add_argument("-d", "--dim", type=int, help="Dimension of the system.", default=3)
+parser.add_argument(
+    "-m", "--model", type=str, help="Model to calculate.", default="Gaussian"
+)
+parser.add_argument(
+    "-sy",
+    "--symmetry",
+    action="store_false",
+    help="Determine to use reflection symmetries or not.",
+    default=True,
+)
 parser.add_argument(
     "-o",
     "--sample",
     action="store_false",
     help="Determine to use stop_time/step_no or T as the sampling timespan.",
-    default=True)
-parser.add_argument("-rt",
-                    "--realtime",
-                    action="store_true",
-                    help="Determine to do realtime dynamics or not.",
-                    default=False)
+    default=True,
+)
+parser.add_argument(
+    "-rt",
+    "--realtime",
+    action="store_true",
+    help="Determine to do realtime dynamics or not.",
+    default=False,
+)
 parser.add_argument(
     "-e",
     "--mem_eff",
     action="store_true",
-    help=
-    "Determine to be memory efficient or not. This has a performance loss.",
-    default=False)
+    help="Determine to be memory efficient or not. This has a performance loss.",
+    default=False,
+)
 parser.add_argument(
     "-a",
     "--absorption",
     action="store_true",
     help="Determine to use absorption potential at boundary or not.",
-    default=False)
-parser.add_argument("-ap",
-                    "--ab_param",
-                    nargs="+",
-                    type=float,
-                    help="Absorption parameters: [V_0I, L].",
-                    default=[57.04, 1])
+    default=False,
+)
+parser.add_argument(
+    "-ap",
+    "--ab_param",
+    nargs="+",
+    type=float,
+    help="Absorption parameters: [V_0I, L].",
+    default=[57.04, 1],
+)
 args = parser.parse_args()
 
 # 3D tweezer potential
@@ -133,15 +137,14 @@ args = parser.parse_args()
 if len(args.freq) == 1:
     freq_list = np.array(args.freq)
 elif len(args.freq) == 3:
-    freq_list = np.arange(args.freq[0], args.freq[1] + args.freq[2],
-                          args.freq[2])
+    freq_list = np.arange(args.freq[0], args.freq[1] + args.freq[2], args.freq[2])
 
 N = args.number
 R = np.array(args.range)
 trap = args.trap
 step, t = args.time
 
-st = get_stop_time(freq_list, t, trap[0] * 1E3 * 2 * np.pi)
+st = get_stop_time(freq_list, t, trap[0] * 1e3 * 2 * np.pi)
 
 if __debug__:
     print(N)
@@ -150,8 +153,22 @@ if __debug__:
     print(step, st)
     print(trap)
 
-dvr = DVRdynamics(N, R, freq_list, (step, st), 1 / 2, args.dim, args.model,
-                  trap, args.mem_eff, True, args.realtime, (-1, 10),
-                  args.symmetry, args.absorption, args.ab_param)
+dvr = DVRdynamics(
+    N,
+    R,
+    freq_list,
+    (step, st),
+    1 / 2,
+    args.dim,
+    args.model,
+    trap,
+    args.mem_eff,
+    True,
+    args.realtime,
+    (-1, 10),
+    args.symmetry,
+    args.absorption,
+    args.ab_param,
+)
 
 DVRdynamics_exe(dvr)

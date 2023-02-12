@@ -9,6 +9,7 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from .equalizer import *
 
 LINE_WIDTH = 6
+# FONT_FAMILY = 'serif'
 FONT_FAMILY = 'cursive'
 # FONT_FAMILY = 'fantasy'
 # BOND_COLOR = '#4AC26D'
@@ -24,7 +25,7 @@ NODE_TEXT_SIZE = 28
 # OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
 OVERHEAD_COLOR = 'firebrick'
 OVERHEAD_SUZE = 30
-FONT_WEIGHT = 1000
+FONT_WEIGHT = 200
 WAIST_SCALE = 3
 SCALEBAR_TEXT_SIZE = 32
 
@@ -109,7 +110,7 @@ class HubbardGraph(HubbardEqualizer):
                 (n, self.wf_centers[n]) for n in self.graph.nodes())
             depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
             self.node_label = dict(
-                (n, f'{depth[n]:.0f}') for n in self.graph.nodes)
+                (n, f'{int(depth[n])}') for n in self.graph.nodes)
         elif label == 'adjust':
             # Label trap offset
             self.pos = dict(
@@ -387,7 +388,7 @@ class HubbardGraph(HubbardEqualizer):
             labelleft=False,
         )
 
-    def add_scalebar(self, ax: plt.Axes = None, color='teal', scale=1.0, unit='$\mu$m'):
+    def add_scalebar(self, ax: plt.Axes = None, color='teal', scale=1.0, unit='$\mu m$'):
         if ax is None:
             ax = plt.gca()
         fontprops = fm.FontProperties(size=SCALEBAR_TEXT_SIZE)
