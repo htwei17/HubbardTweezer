@@ -8,10 +8,10 @@ import numpy.linalg as la
 
 from .riemann import riemann_minimize
 from .lattice import Lattice
-from DVR.core import *
-from DVR.wavefunc import psi
-from tools.integrate import romb3d, trapz3dnp
-from tools.point_match import nearest_match
+from ..DVR.core import *
+from ..DVR.wavefunc import psi
+from ..tools.integrate import romb3d, trapz3dnp
+from ..tools.point_match import nearest_match
 
 tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb", "kagome", "zigzag"]
 

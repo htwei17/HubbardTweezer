@@ -2,10 +2,10 @@ import numpy as np
 import sys
 from os.path import exists
 
-from Hubbard.io import *
-from Hubbard.plot import HubbardGraph
-from Hubbard.equalizer import *
-import tools.reportIO as rep
+from HubbardTweezer.Hubbard.io import *
+from HubbardTweezer.Hubbard.plot import HubbardGraph
+from HubbardTweezer.Hubbard.equalizer import *
+import HubbardTweezer.tools.reportIO as rep
 
 
 def help_message(s=2):

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from scipy.integrate import romb, simps
 
-from DVR.core import dim
+from ..DVR.core import dim
 
 
 def romb3d(integrand: np.ndarray, dx: list[float, float, float]) -> float:

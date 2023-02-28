@@ -1,6 +1,7 @@
 import numpy as np
-from DVR.dynamics import DVRdynamics, DVRdynamics_exe, get_stop_time
 import argparse
+
+from HubbardTweezer.DVR.dynamics import DVRdynamics, DVRdynamics_exe, get_stop_time
 
 dsp = "Tweezer stroboscopic dynamics by 3D DVR."
 parser = argparse.ArgumentParser(description=dsp)
