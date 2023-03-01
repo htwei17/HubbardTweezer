@@ -183,18 +183,27 @@ class HubbardEqualizer(MLWF):
             "TNC",
             "COBYLA",
             "SLSQP",
-            "trust-constr",
             "dogleg",
-            "trust-ncg",
-            "trust-exact",
-            "trust-krylov",
         ]:
             mode = "cost"
         elif self.eqmethod in ["hybr"]:
             mode = "func"
-        elif self.eqmethod in ["bobyqa"]:
+        elif self.eqmethod in ["bobyqa", "direct", "crs2", "subplex"]:
             mode = "nlopt"
-            opt = nlopt.opt(nlopt.LN_BOBYQA, len(v0))
+            goptim = False
+            if self.eqmethod == "bobyqa":
+                self.eqmethod = nlopt.LN_BOBYQA
+            elif self.eqmethod == "subplex":
+                self.eqmethod = nlopt.LN_SBPLX
+            elif self.eqmethod == "DIRECT":
+                goptim = True
+                self.eqmethod = nlopt.GN_DIRECT_L
+            elif self.eqmethod == "crs2":
+                goptim = True
+                self.eqmethod = nlopt.GN_CRS2_LM
+            else:
+                self.eqmethod = nlopt.LN_COBYLA
+            opt = nlopt.opt(self.eqmethod, len(v0))
         else:
             mode = "res"
             self.eqmethod = "trf"
@@ -203,7 +212,7 @@ class HubbardEqualizer(MLWF):
             )
 
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
-            c = self.opt_func(
+            return self.opt_func(
                 point,
                 info,
                 links,
@@ -214,83 +223,116 @@ class HubbardEqualizer(MLWF):
                 mode=mode,
                 report=iofile,
             )
-            return c
 
         t0 = time()
         if mode == "res":
-            # Convert to tuple of (lb, ub)
-            ba = np.array(bounds)
-            bounds = (ba[:, 0], ba[:, 1])
-            res = least_squares(
-                opt_target,
-                v0,
-                bounds=bounds,
-                args=(self.eqinfo,),
-                method=self.eqmethod,
-                verbose=2,
-                xtol=1e-6,
-                ftol=1e-7,
-                gtol=1e-7,
-                max_nfev=500 * self.lattice.Nindep,
-            )
+            res = self._min_res_mode(v0, bounds, opt_target)
         elif mode == "cost":
-            # Method-specific options
-            if self.eqmethod == "Nelder-Mead":
-                adp = self.lattice.Nindep > 3
-                options = {
-                    "disp": True,
-                    "initial_simplex": init_simplx,
-                    "adaptive": adp,
-                    "xatol": 1e-6,
-                    "fatol": 1e-7,
-                    "maxiter": 500 * self.lattice.Nindep,
-                }
-            elif self.eqmethod == "SLSQP":
-                options = {
-                    "disp": True,
-                    "ftol": 1e-7,
-                    "nfev": 500 * self.lattice.Nindep,
-                }
-            elif self.eqmethod == "Powell":
-                options = {
-                    "disp": True,
-                    "xtol": 1e-6,
-                    "maxiter": 500 * self.lattice.Nindep,
-                }
-            res = minimize(
-                opt_target,
-                v0,
-                bounds=bounds,
-                args=self.eqinfo,
-                method=self.eqmethod,
-                options=options,
-            )
+            res = self._min_cost_mode(v0, bounds, init_simplx, opt_target)
         elif mode == "func":
             # FIXME: not working if variable number of unknowns
             # are smaller than number of equations
             res = root(opt_target, v0, args=self.eqinfo, method=self.eqmethod, tol=1e-7)
         elif mode == "nlopt":
-            ba = np.array(bounds)
-            lb, ub = ba[:, 0], ba[:, 1]
-            tol = 1e-8
-            f = lambda x, grad: opt_target(x, self.eqinfo)
-            opt.set_min_objective(f)
-            opt.set_lower_bounds(lb)
-            opt.set_upper_bounds(ub)
-            opt.set_ftol_abs(tol)
-            xopt = opt.optimize(v0)
-            opt_val = opt.last_optimum_value()
-            result = opt.last_optimize_result()
-            message = opt.get_stopval()
-            res = OptimizeResult(
-                x=xopt, fun=opt_val, status=result, success=result >= 0, message=message
-            )
+            xopt = self._nlopt_optim(v0, bounds, opt, opt_target)
+            if goptim:
+                self.eqmethod = "trf"
+
+                def _res_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
+                    return self.opt_func(
+                        point,
+                        info,
+                        links,
+                        target,
+                        weight,
+                        self.sf,
+                        unitary=U0,
+                        mode="res",
+                        report=iofile,
+                    )
+
+                res = self._min_res_mode(xopt, bounds, _res_target)
+            else:
+                res = self._nlopt_ressult(opt, xopt)
 
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
         self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, "final")
+
+    def _nlopt_optim(self, v0, bounds, opt: nlopt.opt, opt_target):
+        ba = np.array(bounds)
+        lb, ub = ba[:, 0], ba[:, 1]
+        tol = 1e-8
+        f = lambda x, grad: opt_target(x, self.eqinfo)
+        opt.set_min_objective(f)
+        opt.set_lower_bounds(lb)
+        opt.set_upper_bounds(ub)
+        opt.set_ftol_abs(tol)
+        xopt = opt.optimize(v0)
+        return xopt
+
+    def _nlopt_ressult(self, opt: nlopt.opt, xopt):
+        opt_val = opt.last_optimum_value()
+        result = opt.last_optimize_result()
+        message = opt.get_stopval()
+        res = OptimizeResult(
+            x=xopt, fun=opt_val, status=result, success=result >= 0, message=message
+        )
+        return res
+
+    def _min_cost_mode(self, v0, bounds, init_simplx, opt_target):
+        # Method-specific options
+        if self.eqmethod == "Nelder-Mead":
+            adp = self.lattice.Nindep > 3
+            options = {
+                "disp": True,
+                "initial_simplex": init_simplx,
+                "adaptive": adp,
+                "xatol": 1e-6,
+                "fatol": 1e-7,
+                "maxiter": 500 * self.lattice.Nindep,
+            }
+        elif self.eqmethod == "SLSQP":
+            options = {
+                "disp": True,
+                "ftol": 1e-7,
+                "nfev": 500 * self.lattice.Nindep,
+            }
+        elif self.eqmethod == "Powell":
+            options = {
+                "disp": True,
+                "xtol": 1e-6,
+                "maxiter": 500 * self.lattice.Nindep,
+            }
+        res = minimize(
+            opt_target,
+            v0,
+            bounds=bounds,
+            args=self.eqinfo,
+            method=self.eqmethod,
+            options=options,
+        )
+        return res
+
+    def _min_res_mode(self, v0, bounds, opt_target):
+        # Convert to tuple of (lb, ub)
+        ba = np.array(bounds)
+        bounds = (ba[:, 0], ba[:, 1])
+        res = least_squares(
+            opt_target,
+            v0,
+            bounds=bounds,
+            args=(self.eqinfo,),
+            method=self.eqmethod,
+            verbose=2,
+            xtol=1e-6,
+            ftol=1e-7,
+            gtol=1e-7,
+            max_nfev=500 * self.lattice.Nindep,
+        )
+        return res
 
     def _set_targets(self, Ut, fix_u, fix_t, links, A, U):
         nnt = self.nn_tunneling(A)
