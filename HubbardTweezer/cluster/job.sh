@@ -116,17 +116,16 @@ done
 METHOD_SUFFIX="_"$METHOD
 
 # If job is not finished w/i scavenge wall time, just continue by using the same ini
-# TODO: add init_simplex for NM otherwise it's not effective
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ]; then
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ]; then
     PARTITION=scavenge
     TIME="4:00:00"
 fi
 
-# if [ $WAIST != "None" ]; then
-#     EQ_FLAG=True
-#     PARTITION=commons
-#     TIME="12:00:00"
-# fi
+if [ $WAIST != "None" ]; then
+    EQ_FLAG=True
+    PARTITION=commons
+    TIME="12:00:00"
+fi
 
 # ========= Lattice =========
 if [ $SHAPE != "square" ]; then
@@ -219,7 +218,7 @@ echo "#!/bin/bash
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=24GB
+#SBATCH --mem=32GB
 #SBATCH --mail-user=hw50@rice.edu
 #SBATCH --mail-type=ALL
 #
