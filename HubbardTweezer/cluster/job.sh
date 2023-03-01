@@ -22,11 +22,21 @@ N=20
 R=3
 Rz=7.2
 SYMMETRY=True
+GHOST=False
 NL_DEFINITION="N=$N
 R=$R
 Rz=$Rz"
 
 # ====== Read arguments ======
+readArg() {
+    if [ "$2" ]; then
+        local param=$2
+        echo $param
+    else
+        die 'ERROR: "$1" requires a non-empty option argument.'
+    fi
+}
+
 while :; do
     case $1 in
     -h | -\? | --help)
@@ -45,88 +55,49 @@ while :; do
         echo "-u, --Ut:  Hubbard parameter U/t (Default: $Ut)"
         echo "-v, --symmetry: to use lattice symmetry or not (DefaultL $SYMMETRY)"
         echo "-m, --method: method used to minimize cost function (Default: $METHOD)"
+        echo "              it can be 'trf', 'Nelder-Mead', 'BFGS', 'SLSQP', 'BOBYQA', 'DIRECT', 'CRS2', 'subplex'"
         exit
         ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            Lx=$2
-            Ly=$Lx
-            shift
-        else
-            die 'ERROR: "--L" requires a non-empty option argument.'
-        fi
+        Lx=$(readArg --L $2)
+        Ly=$Lx
+        shift
         ;;
     -y | --Ly) # Takes an option argument; ensure it has been specified.
-        if [ "$2" ]; then
-            Ly=$2
-            shift
-        else
-            die 'ERROR: "--Ly" requires a non-empty option argument.'
-        fi
+        Ly=$(readArg --Ly $2)
+        shift
         ;;
     -t | --lattice-dim)
-        if [ "$2" ]; then
-            LATTICE_DIM=$2
-            shift
-        else
-            die 'ERROR: "--d" requires a non-empty option argument.'
-        fi
+        LATTICE_DIM=$(readArg --lattice-dim $2)
+        shift
         ;;
     -d | --D)
-        if [ "$2" ]; then
-            d=$2
-            shift
-        else
-            die 'ERROR: "--d" requires a non-empty option argument.'
-        fi
+        d=$(readArg --D $2)
+        shift
         ;;
     -s | --shape)
-        if [ "$2" ]; then
-            SHAPE=$2
-            shift
-        else
-            die 'ERROR: "--shape" requires a non-empty option argument.'
-        fi
+        SHAPE=$(readArg --shape $2)
+        shift
         ;;
     -w | --waist)
-        if [ "$2" ]; then
-            WAIST=$2
-            shift
-        else
-            die 'ERROR: "--waist" requires a non-empty option argument.'
-        fi
+        WAIST=$(readArg --waist $2)
+        shift
         ;;
     -e | --eq)
-        if [ "$2" ]; then
-            STATUS=$2
-            shift
-        else
-            die 'ERROR: "--eq" requires a non-empty option argument.'
-        fi
+        STATUS=$(readArg --eq $2)
+        shift
         ;;
     -u | --Ut)
-        if [ "$2" ]; then
-            Ut=$2
-            shift
-        else
-            die 'ERROR: "--Ut" requires a non-empty option argument.'
-        fi
+        Ut=$(readArg --Ut $2)
+        shift
         ;;
     -v | --symmetry)
-        if [ "$2" ]; then
-            SYMMETRY=$2
-            shift
-        else
-            die 'ERROR: "--symmetry" requires a non-empty option argument.'
-        fi
+        SYMMETRY=$(readArg --symmetry $2)
+        shift
         ;;
     -m | --method)
-        if [ "$2" ]; then
-            METHOD=$2
-            shift
-        else
-            die 'ERROR: "--method" requires a non-empty option argument.'
-        fi
+        METHOD=$(readArg --method $2)
+        shift
         ;;
     --) # End of all options.
         shift
@@ -227,6 +198,13 @@ R=$R
 Rz=$Rz"
 fi
 
+# ========= Waist trap =========
+if [ $WAIST != "None" ]; then
+    GHOST_PATH="/ghost"
+else
+    GHOST_PATH=""
+fi
+
 # ========= Write sbatch script =========
 echo "Lattice size is: $Lx,$Ly"
 JOB_NAME=$d"D_"$Lx"x"$Ly"_"$SHAPE"_"$WAIST"_"$STATUS$METHOD_SUFFIX
@@ -264,7 +242,7 @@ conda activate ~/env
 $NL_DEFINITION
 
 FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME$LN_SUFFIX
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer$GHOST_PATH/$JOB_NAME$LN_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
@@ -283,6 +261,7 @@ laser_wavelength = 780
 shape = $SHAPE
 scattering_length = 1770
 dimension = $d
+ghost_sites = False
 waist_direction = $WAIST
 lattice_symmetry = $SYMMETRY
 equalize = $EQ_FLAG
@@ -302,11 +281,11 @@ echo \"I ran on: \$SLURM_NODELIST\"
 
 # Code run
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output$GHOST_PATH" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
     sbatch --array=16-22:2 $SLURM_FN
 else
-    sbatch --export=L=$L $SLURM_FN
+    sbatch --export=L=$Lx $SLURM_FN
 fi
