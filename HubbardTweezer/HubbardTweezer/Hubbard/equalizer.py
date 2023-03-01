@@ -2,9 +2,11 @@ import numpy as np
 import numpy.linalg as la
 from numbers import Number
 from typing import Callable, Iterable, Union
-from scipy.optimize import minimize, least_squares, root
+from scipy.optimize import minimize, least_squares, root, OptimizeResult
 from configobj import ConfigObj
 from time import time
+
+import nlopt
 
 from .core import *
 from .lattice import squeeze_idx
@@ -190,6 +192,9 @@ class HubbardEqualizer(MLWF):
             mode = "cost"
         elif self.eqmethod in ["hybr"]:
             mode = "func"
+        elif self.eqmethod in ["bobyqa"]:
+            mode = "nlopt"
+            opt = nlopt.opt(nlopt.LN_BOBYQA, len(v0))
         else:
             mode = "res"
             self.eqmethod = "trf"
@@ -264,6 +269,23 @@ class HubbardEqualizer(MLWF):
             # FIXME: not working if variable number of unknowns
             # are smaller than number of equations
             res = root(opt_target, v0, args=self.eqinfo, method=self.eqmethod, tol=1e-7)
+        elif mode == "nlopt":
+            ba = np.array(bounds)
+            lb, ub = ba[:, 0], ba[:, 1]
+            tol = 1e-8
+            f = lambda x, grad: opt_target(x, self.eqinfo)
+            opt.set_min_objective(f)
+            opt.set_lower_bounds(lb)
+            opt.set_upper_bounds(ub)
+            opt.set_ftol_abs(tol)
+            xopt = opt.optimize(v0)
+            opt_val = opt.last_optimum_value()
+            result = opt.last_optimize_result()
+            message = opt.get_stopval()
+            res = OptimizeResult(
+                x=xopt, fun=opt_val, status=result, success=result >= 0, message=message
+            )
+
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
 
@@ -538,7 +560,7 @@ class HubbardEqualizer(MLWF):
         maskedA = A[self.mask, :][:, self.mask]
         maskedU = U[self.mask] if u else None
 
-        if mode == "cost":
+        if mode in ["cost", "nlopt"]:
             return self._cost_func(
                 point,
                 info,
