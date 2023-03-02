@@ -42,20 +42,20 @@ while :; do
     -h | -\? | --help)
         # Display a usage synopsis.
         echo "HELP: Hubbard parameter job submission"
-        echo "-l, --L:  lattice grid x size (Default: $Lx)"
-        echo "-y, --Ly:  lattice grid y size (Default: $Ly)"
+        echo "-l, --L:              lattice grid x size (Default: $Lx)"
+        echo "-y, --Ly:             lattice grid y size (Default: $Ly)"
         echo "-t, --lattice-dim:    lattice dimension (Default: $LATTICE_DIM)"
-        echo "-d, --D:  DVR dimension (Default: $d)"
-        echo "-s, --shape:  lattice shape (Default: $s)"
-        echo "-w, --waist:  determine which waist direction to vary (Default: $WAIST)"
-        echo "              it can be 'x', 'y', 'xy' and 'None'"
-        echo "-e, --eq: determine which parameter to equalize (Default: $STATUS)"
-        echo "          it can be 'neq' for no equalization,"
-        echo "          'L'('N') for varying L(N) to check convergence ('neq' implied)"
-        echo "-u, --Ut:  Hubbard parameter U/t (Default: $Ut)"
-        echo "-v, --symmetry: to use lattice symmetry or not (DefaultL $SYMMETRY)"
-        echo "-m, --method: method used to minimize cost function (Default: $METHOD)"
-        echo "              it can be 'trf', 'Nelder-Mead', 'BFGS', 'SLSQP', 'BOBYQA', 'DIRECT', 'CRS2', 'subplex'"
+        echo "-d, --D:              DVR dimension (Default: $d)"
+        echo "-s, --shape:          lattice shape (Default: $s)"
+        echo "-w, --waist:          determine which waist direction to vary (Default: $WAIST)"
+        echo "                      it can be 'x', 'y', 'xy' and 'None'"
+        echo "-e, --eq:             determine which parameter to equalize (Default: $STATUS)"
+        echo "                      it can be 'neq' for no equalization,"
+        echo "                      'L'('N') for varying L(N) to check convergence ('neq' implied)"
+        echo "-u, --Ut:             Hubbard parameter U/t (Default: $Ut)"
+        echo "-v, --symmetry:       to use lattice symmetry or not (DefaultL $SYMMETRY)"
+        echo "-m, --method:         method used to minimize cost function (Default: $METHOD)"
+        echo "                      it can be 'trf', 'Nelder-Mead', 'bfgs', 'slsqp', 'bobyqa', 'direct', 'crs2', 'subplex'"
         exit
         ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
@@ -116,7 +116,7 @@ done
 METHOD_SUFFIX="_"$METHOD
 
 # If job is not finished w/i scavenge wall time, just continue by using the same ini
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ]; then
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ] || [ $METHOD = "bobyqa" ]; then
     PARTITION=scavenge
     TIME="4:00:00"
 fi
