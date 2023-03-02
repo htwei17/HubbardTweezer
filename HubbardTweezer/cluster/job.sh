@@ -121,15 +121,10 @@ done
 METHOD_SUFFIX="_"$METHOD
 
 # If job is not finished w/i scavenge wall time, just continue by using the same ini
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ] || [ $METHOD = "bobyqa" ]; then
-    PARTITION=scavenge
-    TIME="4:00:00"
-fi
-
-if [ $WAIST != "None" ]; then
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ] || [ $METHOD = "bobyqa" ] || [ $WAIST != "None" ]; then
     EQ_FLAG=True
     PARTITION=commons
-    TIME="12:00:00"
+    TIME="24:00:00"
 fi
 
 # ========= Lattice =========
