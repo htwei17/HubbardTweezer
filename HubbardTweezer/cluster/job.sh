@@ -54,6 +54,7 @@ while :; do
         echo "                      'L'('N') for varying L(N) to check convergence ('neq' implied)"
         echo "-u, --Ut:             Hubbard parameter U/t (Default: $Ut)"
         echo "-v, --symmetry:       to use lattice symmetry or not (DefaultL $SYMMETRY)"
+        echo "-g, --ghost:          to use ghost traps or not (Default: $GHOST)"
         echo "-m, --method:         method used to minimize cost function (Default: $METHOD)"
         echo "                      it can be 'trf', 'Nelder-Mead', 'bfgs', 'slsqp', 'bobyqa', 'direct', 'crs2', 'subplex'"
         exit
@@ -93,6 +94,10 @@ while :; do
         ;;
     -v | --symmetry)
         SYMMETRY=$(readArg --symmetry $2)
+        shift
+        ;;
+    -g | --ghost)
+        GHOST=$(readArg --ghost $2)
         shift
         ;;
     -m | --method)
@@ -198,7 +203,7 @@ Rz=$Rz"
 fi
 
 # ========= Waist trap =========
-if [ $WAIST != "None" ]; then
+if [ $GHOST = True ]; then
     GHOST_PATH="/ghost"
 else
     GHOST_PATH=""
