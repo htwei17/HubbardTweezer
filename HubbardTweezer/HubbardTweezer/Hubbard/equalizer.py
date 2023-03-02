@@ -43,6 +43,18 @@ def _set_uv(uv, target, factor):
     return target, factor
 
 
+def _lieb_ghost_sites(Nx, Ny):
+    # Generate interior ghost sites for Lieb lattice
+    # Note that since the boundary is always ghost,
+    # we can safely set all boundary sites to be ghost
+
+    # Generate index pairs for rectangular lattice, column major
+    idx_pairs = np.array([[i, j] for i in range(Nx) for j in range(Ny)])
+    hole = np.all(idx_pairs % 2 == 0, axis=1)
+    hole_idx = np.nonzero(hole)[0]
+    return hole_idx
+
+
 class HubbardEqualizer(MLWF):
     """
     HubbardEqualizer: equalize trap parameters to generate Hubbard model parameters in fermionic tweezer array
@@ -70,7 +82,21 @@ class HubbardEqualizer(MLWF):
         *args,
         **kwargs,
     ):
-        super().__init__(N, *args, **kwargs)
+        # Set ghost lattice shape
+        shape = kwargs.get("shape", "square")
+        kwargs.pop("shape", None)
+        self.ghost_shape = None
+        self.ghost = ghost
+        if self.ghost:
+            self.ghost_shape = shape
+            if self.ghost_shape == "Lieb":
+                # If use ghost traps,
+                # Lieb lattice has ghost sites in the interior
+                # But its shape is square
+                print("Equalize: Lieb lattice ghost sites.")
+                print("Set shape to square for total system.")
+                shape = "square"
+        super().__init__(N, shape=shape, *args, **kwargs)
 
         # set equalization label in file output
         self.eq_label = eqtarget
@@ -88,7 +114,7 @@ class HubbardEqualizer(MLWF):
             self.sf = None
 
         # Set target to be already limited in the bulk
-        self.ghost_sites(ghost)
+        self.ghost_sites()
         if self.masked_Nsite == 1:
             raise ValueError(
                 "Equalize: only one site in the system, equalization is not valid."
@@ -177,13 +203,10 @@ class HubbardEqualizer(MLWF):
         elif self.eqmethod in [
             "Nelder-Mead",
             "Powell",
-            "CG",
-            "BFGS",
+            "bfgs",
             "L-BFGS-B",
-            "TNC",
-            "COBYLA",
+            "cobyla",
             "SLSQP",
-            "dogleg",
         ]:
             mode = "cost"
         elif self.eqmethod in ["hybr"]:
@@ -367,27 +390,29 @@ class HubbardEqualizer(MLWF):
         print(f"Equalize: target onsite potential = {Vtarget}")
         return Vtarget, Utarget, txTarget, tyTarget
 
-    def ghost_sites(self, ghost: bool = True):
-        # Set ghost sites for 1D & 2D lattice
-        # If site is ghost, mask if False
+    def ghost_sites(self):
+        # Set ghost trap for 1D & 2D lattice
+        # If trap is ghost, mask is False
         mask = np.ones(self.lattice.N, dtype=bool)
         err = ValueError("Ghost sites not implemented for this lattice.")
-        if ghost:
+        if self.ghost:
             if self.lattice.dim == 1:
                 mask[[0, -1]] = False
             elif self.lattice.dim == 2:
-                if (
-                    self.lattice.shape == "square"
-                    or self.lattice.shape == "triangular"
-                    and not self.ls
-                ):
+                if self.ghost_shape in ["square", "triangular", "Lieb"] and not self.ls:
                     Nx, Ny = self.lattice.size
-                    if self.lattice.shape == "square":
+                    extra = np.array([])
+                    if self.ghost_shape in ["square", "Lieb"]:
                         x_bdry, y_bdry = self.xy_boundaries(Ny)
-                    elif self.lattice.shape == "triangular":
+                        if self.ghost_shape == "Lieb":
+                            # Add extra ghost sites for Lieb lattice
+                            extra = _lieb_ghost_sites(Nx, Ny)
+                    elif self.ghost_shape == "triangular":
                         y_bdry, x_bdry = self.xy_boundaries(Nx)
-                    bdry = [x_bdry, y_bdry]
+                    bdry = [x_bdry, y_bdry, extra]  # x, y boundary site indices
+                    # which axis to mask
                     mask_axis = np.nonzero(self.lattice.size > 2)[0]
+                    mask_axis = np.append(mask_axis, 2)  # add extra
                     if mask_axis.size != 0:
                         masked_idx = np.concatenate([bdry[i] for i in mask_axis])
                         mask[masked_idx] = False
@@ -404,6 +429,10 @@ class HubbardEqualizer(MLWF):
         print("Equalize: ghost sites are set.")
 
     def xy_boundaries(self, N):
+        # Identify x and y boundary site indices
+        # For example, for a 4x4 square lattice,
+        # x_bdry = [0, 1, 2, 3, 12, 13, 14, 15]
+        # and y_bdry = [0, 4, 8, 12, 3, 7, 11, 15]
         x_bdry = np.concatenate((np.arange(N), np.arange(-N, 0)))
         y_bdry = np.concatenate(
             (np.arange(0, self.lattice.N, N), np.arange(N - 1, self.lattice.N, N))
