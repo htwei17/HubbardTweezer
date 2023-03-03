@@ -121,7 +121,7 @@ done
 METHOD_SUFFIX="_"$METHOD
 
 # If job is not finished w/i scavenge wall time, just continue by using the same ini
-if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ] || [ $METHOD = "bobyqa" ] || [ $WAIST != "None" ]; then
+if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] || [ $METHOD = "direct" ] || [ $METHOD = "crs2" ] || [ $METHOD = "bobyqa" ] || [ $METHOD = "praxis" ] || [ $WAIST != "None" ]; then
     EQ_FLAG=True
     PARTITION=commons
     TIME="24:00:00"
@@ -180,17 +180,18 @@ elif [ $STATUS = "L" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
-    TIME="0:05:00"
+    TIME="0:02:00"
     METHOD_SUFFIX=""
     LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
-    NL_DEFINITION="N=$N
+    NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=\$(echo \"scale=20; \$SLURM_ARRAY_TASK_ID*3/20\" | bc)
 Rz=\$(echo \"scale=20;\$R*2.4\" | bc)"
 elif [ $STATUS = "N" ]; then
     EQ_FLAG=False
     WAIST=None
     PARTITION=scavenge
-    TIME="0:05:00"
+    TIME="0:02:00"
+    METHOD_SUFFIX=""
     LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=$R
@@ -200,6 +201,7 @@ fi
 # ========= Waist trap =========
 if [ $GHOST = True ]; then
     GHOST_PATH="/ghost"
+    WAIST=None
 else
     GHOST_PATH=""
 fi
@@ -284,7 +286,7 @@ cp \$FN \$SLURM_SUBMIT_DIR/output$GHOST_PATH" >>$SLURM_FN
 
 # ========= Run sbatch =========
 if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
-    sbatch --array=16-22:2 $SLURM_FN
+    sbatch --array=12-22:2 $SLURM_FN
 else
     sbatch --export=L=$Lx $SLURM_FN
 fi

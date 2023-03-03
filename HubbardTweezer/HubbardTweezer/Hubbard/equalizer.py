@@ -211,14 +211,16 @@ class HubbardEqualizer(MLWF):
             mode = "cost"
         elif self.eqmethod in ["hybr"]:
             mode = "func"
-        elif self.eqmethod in ["bobyqa", "direct", "crs2", "subplex"]:
+        elif self.eqmethod in ["bobyqa", "praxis", "subplex", "direct", "crs2"]:
             mode = "nlopt"
             goptim = False
             if self.eqmethod == "bobyqa":
                 self.eqmethod = nlopt.LN_BOBYQA
+            elif self.eqmethod == "praxis":
+                self.eqmethod = nlopt.LN_PRAXIS
             elif self.eqmethod == "subplex":
                 self.eqmethod = nlopt.LN_SBPLX
-            elif self.eqmethod == "DIRECT":
+            elif self.eqmethod == "direct":
                 goptim = True
                 self.eqmethod = nlopt.GN_DIRECT_L
             elif self.eqmethod == "crs2":
@@ -257,7 +259,7 @@ class HubbardEqualizer(MLWF):
             # are smaller than number of equations
             res = root(opt_target, v0, args=self.eqinfo, method=self.eqmethod, tol=1e-7)
         elif mode == "nlopt":
-            xopt = self._nlopt_optim(v0, bounds, opt, opt_target)
+            xopt = self._nlopt_min(v0, bounds, opt, opt_target)
             if goptim:
                 self.eqmethod = "trf"
 
@@ -284,7 +286,7 @@ class HubbardEqualizer(MLWF):
         self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, "final")
 
-    def _nlopt_optim(self, v0, bounds, opt: nlopt.opt, opt_target):
+    def _nlopt_min(self, v0, bounds, opt: nlopt.opt, opt_target):
         ba = np.array(bounds)
         lb, ub = ba[:, 0], ba[:, 1]
         tol = 1e-8
@@ -327,6 +329,12 @@ class HubbardEqualizer(MLWF):
             options = {
                 "disp": True,
                 "xtol": 1e-6,
+                "maxiter": 500 * self.lattice.Nindep,
+            }
+        else:
+            options = {
+                "disp": True,
+                "fatol": 1e-7,
                 "maxiter": 500 * self.lattice.Nindep,
             }
         res = minimize(
@@ -503,7 +511,7 @@ class HubbardEqualizer(MLWF):
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.lattice.Nindep))
         else:
-            b1 = list((0, np.inf) for i in range(self.lattice.Nindep))
+            b1 = list((0, 2) for i in range(self.lattice.Nindep))
 
         # Waist variation inital guess and bounds
         # UB from resolution limit; LB by wavelength
