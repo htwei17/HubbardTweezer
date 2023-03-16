@@ -407,7 +407,7 @@ class HubbardEqualizer(MLWF):
             if self.lattice.dim == 1:
                 mask[[0, -1]] = False
             elif self.lattice.dim == 2:
-                if self.ghost_shape in ["square", "triangular", "Lieb"] and not self.ls:
+                if self.ghost_shape in ["square", "triangular", "Lieb"]:
                     Nx, Ny = self.lattice.size
                     extra = np.array([])
                     if self.ghost_shape in ["square", "Lieb"]:
@@ -415,8 +415,10 @@ class HubbardEqualizer(MLWF):
                         if self.ghost_shape == "Lieb":
                             # Add extra ghost sites for Lieb lattice
                             extra = _lieb_ghost_sites(Nx, Ny)
-                    elif self.ghost_shape == "triangular":
+                    elif self.ghost_shape == "triangular" and not self.ls:
                         y_bdry, x_bdry = self.xy_boundaries(Nx)
+                    else:
+                        raise err
                     bdry = [x_bdry, y_bdry, extra]  # x, y boundary site indices
                     # which axis to mask
                     mask_axis = np.nonzero(self.lattice.size > 2)[0]
