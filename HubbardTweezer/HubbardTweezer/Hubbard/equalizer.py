@@ -409,7 +409,7 @@ class HubbardEqualizer(MLWF):
             elif self.lattice.dim == 2:
                 if self.ghost_shape in ["square", "triangular", "Lieb"]:
                     Nx, Ny = self.lattice.size
-                    extra = np.array([])
+                    extra = np.array([], dtype=int)
                     if self.ghost_shape in ["square", "Lieb"]:
                         x_bdry, y_bdry = self.xy_boundaries(Ny)
                         if self.ghost_shape == "Lieb":
