@@ -55,6 +55,7 @@ def _lieb_ghost_sites(Nx, Ny):
     return hole_idx
 
 
+# TODO: add feature to save and load as initial Lanczos eigenvec throughout the optimization
 class HubbardEqualizer(MLWF):
     """
     HubbardEqualizer: equalize trap parameters to generate Hubbard model parameters in fermionic tweezer array
