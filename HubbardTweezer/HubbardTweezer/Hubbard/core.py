@@ -299,7 +299,7 @@ class MLWF(DVR):
         p_list = list(product(*p_tuple))
         return p_list
 
-    def eigen_basis(self) -> tuple[list, list, list]:
+    def eigen_basis(self, W0=None) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
         if self.dvr_symm:

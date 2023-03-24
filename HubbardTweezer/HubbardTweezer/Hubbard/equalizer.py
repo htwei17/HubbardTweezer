@@ -139,7 +139,7 @@ class HubbardEqualizer(MLWF):
                 x0=x0,
                 random=random,
                 nobounds=nobounds,
-                callback=False,
+                unitary_callback=False,
                 iofile=iofile,
             )
 
@@ -151,7 +151,7 @@ class HubbardEqualizer(MLWF):
         weight: np.ndarray = np.ones(3),
         random: bool = False,
         nobounds: bool = False,
-        callback: bool = False,
+        unitary_callback: bool = False,
         iofile: ConfigObj = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Equalize: varying waist direction = {self.waist_dir}.")
@@ -197,7 +197,7 @@ class HubbardEqualizer(MLWF):
         # But since unitary optimize time cost is not large in larger systems
         # it is not recommended
         # Pack U0 to be mutable, thus can be updated in each iteration of minimize
-        U0 = [V] if callback else None
+        U0 = [V] if unitary_callback else None
 
         if self.eqmethod in ["trf", "dogbox"]:
             mode = "res"
