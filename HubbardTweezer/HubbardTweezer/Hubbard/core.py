@@ -178,7 +178,9 @@ class MLWF(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def singleband_Hubbard(self, u=False, x0=None, offset=True, band=1, eig_sol=None):
+    def singleband_Hubbard(
+        self, u=False, x0=None, W0=None, offset=True, band=1, eig_sol=None
+    ):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         if band == 1:
@@ -186,7 +188,7 @@ class MLWF(DVR):
         if eig_sol != None:
             E, W, p = eig_sol
         else:
-            E, W, p = self.eigen_basis()
+            E, W, p = self.eigen_basis(W0=W0)
         E = E[band - 1]
         W = W[band - 1]
         p = p[band - 1]
@@ -257,13 +259,13 @@ class MLWF(DVR):
             target[:] = info
 
     # TODO: Integrate multisector solver with DVR
-    def solve_sector(self, sector: np.ndarray, k: int, E, W, parity):
+    def solve_sector(self, sector: np.ndarray, k: int, E, W, parity, v0):
         # Add a symmetry sector to the list of eigensolutions
         p = self.p.copy()
         p[: len(sector)] = sector
         self.update_p(p)
 
-        Em, Wm = self.H_solver(k)
+        Em, Wm = self.H_solver(k, v0)
         E = np.append(E, Em)
         W += [Wm[:, i].reshape(self.n + 1 - self.init) for i in range(k)]
         # Parity sector marker
@@ -299,7 +301,7 @@ class MLWF(DVR):
         p_list = list(product(*p_tuple))
         return p_list
 
-    def eigen_basis(self, W0=None) -> tuple[list, list, list]:
+    def eigen_basis(self, W0: list = None) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
         if self.dvr_symm:
@@ -307,9 +309,19 @@ class MLWF(DVR):
             E_sb = np.array([])
             W_sb = []
             p_sb = np.array([], dtype=int).reshape(0, dim)
-            for p in p_list:
+            if W0 is not None:  # Pad W0 to match p_list
+                W0.extend([None] * (len(p_list) - len(W0)))
+            for pidx in range(len(p_list)):
                 # print(f'Solve {p} sector.')
-                E_sb, W_sb, p_sb = self.solve_sector(p, k + 1, E_sb, W_sb, p_sb)
+                if W0 is None:
+                    W0p = None
+                else:
+                    W0p = W0[pidx]
+                E_sb, W_sb, p_sb = self.solve_sector(
+                    p_list[pidx], k + 1, E_sb, W_sb, p_sb, W0p
+                )
+                if W0 is not None:
+                    W0[pidx] = W_sb[:, 0]  # Inplace update
 
             # Sort everything by energy, only keetp lowest k states
             idx = np.argsort(E_sb)[: k + 1]

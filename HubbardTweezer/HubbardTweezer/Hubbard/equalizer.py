@@ -151,6 +151,7 @@ class HubbardEqualizer(MLWF):
         weight: np.ndarray = np.ones(3),
         random: bool = False,
         nobounds: bool = False,
+        eig_callback: bool = False,
         unitary_callback: bool = False,
         iofile: ConfigObj = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
@@ -161,7 +162,12 @@ class HubbardEqualizer(MLWF):
         # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
 
-        A, U, V = self.singleband_Hubbard(u=u, offset=True)
+        if eig_callback:
+            W0 = []
+        else:
+            W0 = None
+
+        A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
 
         maskedA = A[self.mask, :][:, self.mask]
         maskedU = U[self.mask] if u else None
@@ -245,6 +251,7 @@ class HubbardEqualizer(MLWF):
                 target,
                 weight,
                 self.sf,
+                W0,
                 unitary=U0,
                 mode=mode,
                 report=iofile,
@@ -272,6 +279,7 @@ class HubbardEqualizer(MLWF):
                         target,
                         weight,
                         self.sf,
+                        W0,
                         unitary=U0,
                         mode="res",
                         report=iofile,
@@ -616,6 +624,7 @@ class HubbardEqualizer(MLWF):
         target: tuple[float, ...],
         weight: np.ndarray = np.ones(3),
         scale_factor: float = None,
+        eig_vec: list[np.ndarray] = None,
         unitary: Union[list, None] = None,
         mode: str = "cost",
         report: ConfigObj = None,
@@ -626,7 +635,7 @@ class HubbardEqualizer(MLWF):
         x0 = unitary[0] if unitary != None and self.lattice.dim > 1 else None
         u = weight[0] != 0
 
-        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, offset=True)
+        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, W0=eig_vec, offset=True)
         # x0 is used to update unitary[0] in the next iteration
 
         # Print out Hubbard parameters
