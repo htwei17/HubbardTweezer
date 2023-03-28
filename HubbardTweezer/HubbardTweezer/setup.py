@@ -18,4 +18,18 @@ if __name__ == "__main__":
         author="Hao-Tian Wei",
         author_email="htwei@rice.edu",
         url="https://github.com/htwei17/HubbardTweezer.git",
+        install_requires=[
+            "numpy",
+            "scipy",
+            "nlopt",
+            "matplotlib",
+            "torch",
+            "pymanopt",
+            "networkx",
+            "configobj",
+            "opt_einsum",
+            "pympler",
+            "h5py",
+            "ortools",
+        ],
     )
