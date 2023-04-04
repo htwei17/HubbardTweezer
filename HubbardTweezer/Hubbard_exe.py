@@ -262,7 +262,7 @@ G.eqinfo['Ut'] = Utarget / ttarget[0]
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
 else:
-    v0, __ = G.init_guess(random=False)
+    v0, __ = G.initialize(random=False)
     G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
     G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False

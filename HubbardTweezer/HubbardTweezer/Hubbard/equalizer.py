@@ -55,7 +55,6 @@ def _lieb_ghost_sites(Nx, Ny):
     return hole_idx
 
 
-# TODO: add feature to save and load as initial Lanczos eigenvec throughout the optimization
 class HubbardEqualizer(MLWF):
     """
     HubbardEqualizer: equalize trap parameters to generate Hubbard model parameters in fermionic tweezer array
@@ -173,11 +172,8 @@ class HubbardEqualizer(MLWF):
         maskedU = U[self.mask] if u else None
         links = self.xy_links(self.masked_links)
         target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
-        # Voff_bak = self.Voff
-        # ls_bak = self.trap_centers
-        # w_bak = self.waists
 
-        v0, bounds = self.init_guess(random, nobounds)
+        v0, bounds = self.initialize(random, nobounds)
         init_simplx = None
 
         if isinstance(x0, np.ndarray):
@@ -511,7 +507,7 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_guess(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
+    def initialize(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
         # Mark effective DoFs
         self.eff_dof()
 
@@ -541,7 +537,6 @@ class HubbardEqualizer(MLWF):
 
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
-        # TODO: make the bound to be xy specific
         if nobounds:
             s3 = (-np.inf, np.inf)
         else:
