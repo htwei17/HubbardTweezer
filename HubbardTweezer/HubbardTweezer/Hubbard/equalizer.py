@@ -643,7 +643,6 @@ class HubbardEqualizer(MLWF):
         if not isinstance(target, Iterable):
             target = (None, None, None, None)
 
-        maskedA = A[self.mask, :][:, self.mask]
         maskedU = U[self.mask] if u else None
 
         if mode in ["cost", "nlopt"]:
@@ -652,7 +651,7 @@ class HubbardEqualizer(MLWF):
                 info,
                 scale_factor,
                 report,
-                (maskedA, maskedU),
+                (A, maskedU),
                 links,
                 target,
                 weight,
@@ -663,7 +662,7 @@ class HubbardEqualizer(MLWF):
                 info,
                 scale_factor,
                 report,
-                (maskedA, maskedU),
+                (A, maskedU),
                 links,
                 target,
                 weight,
@@ -674,7 +673,7 @@ class HubbardEqualizer(MLWF):
                 info,
                 scale_factor,
                 report,
-                (maskedA, maskedU),
+                (A, maskedU),
                 links,
                 target,
                 weight,
@@ -688,12 +687,13 @@ class HubbardEqualizer(MLWF):
         self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
-        A, U = res
+        A, maskedU = res
+        maskedA = A[self.mask, :][:, self.mask]
 
         # U is different, as calculating U costs time
-        cu = self.u_cost_func(U, Utarget, scale_factor) if w[0] else 0
+        cu = self.u_cost_func(maskedU, Utarget, scale_factor) if w[0] else 0
         cv = self.v_cost_func(A, Vtarget, scale_factor)
-        ct = self.t_cost_func(A, links, (txTarget, tyTarget), scale_factor)
+        ct = self.t_cost_func(maskedA, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array((cu, ct, cv))
         c = w @ cvec
@@ -702,10 +702,21 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
-        Vtarget, Vfactor = _set_uv(np.real(np.diag(A)), Vtarget, Vfactor)
+    def v_cost_func(
+        self, A, Vtarget: float, Vfactor: float = None, penalty=10
+    ) -> float:
+        V = np.real(np.diag(A))
+        maskedV = V[self.mask]
+        Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
+        penalty = penalty * Vfactor
 
-        cv = np.mean((np.real(np.diag(A)) - Vtarget) ** 2) / Vfactor**2
+        Vdist = V - Vtarget
+        # Penalty for negative V outside the mask
+        Vdist_unmasked = Vdist[~self.masked]
+        Vdist[~self.masked] = np.where(
+            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
+        )
+        cv = np.mean(Vdist**2) / Vfactor**2
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
             print(f"Onsite potential cost cv^2 = {cv}")
@@ -745,15 +756,16 @@ class HubbardEqualizer(MLWF):
         self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
-        A, U = res
+        A, maskedU = res
+        maskedA = A[self.mask, :][:, self.mask]
 
         cu = (
-            self.u_res_func(U, Utarget, scale_factor)
+            self.u_res_func(maskedU, Utarget, scale_factor)
             if w[0]
             else np.zeros(self.lattice.N)
         )
         cv = self.v_res_func(A, Vtarget, scale_factor)
-        ct = self.t_res_func(A, links, (txTarget, tyTarget), scale_factor)
+        ct = self.t_res_func(maskedA, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term
@@ -763,9 +775,18 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
-        Vtarget, Vfactor = _set_uv(np.real(np.diag(A)), Vtarget, Vfactor)
-        cv = (np.real(np.diag(A)) - Vtarget) / (Vfactor * np.sqrt(len(A)))
+    def v_res_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
+        V = np.real(np.diag(A))
+        maskedV = V[self.mask]
+        Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
+        penalty = penalty * Vfactor
+        Vdist = V - Vtarget
+        # Penalty for negative V outside the mask
+        Vdist_unmasked = Vdist[~self.masked]
+        Vdist[~self.masked] = np.where(
+            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
+        )
+        cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
             print(f"Onsite potential residue cv = {cv}")
@@ -808,11 +829,16 @@ class HubbardEqualizer(MLWF):
         self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
-        A, U = res
+        A, maskedU = res
+        maskedA = A[self.mask, :][:, self.mask]
 
-        cu = self.u_func(U, Utarget, scale_factor) if w[0] else np.zeros(self.lattice.N)
+        cu = (
+            self.u_func(maskedU, Utarget, scale_factor)
+            if w[0]
+            else np.zeros(self.lattice.N)
+        )
         cv = self.v_func(A, Vtarget, scale_factor)
-        ct = self.t_func(A, links, (txTarget, tyTarget), scale_factor)
+        ct = self.t_func(maskedA, links, (txTarget, tyTarget), scale_factor)
 
         cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
         # Weighted cost function, weight is in front of each squared term
@@ -822,9 +848,18 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_func(self, A, Vtarget: float, Vfactor: float = None):
-        Vtarget, Vfactor = _set_uv(np.real(np.diag(A)), Vtarget, Vfactor)
-        cv = (np.real(np.diag(A)) - Vtarget) / (Vfactor * np.sqrt(len(A)))
+    def v_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
+        V = np.real(np.diag(A))
+        maskedV = V[self.mask]
+        Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
+        
+        penalty = penalty * Vfactor
+        Vdist = V - Vtarget
+        Vdist_unmasked = Vdist[~self.masked]
+        Vdist[~self.masked] = np.where(
+            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
+        )
+        cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
             print(f"Onsite potential residue cv = {cv}")
