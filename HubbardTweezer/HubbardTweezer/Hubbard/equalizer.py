@@ -611,11 +611,13 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, penalty, Vdist):
+    def penalty(self, Vdist, penalty, Vfactor):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         Vdist_unmasked = Vdist[~self.mask]
-        Vdist[~self.mask] = np.where(Vdist_unmasked < 0, penalty * Vdist_unmasked, 0)
+        Vdist[~self.mask] = np.where(
+            Vdist_unmasked < 0, penalty * np.sqrt(Vdist_unmasked**2 + Vfactor**2), 0
+        )
         print(Vdist)
 
     def opt_func(
@@ -717,7 +719,7 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(penalty * Vfactor, Vdist)
+        self.penalty(Vdist, penalty, Vfactor)
         cv = np.sum(Vdist**2) / (Vfactor**2 * len(maskedV))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
@@ -783,7 +785,7 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(penalty * Vfactor, Vdist)
+        self.penalty(Vdist, penalty, Vfactor)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
@@ -852,7 +854,7 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(penalty * Vfactor, Vdist)
+        self.penalty(Vdist, penalty, Vfactor)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
