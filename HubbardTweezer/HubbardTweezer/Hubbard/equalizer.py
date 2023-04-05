@@ -611,6 +611,13 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
+    def penalty(self, penalty, Vdist):
+        # Penalty for negative V outside the mask
+        # Vdist is modified in place
+        Vdist_unmasked = Vdist[~self.mask]
+        Vdist[~self.mask] = np.where(Vdist_unmasked < 0, penalty * Vdist_unmasked, 0)
+        print(Vdist)
+
     def opt_func(
         self,
         point: np.ndarray,
@@ -708,15 +715,10 @@ class HubbardEqualizer(MLWF):
         V = np.real(np.diag(A))
         maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
-        penalty = penalty * Vfactor
 
         Vdist = V - Vtarget
-        # Penalty for negative V outside the mask
-        Vdist_unmasked = Vdist[~self.masked]
-        Vdist[~self.masked] = np.where(
-            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
-        )
-        cv = np.mean(Vdist**2) / Vfactor**2
+        self.penalty(penalty * Vfactor, Vdist)
+        cv = np.sum(Vdist**2) / (Vfactor**2 * len(maskedV))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
             print(f"Onsite potential cost cv^2 = {cv}")
@@ -779,13 +781,9 @@ class HubbardEqualizer(MLWF):
         V = np.real(np.diag(A))
         maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
-        penalty = penalty * Vfactor
+
         Vdist = V - Vtarget
-        # Penalty for negative V outside the mask
-        Vdist_unmasked = Vdist[~self.masked]
-        Vdist[~self.masked] = np.where(
-            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
-        )
+        self.penalty(penalty * Vfactor, Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
@@ -852,13 +850,9 @@ class HubbardEqualizer(MLWF):
         V = np.real(np.diag(A))
         maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
-        
-        penalty = penalty * Vfactor
+
         Vdist = V - Vtarget
-        Vdist_unmasked = Vdist[~self.masked]
-        Vdist[~self.masked] = np.where(
-            Vdist_unmasked < 0, np.sqrt(Vdist_unmasked**2 + penalty**2), 0
-        )
+        self.penalty(penalty * Vfactor, Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
