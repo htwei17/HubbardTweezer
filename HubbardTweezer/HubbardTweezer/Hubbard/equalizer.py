@@ -515,8 +515,6 @@ class HubbardEqualizer(MLWF):
         # s1 = np.inf if nobounds else 0.1
         # v01 = np.ones(self.lattice.Nindep)
         v01 = symm_fold(self.lattice.reflect, self.Voff)
-        folded_mask = symm_fold(self.lattice.reflect, self.mask)
-        v01[~folded_mask] = v01[~folded_mask] * 0.8  # Unmasked part start from a shallow potential
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.lattice.Nindep))
         else:
@@ -717,11 +715,15 @@ class HubbardEqualizer(MLWF):
         self, A, Vtarget: float, Vfactor: float = None, penalty=10
     ) -> float:
         V = np.real(np.diag(A))
-        maskedV = V[self.mask]
+        if len(V) == self.masked_Nsite:
+            maskedV = V
+        else:
+            maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(Vdist, penalty, Vfactor)
+        if len(Vdist) > self.masked_Nsite:
+            self.penalty(Vdist, penalty, Vfactor)
         cv = np.sum(Vdist**2) / (Vfactor**2 * len(maskedV))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
@@ -730,12 +732,12 @@ class HubbardEqualizer(MLWF):
 
     def t_cost_func(
         self,
-        A: np.ndarray,
+        maskedA: np.ndarray,
         links: tuple[np.ndarray, np.ndarray],
         target: tuple[float, ...],
         tfactor: float,
     ) -> float:
-        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(A, links, target)
+        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(maskedA, links, target)
         if tfactor is None:
             tfactor = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
         # print(
@@ -783,11 +785,15 @@ class HubbardEqualizer(MLWF):
 
     def v_res_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
         V = np.real(np.diag(A))
-        maskedV = V[self.mask]
+        if len(V) == self.masked_Nsite:
+            maskedV = V
+        else:
+            maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(Vdist, penalty, Vfactor)
+        if len(Vdist) > self.masked_Nsite:
+            self.penalty(Vdist, penalty, Vfactor)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
@@ -852,11 +858,15 @@ class HubbardEqualizer(MLWF):
 
     def v_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
         V = np.real(np.diag(A))
-        maskedV = V[self.mask]
+        if len(V) == self.masked_Nsite:
+            maskedV = V
+        else:
+            maskedV = V[self.mask]
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.penalty(Vdist, penalty, Vfactor)
+        if len(Vdist) > self.masked_Nsite:
+            self.penalty(Vdist, penalty, Vfactor)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 2:
             print(f"Onsite potential target = {Vtarget}")
