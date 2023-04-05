@@ -515,6 +515,8 @@ class HubbardEqualizer(MLWF):
         # s1 = np.inf if nobounds else 0.1
         # v01 = np.ones(self.lattice.Nindep)
         v01 = symm_fold(self.lattice.reflect, self.Voff)
+        folded_mask = symm_fold(self.lattice.reflect, self.mask)
+        v01[~folded_mask] = v01[~folded_mask] * 0.8  # Unmasked part start from a shallow potential
         if nobounds:
             b1 = list((-np.inf, np.inf) for i in range(self.lattice.Nindep))
         else:
