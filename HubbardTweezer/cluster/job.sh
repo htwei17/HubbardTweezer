@@ -43,17 +43,17 @@ while :; do
         # Display a usage synopsis.
         echo "HELP: Hubbard parameter job submission"
         echo "-l, --L:              lattice grid x size (Default: $Lx)"
-        echo "-y, --Ly:             lattice grid y size (Default: $Ly)"
-        echo "-t, --lattice-dim:    lattice dimension (Default: $LATTICE_DIM)"
+        echo "-ly, --Ly:            lattice grid y size (Default: $Ly)"
+        echo "-ld, --lattice-dim:   lattice dimension (Default: $LATTICE_DIM)"
         echo "-d, --D:              DVR dimension (Default: $d)"
-        echo "-s, --shape:          lattice shape (Default: $s)"
+        echo "-s, --shape:          lattice shape (Default: $SHAPE)"
         echo "-w, --waist:          determine which waist direction to vary (Default: $WAIST)"
         echo "                      it can be 'x', 'y', 'xy' and 'None'"
         echo "-e, --eq:             determine which parameter to equalize (Default: $STATUS)"
         echo "                      it can be 'neq' for no equalization,"
         echo "                      'L'('N') for varying L(N) to check convergence ('neq' implied)"
         echo "-u, --Ut:             Hubbard parameter U/t (Default: $Ut)"
-        echo "-v, --symmetry:       to use lattice symmetry or not (DefaultL $SYMMETRY)"
+        echo "-sy, --symmetry:      to use lattice symmetry or not (DefaultL $SYMMETRY)"
         echo "-g, --ghost:          to use ghost traps or not (Default: $GHOST)"
         echo "-m, --method:         method used to minimize cost function (Default: $METHOD)"
         echo "                      it can be 'trf', 'Nelder-Mead', 'bfgs', 'slsqp', 'bobyqa', 'direct', 'crs2', 'subplex'"
@@ -64,11 +64,11 @@ while :; do
         Ly=$Lx
         shift
         ;;
-    -y | --Ly) # Takes an option argument; ensure it has been specified.
+    -ly | --Ly) # Takes an option argument; ensure it has been specified.
         Ly=$(readArg --Ly $2)
         shift
         ;;
-    -t | --lattice-dim)
+    -ld | --lattice-dim)
         LATTICE_DIM=$(readArg --lattice-dim $2)
         shift
         ;;
@@ -92,7 +92,7 @@ while :; do
         Ut=$(readArg --Ut $2)
         shift
         ;;
-    -v | --symmetry)
+    -sy | --symmetry)
         SYMMETRY=$(readArg --symmetry $2)
         shift
         ;;
@@ -128,7 +128,9 @@ if [ $METHOD = "NM" ] || [ $METHOD = "Nelder-Mead" ] || [ $METHOD = "subplex" ] 
 fi
 
 # ========= Lattice =========
-if [ $SHAPE != "square" ]; then
+if [ $SHAPE = "square" ] && [ $Ly = 1 ]; then
+    LATTICE_DIM=1
+elif [ $SHAPE != "square" ]; then
     LATTICE_DIM=2
 fi
 

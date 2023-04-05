@@ -665,19 +665,8 @@ class HubbardEqualizer(MLWF):
                 target,
                 weight,
             )
-        elif mode == "res":
+        elif mode in ["res", "func"]:
             return self._res_func(
-                point,
-                info,
-                scale_factor,
-                report,
-                (A, maskedU),
-                links,
-                target,
-                weight,
-            )
-        elif mode == "func":
-            return self._func_func(
                 point,
                 info,
                 scale_factor,
@@ -714,19 +703,9 @@ class HubbardEqualizer(MLWF):
     def v_cost_func(
         self, A, Vtarget: float, Vfactor: float = None, penalty=10
     ) -> float:
-        V = np.real(np.diag(A))
-        if len(V) == self.masked_Nsite:
-            maskedV = V
-        else:
-            maskedV = V[self.mask]
-        Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
-
-        Vdist = V - Vtarget
-        if len(Vdist) > self.masked_Nsite:
-            self.penalty(Vdist, penalty, Vfactor)
-        cv = np.sum(Vdist**2) / (Vfactor**2 * len(maskedV))
+        Vdiff = self.v_res_func(A, Vtarget, Vfactor, penalty)
+        cv = la.norm(Vdiff)
         if self.verbosity > 1:
-            print(f"Onsite potential target = {Vtarget}")
             print(f"Onsite potential cost cv^2 = {cv}")
         return cv
 
@@ -737,28 +716,20 @@ class HubbardEqualizer(MLWF):
         target: tuple[float, ...],
         tfactor: float,
     ) -> float:
-        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(maskedA, links, target)
-        if tfactor is None:
-            tfactor = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
-        # print(
-        #     f'nn tunneling = {nnt} target = {txTarget} {tyTarget} factor = {tfactor}')
-        ct = np.mean((abs(nnt[xlinks]) - txTarget) ** 2) / tfactor**2
-        if tyTarget != None:
-            ct += np.mean((abs(nnt[ylinks]) - tyTarget) ** 2) / tfactor**2
+        tdiff = self.t_res_func(maskedA, links, target, tfactor)
+        ct = la.norm(tdiff)
         if self.verbosity > 1:
-            print(f"Tunneling target = {txTarget}, {tyTarget}")
             print(f"Tunneling cost ct^2 = {ct}")
         return ct
 
-    def u_cost_func(self, U, Utarget: float, Ufactor: float = None) -> float:
-        Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
-        cu = np.mean((U - Utarget) ** 2) / Ufactor**2
+    def u_cost_func(self, maskedU, Utarget: float, Ufactor: float = None) -> float:
+        Udiff = self.u_res_func(maskedU, Utarget, Ufactor)
+        cu = la.norm(Udiff)
         if self.verbosity > 1:
-            print(f"Onsite interaction target = {Utarget}")
             print(f"Onsite interaction cost cu^2 = {cu}")
         return cu
 
-    # ==================== LEAST SQUARES ====================
+    # ==================== LEAST SQUARES & ROOT FINDING ====================
 
     def _res_func(
         self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
@@ -795,19 +766,20 @@ class HubbardEqualizer(MLWF):
         if len(Vdist) > self.masked_Nsite:
             self.penalty(Vdist, penalty, Vfactor)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
-        if self.verbosity > 2:
+        if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
-            print(f"Onsite potential residue cv = {cv}")
+            if self.verbosity > 2:
+                print(f"Onsite potential residue cv = {cv}")
         return cv
 
     def t_res_func(
         self,
-        A: np.ndarray,
+        maskedA: np.ndarray,
         links: tuple[np.ndarray, np.ndarray],
         target: tuple[float, ...],
         tfactor: float,
     ) -> np.ndarray:
-        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(A, links, target)
+        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(maskedA, links, target)
         if tfactor is None:
             tfactor = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
         ct = (abs(nnt[xlinks]) - txTarget) / (tfactor * np.sqrt(np.sum(xlinks)))
@@ -818,88 +790,17 @@ class HubbardEqualizer(MLWF):
                     (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks))),
                 )
             )
-        if self.verbosity > 2:
+        if self.verbosity > 1:
             print(f"Tunneling target = {txTarget}, {tyTarget}")
-            print(f"Tunneling residue ct = {ct}")
+            if self.verbosity > 2:
+                print(f"Tunneling residue ct = {ct}")
         return ct
 
-    def u_res_func(self, U, Utarget: float, Ufactor: float = None):
-        Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
-        cu = (U - Utarget) / (Ufactor * np.sqrt(len(U)))
-        if self.verbosity > 2:
+    def u_res_func(self, maskedU, Utarget: float, Ufactor: float = None):
+        Utarget, Ufactor = _set_uv(maskedU, Utarget, Ufactor)
+        cu = (maskedU - Utarget) / (Ufactor * np.sqrt(len(maskedU)))
+        if self.verbosity > 1:
             print(f"Onsite interaction target = {Utarget}")
-            print(f"Onsite interaction residue cu = {cu}")
-        return cu
-
-    # ==================== ROOT FINDING ====================
-
-    def _func_func(
-        self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
-    ):
-        Vtarget, Utarget, txTarget, tyTarget = target
-        A, maskedU = res
-        maskedA = A[self.mask, :][:, self.mask]
-
-        cu = (
-            self.u_func(maskedU, Utarget, scale_factor)
-            if w[0]
-            else np.zeros(self.lattice.N)
-        )
-        cv = self.v_func(A, Vtarget, scale_factor)
-        ct = self.t_func(maskedA, links, (txTarget, tyTarget), scale_factor)
-
-        cvec = np.array([la.norm(cu), la.norm(ct), la.norm(cv)])
-        # Weighted cost function, weight is in front of each squared term
-        c = np.concatenate([np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
-        # The cost func val in least_squares is fval**2 / 2
-        fval = la.norm(c)
-        info.update_log(self, point, report, target, cvec, fval)
-        return c
-
-    def v_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
-        V = np.real(np.diag(A))
-        if len(V) == self.masked_Nsite:
-            maskedV = V
-        else:
-            maskedV = V[self.mask]
-        Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
-
-        Vdist = V - Vtarget
-        if len(Vdist) > self.masked_Nsite:
-            self.penalty(Vdist, penalty, Vfactor)
-        cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
-        if self.verbosity > 2:
-            print(f"Onsite potential target = {Vtarget}")
-            print(f"Onsite potential residue cv = {cv}")
-        return cv
-
-    def t_func(
-        self,
-        A: np.ndarray,
-        links: tuple[np.ndarray, np.ndarray],
-        target: tuple[float, ...],
-        tfactor: float,
-    ) -> np.ndarray:
-        nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(A, links, target)
-        if tfactor is None:
-            tfactor = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
-        ct = (abs(nnt[xlinks]) - txTarget) / (tfactor * np.sqrt(np.sum(xlinks)))
-        if tyTarget != None:
-            ct = np.concatenate(
-                (
-                    ct,
-                    (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks))),
-                )
-            )
-        if self.verbosity > 2:
-            print(f"Tunneling target = {txTarget}, {tyTarget}")
-            print(f"Tunneling residue ct = {ct}")
-        return ct
-
-    def u_func(self, U, Utarget: float, Ufactor: float = None):
-        Utarget, Ufactor = _set_uv(U, Utarget, Ufactor)
-        cu = (U - Utarget) / (Ufactor * np.sqrt(len(U)))
-        if self.verbosity > 2:
-            print(f"Onsite interaction target = {Utarget}")
-            print(f"Onsite interaction residue cu = {cu}")
+            if self.verbosity > 2:
+                print(f"Onsite interaction residue cu = {cu}")
         return cu
