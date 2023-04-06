@@ -582,7 +582,7 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-    def txy_target(self, nnt, links, func: Callable = np.mean):
+    def txy_target(self, nnt, links, func: Callable = np.min):
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan
@@ -611,13 +611,15 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, penalty, Vfactor):
+    def penalty(self, Vdist, penalty, Vfactor, discon=False):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         Vdist_unmasked = Vdist[~self.mask]
-        Vdist[~self.mask] = np.where(
-            Vdist_unmasked < 0, penalty * np.sqrt(Vdist_unmasked**2 + Vfactor**2), 0
-        )
+        if discon:  # Add discontinuous jump
+            Vdist_penaled = penalty * np.sqrt(Vdist_unmasked**2 + Vfactor**2)
+        else:
+            Vdist_penaled = penalty * Vdist_unmasked
+        Vdist[~self.mask] = np.where(Vdist_unmasked < 0, Vdist_penaled, 0)
         print(Vdist)
 
     def opt_func(
@@ -704,7 +706,7 @@ class HubbardEqualizer(MLWF):
         self, A, Vtarget: float, Vfactor: float = None, penalty=10
     ) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor, penalty)
-        cv = la.norm(Vdiff)
+        cv = np.sum(Vdiff**2)
         if self.verbosity > 1:
             print(f"Onsite potential cost cv^2 = {cv}")
         return cv
@@ -717,14 +719,14 @@ class HubbardEqualizer(MLWF):
         tfactor: float,
     ) -> float:
         tdiff = self.t_res_func(maskedA, links, target, tfactor)
-        ct = la.norm(tdiff)
+        ct = np.sum(tdiff**2)
         if self.verbosity > 1:
             print(f"Tunneling cost ct^2 = {ct}")
         return ct
 
     def u_cost_func(self, maskedU, Utarget: float, Ufactor: float = None) -> float:
         Udiff = self.u_res_func(maskedU, Utarget, Ufactor)
-        cu = la.norm(Udiff)
+        cu = np.sum(Udiff**2)
         if self.verbosity > 1:
             print(f"Onsite interaction cost cu^2 = {cu}")
         return cu

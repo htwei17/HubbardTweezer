@@ -510,7 +510,7 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
 
 
 def singleband_interaction(
-    dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray, intgrl: str = "romb"
+    dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray, intgrl: str = "trapz"
 ) -> np.ndarray:
     t0 = time()
     u = (
@@ -528,7 +528,7 @@ def singleband_interaction(
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
     Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
     wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    if intgrl == "romb":
+    if intgrl == "romb":  # Not recommanded as is not converging well
         Uint_onsite = romb3d(wannier, dx)
     else:
         Uint_onsite = trapz3dnp(wannier, x)

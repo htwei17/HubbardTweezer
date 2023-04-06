@@ -245,7 +245,7 @@ eqt = 'uvt' if eqt == 'neq' else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 Vtarget = np.mean(np.real(np.diag(maskedA)))
-ttarget = G.txy_target(nnt, links)
+ttarget = G.txy_target(nnt, links, np.mean)
 Utarget = np.mean(maskedU)
 cu = G.u_cost_func(maskedU, Utarget, G.sf)
 ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
