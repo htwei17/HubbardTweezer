@@ -407,6 +407,7 @@ class HubbardEqualizer(MLWF):
         # Set ghost trap for 1D & 2D lattice
         # If trap is ghost, mask is False
         mask = np.ones(self.lattice.N, dtype=bool)
+        # block = np.zeros(self.lattice.N, dtype=bool)
         err = ValueError("Ghost sites not implemented for this lattice.")
         if self.ghost:
             if self.lattice.dim == 1:
@@ -431,6 +432,8 @@ class HubbardEqualizer(MLWF):
                     if mask_axis.size != 0:
                         masked_idx = np.concatenate([bdry[i] for i in mask_axis])
                         mask[masked_idx] = False
+                    # if extra.size != 0:  # Add traps to be blocked by onsite potential
+                    #     block[extra] = True
                 else:
                     raise err
             else:
@@ -441,6 +444,7 @@ class HubbardEqualizer(MLWF):
             self.masked_links = self.lattice.links
         self.mask = mask
         self.masked_Nsite = np.sum(mask)
+        # self.block = block
         print("Equalize: ghost sites are set.")
 
     def xy_boundaries(self, N):

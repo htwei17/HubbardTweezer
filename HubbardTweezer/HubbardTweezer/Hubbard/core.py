@@ -31,6 +31,8 @@ class MLWF(DVR):
 
     """
 
+    mask: np.ndarray[bool]
+
     def create_lattice(
         self,
         lattice: np.ndarray,
@@ -155,6 +157,9 @@ class MLWF(DVR):
         if equalize_V0:
             self.equalize_trap_depths()
 
+        # Set to cancel onsite potential offset
+        mask = np.ones(self.lattice.N, dtype=bool)
+
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
         V = 0
@@ -195,7 +200,7 @@ class MLWF(DVR):
         self.A, V = singleband_WF(self, E, W, p, x0)
         if offset is True:
             # Shift onsite potential to zero average
-            self.zero = np.mean(np.real(np.diag(self.A)))
+            self.zero = np.mean(np.real(np.diag(self.A)[self.mask]))
         elif isinstance(offset, Number):
             self.zero = offset
         else:
