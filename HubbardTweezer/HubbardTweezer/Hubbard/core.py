@@ -31,7 +31,7 @@ class MLWF(DVR):
 
     """
 
-    mask: np.ndarray[bool]
+    mask: np.ndarray
 
     def create_lattice(
         self,
