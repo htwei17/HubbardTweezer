@@ -7,8 +7,6 @@ from scipy.optimize import OptimizeResult
 
 from ..tools import reportIO as rep
 
-# from .core import MLWF
-
 
 class EqulizeInfo(dict):
     def __init__(self, *args, **kwargs):
