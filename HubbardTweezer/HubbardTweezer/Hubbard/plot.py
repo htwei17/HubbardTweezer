@@ -61,7 +61,7 @@ params = {
     # 'axes.titlesize': 'xx-large',
     # 'xtick.labelsize': 'xx-large',
     # 'ytick.labelsize': 'xx-large'
-    "mathtext.fontset": 'cm',
+    "mathtext.fontset": "cm",
     "font.family": FONT_FAMILY,
 }
 plt.rcParams.update(params)

@@ -32,6 +32,8 @@ class MLWF(DVR):
     """
 
     mask: np.ndarray
+    Nintgrl_grid: int = 257
+    # Rintgrl: np.ndarray
 
     def create_lattice(
         self,
@@ -524,8 +526,8 @@ def singleband_interaction(
     x = []
     dx = []
     for i in range(dim):
-        if dvr.nd[i]:
-            x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], 129))
+        if dvr.nd[i]:  # Think of a way to make numerical integration converge
+            x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], dvr.Nintgrl_grid))
             dx.append(x[i][1] - x[i][0])
         else:
             x.append(np.array([0]))
