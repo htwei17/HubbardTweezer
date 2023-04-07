@@ -52,6 +52,9 @@ def help_message(s=2):
     U_over_t:   Hubbard U/t ratio (default: None)
                 None means avg U / avg t_x calculated in initial guess
 
+    Hubbard parameter hyperparameters:
+    Nintgrl_grid:   number of grid points in integration (default: 257)
+    
     Hubbard parameter equalization:
     equalize:   equalize Hubbard parameters or not (default: False)
     equalize_target:    target Hubbard parameters to be equalized (default: vT)
@@ -157,6 +160,7 @@ avg = rep.f(report, "Parameters", "average", 1)
 # ====== Hubbard parameters ======
 band = rep.i(report, "Parameters", "band", 1)
 ut = rep.f(report, "Parameters", "U_over_t", None)
+Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
@@ -207,6 +211,7 @@ G = HubbardGraph(
     eqtarget=eqt,
     lattice_symmetry=ls,
     Ut=ut,
+    Nintgrl_grid=Nintgrl_grid,
     ghost=gho,
     random=r,
     x0=x0,

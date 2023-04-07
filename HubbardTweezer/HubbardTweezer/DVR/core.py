@@ -137,6 +137,8 @@ class DVR:
         ab_param: tuple[float, float] = (57.04, 1),
         sparse: bool = False,
         verbosity: int = 2,  # How much information to print
+        *args,
+        **kwargs,
     ) -> None:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of wx
@@ -434,6 +436,9 @@ class DVR:
 
             N = np.product(no)
             H = LinearOperator((N, N), matvec=applyH)
+
+            if v0 is not None: # Flatten v0
+                v0 = v0.reshape(-1)
 
             if k <= 0:
                 k = 10

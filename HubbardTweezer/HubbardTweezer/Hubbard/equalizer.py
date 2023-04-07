@@ -132,13 +132,17 @@ class HubbardEqualizer(MLWF):
                 print("Illegal x0 provided. Use no initial guess.")
                 x0 = None
 
+            eig_callback = kwargs.get("eig_callback", True)
+            unitary_callback = kwargs.get("unitary_callback", False)
+
             self.equalize(
                 target=eqtarget,
                 Ut=Ut,
                 x0=x0,
                 random=random,
                 nobounds=nobounds,
-                unitary_callback=False,
+                eig_callback=eig_callback,
+                unitary_callback=unitary_callback,
                 iofile=iofile,
             )
 

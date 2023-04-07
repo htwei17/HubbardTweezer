@@ -145,6 +145,11 @@ class MLWF(DVR):
                 "Absorber is not supported for Wannier Function construction!"
             )
 
+        self.Nintgrl_grid = kwargs.get(
+            "Nintgrl_grid", 257
+        )  # Numerical integration grid point number
+        print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
+
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
@@ -328,7 +333,7 @@ class MLWF(DVR):
                     p_list[pidx], k + 1, E_sb, W_sb, p_sb, W0p
                 )
                 if W0 is not None:
-                    W0[pidx] = W_sb[:, 0]  # Inplace update
+                    W0[pidx] = W_sb[-k - 1]  # Inplace update x,y,z-folded W0
 
             # Sort everything by energy, only keetp lowest k states
             idx = np.argsort(E_sb)[: k + 1]
