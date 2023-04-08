@@ -133,6 +133,8 @@ class HubbardEqualizer(MLWF):
                 x0 = None
 
             eig_callback = kwargs.get("eig_callback", True)
+            if eig_callback:
+                print("Equalize: eig_callback is True.")
             unitary_callback = kwargs.get("unitary_callback", False)
 
             self.equalize(
