@@ -352,11 +352,11 @@ class DVR:
         psi0 = psi0.reshape(*no)
         psi: np.ndarray = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
         # T_xx' delta_yy' delta_zz'
-        psi += np.einsum("ij,jkl->ikl", T[0], psi0)
+        psi += contract("ij,jkl->ikl", T[0], psi0)
         # delta_xx' T_yy' delta_zz'
-        psi += np.einsum("jl,ilk->ijk", T[1], psi0)
+        psi += contract("jl,ilk->ijk", T[1], psi0)
         # delta_xx' delta_yy' T_zz'
-        psi += np.einsum("ij,klj->kli", T[2], psi0)
+        psi += contract("ij,klj->kli", T[2], psi0)
         return psi.reshape(-1)
 
     def H_mat(self):

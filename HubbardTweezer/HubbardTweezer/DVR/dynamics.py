@@ -1,45 +1,46 @@
-import scipy.linalg as la
 from time import time
 from pympler.asizeof import asizeof
 import tracemalloc
-from tools.display_top import display_top
-import numpy as np
 from typing import Iterable
 import copy
+import numpy as np
+import scipy.linalg as la
 
 from .core import *
 from .io import DVRDynamicsIO
+from ..tools.display_top import display_top
 
 
 class DVRdynamics(DVR):
-
     def update_N(self, N, R0: np.ndarray):
         # Update N and then n by fixed R0
         self.N = N
         n = np.zeros(3, dtype=int)
-        n[:self.dim] = N
+        n[: self.dim] = N
         super().update_n(n, R0)
 
-    def __init__(self,
-                 N: int = 10,
-                 freq_list: np.ndarray = np.arange(20, 200, 20),
-                 time=(1000.0, 0),
-                 dim=3,
-                 model='Gaussian',
-                 mem_eff=False,
-                 wavefunc=False,
-                 realtime=False,
-                 smooth=(-1, 10),
-                 *args,
-                 **kwargs) -> None:
+    def __init__(
+        self,
+        N: int = 10,
+        freq_list: np.ndarray = np.arange(20, 200, 20),
+        time=(1000.0, 0),
+        dim=3,
+        model="Gaussian",
+        mem_eff=False,
+        wavefunc=False,
+        realtime=False,
+        smooth=(-1, 10),
+        *args,
+        **kwargs
+    ) -> None:
         # self.R0 = R0.copy()
         # if __debug__:
         #     print(R0)
         print("param_set: model is {} potential.".format(model))
 
-        if model == 'Gaussian' and N == 0:
+        if model == "Gaussian" and N == 0:
             N = 10
-        elif model == 'sho' and N == 0:
+        elif model == "sho" and N == 0:
             N = 15
 
         self.N = N
@@ -49,8 +50,9 @@ class DVRdynamics(DVR):
         super().__init__(n, model=model, *args, **kwargs)
         self.freq_list_len = len(freq_list)
         self.step_no = time[0]
-        self.stop_time_list = get_stop_time(freq_list, time[1],
-                                            self.V0)  # Time in SI unit
+        self.stop_time_list = get_stop_time(
+            freq_list, time[1], self.V0
+        )  # Time in SI unit
         self.freq_list = np.array(freq_list)
         self.dim = dim
         self.mem_eff = mem_eff
@@ -70,7 +72,7 @@ class DVRdynamics(DVR):
 
     def init_state(self) -> np.ndarray:
         # Calculate GS of time-averaged potentiala
-        print('init_state: initial state of T+%.1fV is calculated.' % self.avg)
+        print("init_state: initial state of T+%.1fV is calculated." % self.avg)
         ab = copy.copy(self.absorber)
         self.absorber = False
         __, W = self.H_solver()
@@ -113,7 +115,8 @@ class DVRdynamics(DVR):
             t_step = T / (2 * self.step_no)
         elif t_step < T:
             str = "Dynamic time step={:g} is too small compared to driving period {:g}. ".format(
-                t_step, T)
+                t_step, T
+            )
             print(str + "Set time step to driving period.")
             t_step = T
         else:
@@ -122,36 +125,42 @@ class DVRdynamics(DVR):
 
     def filename_gen(self, t_step):
         # Generate filename for output
-        rt_str = add_str(self.realtime, 'rt')
-        sym_str = add_str(self.dvr_symm, 'sym')
-        ab_str = add_str(self.absorber, 'ab', (self.LI, self.VI))
-        sm_str = add_str(self.smooth, 'sm', (self.T0, self.Nslice))
+        rt_str = add_str(self.realtime, "rt")
+        sym_str = add_str(self.dvr_symm, "sym")
+        ab_str = add_str(self.absorber, "ab", (self.LI, self.VI))
+        sm_str = add_str(self.smooth, "sm", (self.T0, self.Nslice))
         np.set_printoptions(precision=2, suppress=True)
-        filename = '{} {} {} {:g} {:g} {:.2g} {:.2g} '.format(
-            self.n[self.nd], self.dx[self.nd], self.w * self.wxy * 1E9,
-            self.V0 / self.kHz_2p, self.freq, self.stop_time, t_step)
+        filename = "{} {} {} {:g} {:g} {:.2g} {:.2g} ".format(
+            self.n[self.nd],
+            self.dx[self.nd],
+            self.w * self.wxy * 1e9,
+            self.V0 / self.kHz_2p,
+            self.freq,
+            self.stop_time,
+            t_step,
+        )
         for str in (self.model, rt_str, sym_str, ab_str, sm_str):
             filename += str
-        filename += '.h5'
+        filename += ".h5"
         return filename
 
 
 def add_str(flag, label, param=None):
     # Add property string to filename
     if flag:
-        str = ' ' + label
+        str = " " + label
         if isinstance(param, Iterable):
             for item in param:
-                str += ' {:.2g}'.format(item)
+                str += " {:.2g}".format(item)
     else:
-        str = ''
+        str = ""
     return str
 
 
 def get_stop_time(freq_list: np.ndarray, t=0, V0=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
     if t is 0:
-        st = 4E-5 * np.exp(freq_list * 0.085)  # More accurate scaling
+        st = 4e-5 * np.exp(freq_list * 0.085)  # More accurate scaling
         # st = 2.5E-5 * np.exp(
         #     freq_list * 0.0954747)  # Legacy scaling to access 3D data
         # st[np.nonzero(freq_list < 39.4)] = 1E-3
@@ -191,7 +200,7 @@ def int_evo_ops(dvr: DVRdynamics, E, W, t2, Winv=None):
 
 
 def exp_tensor(l, a, n):
-    real_space_f = np.exp(a * l**2 / (2 * n + 1)**2)
+    real_space_f = np.exp(a * l**2 / (2 * n + 1) ** 2)
     return real_space_f
 
 
@@ -231,12 +240,7 @@ def exp_tensor(l, a, n):
 #     return U0
 
 
-def one_period_evo(E_list,
-                   W_list,
-                   t1,
-                   t2,
-                   dvr: DVRdynamics,
-                   Winv_list=[None, None]):
+def one_period_evo(E_list, W_list, t1, t2, dvr: DVRdynamics, Winv_list=[None, None]):
     # Calculate the one period 0-1 strobe time evolution operator
     # interacting part
     U0 = int_evo_ops(dvr, E_list[0], W_list[0], t1, Winv_list[0])
@@ -308,13 +312,9 @@ def mem_eff_int_ops(t1, DVR: DVR):
     return U0
 
 
-def dynamics_by_period(n_period,
-                       E,
-                       W,
-                       psi0,
-                       dense_output=False,
-                       fixed_period=False,
-                       fast_power=False):
+def dynamics_by_period(
+    n_period, E, W, psi0, dense_output=False, fixed_period=False, fast_power=False
+):
     # Solve matrix power by given eigenenergies E and eigenvectors
     # n_period = int(t / T)
     if n_period > 0:
@@ -367,8 +367,8 @@ def measure_lifetime(freq, psi0, n, dx, t_step):
     t = np.array([0])
     t_count = 0
     n_period = int(t_step / (t1 + t2))
-    print('matrix power p in each time step: {:g}.'.format(n_period))
-    while np.abs(rho_rt[-1])**2 > np.exp(-1, dtype=float) and t_count < 1E7:
+    print("matrix power p in each time step: {:g}.".format(n_period))
+    while np.abs(rho_rt[-1]) ** 2 > np.exp(-1, dtype=float) and t_count < 1e7:
         psi = dynamics_by_period(n_period, E, W, psi)
         rho_rt = np.append(rho_rt, psi0.conj().T @ psi)
         t_count += t_step
@@ -421,7 +421,7 @@ def coherent_state(n, dx, x0):
     def firstfun(x, y, z):
         return shftdVfun(x, y, z, x0)
 
-    E, W = DVR.H_solver(n, dx, potential=firstfun, model='sho')
+    E, W = DVR.H_solver(n, dx, potential=firstfun, model="sho")
     psi = W[:, 0]
     return psi
 
@@ -465,11 +465,15 @@ def eigen_list(dvr: DVRdynamics):
     E_list = [E1, E2]
     W_list = [W1, W2]
     print(
-        'n={}, dx={}, p={}, model={}, t={} stroboscopic states preparation finished.'
-        .format(dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
-                dvr.stop_time_list))
-    print("eigen_list: eigenstates memory usage: {:.2f} MiB.".format(
-        asizeof(W_list) / 2**20))
+        "n={}, dx={}, p={}, model={}, t={} stroboscopic states preparation finished.".format(
+            dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model, dvr.stop_time_list
+        )
+    )
+    print(
+        "eigen_list: eigenstates memory usage: {:.2f} MiB.".format(
+            sys.getsizeof(W_list) / 2**20
+        )
+    )
     return E_list, W_list
 
 
@@ -477,11 +481,13 @@ def mem_est(n, p):
     n = np.array(n)
     init = get_init(n, p)
     Ndim = np.prod(n + 1 - init)
-    mem = 2**(2 * np.log2(Ndim) + 3 - 20)
+    mem = 2 ** (2 * np.log2(Ndim) + 3 - 20)
     print("Matrix size= {}".format(Ndim))
     print(
-        "Estimated full matrix memory usage, float: {:.2f} MiB, complex: {:.2f} MiB"
-        .format(mem, 2 * mem))
+        "Estimated full matrix memory usage, float: {:.2f} MiB, complex: {:.2f} MiB".format(
+            mem, 2 * mem
+        )
+    )
 
 
 def mem_check(limit=6):
@@ -489,21 +495,18 @@ def mem_check(limit=6):
     display_top(snapshot, limit=limit)
 
 
-def dynamics_period(dvr: DVRdynamics, t_step, cond_str, psi1, psi, time6, fn,
-                    W, n_period, E_power_n):
+def dynamics_period(
+    dvr: DVRdynamics, t_step, cond_str, psi1, psi, time6, fn, W, n_period, E_power_n
+):
     for t in np.arange(t_step, dvr.stop_time + t_step, t_step):
-        psi = dynamics_by_period(n_period,
-                                 E_power_n,
-                                 W,
-                                 psi0=psi,
-                                 fixed_period=True)
+        psi = dynamics_by_period(n_period, E_power_n, W, psi0=psi, fixed_period=True)
 
-        rho_gs = abs(psi1 @ psi)**2
+        rho_gs = abs(psi1 @ psi) ** 2
         if dvr.wavefunc:
             psi_w = W @ psi
-            rho_trap = la.norm(
-                psi_w
-            )**2  # Roughly estimate state proportion remaining within DVR space
+            rho_trap = (
+                la.norm(psi_w) ** 2
+            )  # Roughly estimate state proportion remaining within DVR space
         else:
             rho_trap, psi_w = None, None
 
@@ -515,17 +518,16 @@ def dynamics_period(dvr: DVRdynamics, t_step, cond_str, psi1, psi, time6, fn,
         print_progress(cond_str, dvr.step_count, time6)
 
 
-def dynamics_realtime(dvr: DVRdynamics, t_step, cond_str, psi, psi1, time6, fn,
-                      U0, U1):
+def dynamics_realtime(dvr: DVRdynamics, t_step, cond_str, psi, psi1, time6, fn, U0, U1):
     for t_count in np.arange(t_step, dvr.stop_time + t_step, t_step):
         dvr.step_count += 1
         psi = wavepocket_dynamics(psi, U0, U1, dvr.step_count, dvr.step_no)
 
         t = t_count * dvr.t_unit
-        rho_gs = abs(psi1 @ psi)**2
-        rho_trap = la.norm(
-            psi
-        )**2  # Roughly estimate state proportion remaining within DVR space
+        rho_gs = abs(psi1 @ psi) ** 2
+        rho_trap = (
+            la.norm(psi) ** 2
+        )  # Roughly estimate state proportion remaining within DVR space
         io = DVRDynamicsIO(t, rho_gs, dvr.wavefunc, (rho_trap, psi))
         io.write_file(fn)
 
@@ -535,8 +537,12 @@ def dynamics_realtime(dvr: DVRdynamics, t_step, cond_str, psi, psi1, time6, fn,
 def print_progress(cond_str, step_count, time6):
     if step_count % 50 == 0:
         time6.append(time())
-        print(cond_str + "step={:g} finished. Time spent: {:.2f}s.".format(
-            step_count, time6[-1] - time6[-2]))
+        print(
+            cond_str
+            + "step={:g} finished. Time spent: {:.2f}s.".format(
+                step_count, time6[-1] - time6[-2]
+            )
+        )
 
 
 def one_period_mem_eff(t1, t2, dynamics):
@@ -565,29 +571,42 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
     tracemalloc.start()
 
     np.set_printoptions(precision=2, suppress=True)
-    print("{}D N={} R0={}w\nfreq={}kHz\n{} potential starts.".format(
-        dvr.dim, dvr.N, dvr.R0[dvr.nd], dvr.freq_list, dvr.model))
+    print(
+        "{}D N={} R0={}w\nfreq={}kHz\n{} potential starts.".format(
+            dvr.dim, dvr.N, dvr.R0[dvr.nd], dvr.freq_list, dvr.model
+        )
+    )
 
     time0 = time()
 
-    print("n={}, dx={}w, p={}, model={},\nt={},\nt_step={}\nstarts.".format(
-        dvr.n[dvr.nd], dvr.dx[dvr.nd], dvr.p[dvr.nd], dvr.model,
-        dvr.stop_time_list, dvr.t_step_list))
+    print(
+        "n={}, dx={}w, p={}, model={},\nt={},\nt_step={}\nstarts.".format(
+            dvr.n[dvr.nd],
+            dvr.dx[dvr.nd],
+            dvr.p[dvr.nd],
+            dvr.model,
+            dvr.stop_time_list,
+            dvr.t_step_list,
+        )
+    )
     mem_est(dvr.n, dvr.p)
 
     time1 = time()
-    print('Parameter setting time: {:.2f}s.\n'.format(time1 - time0))
+    print("Parameter setting time: {:.2f}s.\n".format(time1 - time0))
 
     dvr.avg = 1 / 2
     psi0 = dvr.init_state()
     dvr.avg = 1
 
     time2 = time()
-    print('Initial state preparation finished. Time spent: {:.2f}s.\n'.format(
-        time2 - time1))
+    print(
+        "Initial state preparation finished. Time spent: {:.2f}s.\n".format(
+            time2 - time1
+        )
+    )
 
     if dvr.mem_eff:
-        print('Memory efficient features are enabled.')
+        print("Memory efficient features are enabled.")
     else:
         E_list, W_list = eigen_list(dvr)
         if dvr.absorber:
@@ -596,16 +615,17 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
             Winv_list = [None, None]
 
     time3 = time()
-    print('Stroboscopic eigensolver time spent: {:.2f}s.\n'.format(time3 -
-                                                                   time2))
+    print("Stroboscopic eigensolver time spent: {:.2f}s.\n".format(time3 - time2))
     mem_check(limit=4)
 
     if dvr.wavefunc:
-        print('Wavefunction output is enabled.')
+        print("Wavefunction output is enabled.")
     if dvr.absorber:
         print(
-            'Absorption potential is enabled. Paramter: L={:.2f}w V_OI={:.2f}kHz\n'
-            .format(dvr.LI, dvr.VI / dvr.kHz_2p))
+            "Absorption potential is enabled. Paramter: L={:.2f}w V_OI={:.2f}kHz\n".format(
+                dvr.LI, dvr.VI / dvr.kHz_2p
+            )
+        )
 
     for fi in range(dvr.freq_list_len):  # frequency unit, V0 ~ 104.52kHz
         time4 = time()
@@ -614,13 +634,17 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
 
         cond_str = "freq={:g}kHz model={} ".format(dvr.freq, dvr.model)
 
-        print('\n' + cond_str +
-              "starts. Time step={:g}, driving period={:g}.\n".format(
-                  t_step, dvr.T))
+        print(
+            "\n"
+            + cond_str
+            + "starts. Time step={:g}, driving period={:g}.\n".format(t_step, dvr.T)
+        )
 
         dvr.step_count = 0
 
-        if dvr.realtime:  # Calculate real time dynamics, every time evolution operator is calculated individually
+        if (
+            dvr.realtime
+        ):  # Calculate real time dynamics, every time evolution operator is calculated individually
             print(cond_str + "detailed dynamics is being calculated.")
 
             psi = psi0
@@ -634,16 +658,18 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
             if dvr.mem_eff:
                 U0, U1 = one_period_mem_eff(t_step, t_step, dvr)
             else:
-                U0, U1 = one_period_evo(E_list, W_list, t_step, t_step, dvr,
-                                        Winv_list)
+                U0, U1 = one_period_evo(E_list, W_list, t_step, t_step, dvr, Winv_list)
                 if fi == dvr.freq_list_len - 1:
-                    del E_list, W_list, Winv_list  # Only enabled when one frequency is calculated
+                    del (
+                        E_list,
+                        W_list,
+                        Winv_list,
+                    )  # Only enabled when one frequency is calculated
 
             print(cond_str + "time evolution operator prepared.")
             mem_check(limit=6)
 
-            dynamics_realtime(dvr, t_step, cond_str, psi, psi1, time6, fn, U0,
-                              U1)
+            dynamics_realtime(dvr, t_step, cond_str, psi, psi1, time6, fn, U0, U1)
 
         else:  # Calculate dynamics at integer times of driving period
             if dvr.mem_eff:
@@ -651,8 +677,7 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
             elif dvr.smooth:
                 U = one_period_evo_smooth(dvr)
             else:
-                U = one_period_evo(E_list, W_list, dvr.t1, dvr.t2, dvr,
-                                   Winv_list)
+                U = one_period_evo(E_list, W_list, dvr.t1, dvr.t2, dvr, Winv_list)
                 # Delete when last frequency is calculated
                 if fi == dvr.freq_list_len - 1:
                     del E_list, W_list, Winv_list
@@ -676,12 +701,17 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
 
             time5 = time()
             n_period = int(t_step / dvr.T)
-            print(cond_str +
-                  'time evolution operator diagonalized. Time spent: {:.2f}s.'.
-                  format(time5 - time4))
             print(
-                'Time step is set to: {:g}s. Matrix power p in each time step: {:g}.'
-                .format(t_step, n_period))
+                cond_str
+                + "time evolution operator diagonalized. Time spent: {:.2f}s.".format(
+                    time5 - time4
+                )
+            )
+            print(
+                "Time step is set to: {:g}s. Matrix power p in each time step: {:g}.".format(
+                    t_step, n_period
+                )
+            )
 
             E_power_n = E**n_period
             del E  # Clear variable E
@@ -690,12 +720,14 @@ def DVRdynamics_exe(dvr: DVRdynamics) -> None:
 
             fn = init_save(dvr, t_step, psi0)
 
-            dynamics_period(dvr, t_step, cond_str, psi1, psi, time6, fn, W,
-                            n_period, E_power_n)
+            dynamics_period(
+                dvr, t_step, cond_str, psi1, psi, time6, fn, W, n_period, E_power_n
+            )
 
         time7 = time()
-        print(cond_str +
-              "finished. Time spent on this freq: {:.2f}s.".format(time7 -
-                                                                   time6[0]))
+        print(
+            cond_str
+            + "finished. Time spent on this freq: {:.2f}s.".format(time7 - time6[0])
+        )
     timef = time()
-    print('All done. Total time spent: {:.2f}s.\n'.format(timef - time0))
+    print("All done. Total time spent: {:.2f}s.\n".format(timef - time0))

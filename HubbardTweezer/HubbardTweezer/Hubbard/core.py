@@ -1,12 +1,14 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 from typing import Iterable
+from numbers import Number
 from opt_einsum import contract
 from time import time
 from itertools import product
 import numpy.linalg as la
 
 from ..DVR import DVR
+from ..DVR.const import *
 from ..DVR.wavefunc import psi
 from ..tools.integrate import romb3d, trapz3dnp
 from ..tools.point_match import nearest_match

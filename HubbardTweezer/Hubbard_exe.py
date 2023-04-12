@@ -10,7 +10,8 @@ import HubbardTweezer.tools.reportIO as rep
 
 def help_message(s=2):
     # print help message and exit
-    print('''
+    print(
+        """
     Usage: python Hubbard_exe.py <input ini file path>
     
     The program will read [Parameters] setion in the input file
@@ -114,7 +115,8 @@ def help_message(s=2):
     [Multiband_Parameters]
     (optional) Hubbard parameters for the multiband Hubbard model, unit kHz.
     Each item is similar to [Singleband_Parameters] with band indices added.
-    ''')
+    """
+    )
     sys.exit(s)
 
 
@@ -123,12 +125,12 @@ try:
     inFile = sys.argv[1]
     # outFile = sys.argv[2]
 
-    if inFile == '--help' or inFile == '-h':
+    if inFile == "--help" or inFile == "-h":
         help_message(2)
     elif exists(inFile):
         report = rep.get_report(inFile)
     else:
-        raise FileNotFoundError('Hubbard_exe: input file not found')
+        raise FileNotFoundError("Hubbard_exe: input file not found")
 except FileNotFoundError as ferr:
     print(ferr)
     print("Usage: python Hubbard_exe.py <input ini file path>")
@@ -141,11 +143,9 @@ L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
 dim = rep.i(report, "Parameters", "dimension", 1)
 
 # ====== Create lattice ======
-lattice = rep.a(report, "Parameters", "lattice_size",
-                np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Parameters", "lattice_const",
-                 np.array([1520, 1690])))
-shape = rep.s(report, "Parameters", "shape", 'square')
+lattice = rep.a(report, "Parameters", "lattice_size", np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520, 1690])))
+shape = rep.s(report, "Parameters", "shape", "square")
 ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
@@ -164,20 +164,24 @@ Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
-eqt = rep.s(report, "Parameters", "equalize_target", 'vT')
+eqt = rep.s(report, "Parameters", "equalize_target", "vT")
 wd = rep.s(report, "Parameters", "waist_direction", None)
-meth = rep.s(report, "Parameters", "method", 'trf')
+meth = rep.s(report, "Parameters", "method", "trf")
 nb = rep.b(report, "Parameters", "no_bounds", False)
 gho = rep.b(report, "Parameters", "ghost_sites", False)
 r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
 # Try to read existing equalization result as initial guess for next equalization
-meth = 'Nelder-Mead' if meth == 'NM' else meth
-if meth == 'Nelder-Mead':
+meth = "Nelder-Mead" if meth == "NM" else meth
+if meth == "Nelder-Mead":
     # Try to read simplex first, then x0
-    x0 = rep.a(report, "Equalization_Result", "simplex",
-               rep.a(report, "Equalization_Result", "x", None))
+    x0 = rep.a(
+        report,
+        "Equalization_Result",
+        "simplex",
+        rep.a(report, "Equalization_Result", "x", None),
+    )
 else:
     x0 = rep.a(report, "Equalization_Result", "x", None)
 
@@ -199,7 +203,7 @@ G = HubbardGraph(
     band=band,
     dim=dim,
     avg=avg,
-    model='Gaussian',  # Tweezer potetnial
+    model="Gaussian",  # Tweezer potetnial
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
@@ -221,7 +225,8 @@ G = HubbardGraph(
     symmetry=symm,
     iofile=report,
     write_log=log,
-    verbosity=verb)
+    verbosity=verb,
+)
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
@@ -234,19 +239,19 @@ if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.min)
 # Print out Hubbard parameters
 if G.verbosity > 1:
-    print(f'scale_factor = {G.sf}')
-    print(f'V = {np.diag(G.A)}')
-    print(f't = {abs(G.nn_tunneling(G.A))}')
-    print(f'U = {G.U}')
+    print(f"scale_factor = {G.sf}")
+    print(f"V = {np.diag(G.A)}")
+    print(f"t = {abs(G.nn_tunneling(G.A))}")
+    print(f"U = {G.U}")
 if plot:
-    G.draw_graph('adjust', A=G.A, U=G.U)
+    G.draw_graph("adjust", A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
 write_singleband(report, G)
 write_trap_params(report, G)
 
-eqt = 'uvt' if eqt == 'neq' else eqt
+eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 Vtarget = np.mean(np.real(np.diag(maskedA)))
@@ -260,9 +265,9 @@ c = w @ cvec
 cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
-G.eqinfo['sf'] = G.sf
+G.eqinfo["sf"] = G.sf
 # Final U/t, so is determined by average values
-G.eqinfo['Ut'] = Utarget / ttarget[0]
+G.eqinfo["Ut"] = Utarget / ttarget[0]
 
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
