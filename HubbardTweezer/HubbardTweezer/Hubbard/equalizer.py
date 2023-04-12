@@ -621,15 +621,15 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, penalty, Vfactor, discon=False):
+    def penalty(self, Vdist, Vfactor, penalty, threashold=0, discon=False):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         Vdist_unmasked = Vdist[~self.mask]
         if discon:  # Add discontinuous jump
             Vdist_penaled = penalty * np.sqrt(Vdist_unmasked**2 + Vfactor**2)
-        else:
+        else:  # NOTE: if Vdist_unmasked not subtract threshold, the penalty is not continuous
             Vdist_penaled = penalty * Vdist_unmasked
-        Vdist[~self.mask] = np.where(Vdist_unmasked < 0, Vdist_penaled, 0)
+        Vdist[~self.mask] = np.where(Vdist_unmasked < threashold, Vdist_penaled, 0)
         print(Vdist)
 
     def opt_func(
@@ -766,7 +766,15 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_res_func(self, A, Vtarget: float, Vfactor: float = None, penalty=10):
+    def v_res_func(
+        self,
+        A,
+        Vtarget: float,
+        Vfactor: float = None,
+        threshold=400,  # NOTE: \Delta V >= 2t to close tunneling,
+        # as from 2-site calculation, t \sigma_x <= \DeltaV/2 \sigma_z
+        penalty=10,
+    ):
         V = np.real(np.diag(A))
         if len(V) == self.masked_Nsite:
             maskedV = V
@@ -776,7 +784,7 @@ class HubbardEqualizer(MLWF):
 
         Vdist = V - Vtarget
         if len(Vdist) > self.masked_Nsite:
-            self.penalty(Vdist, penalty, Vfactor)
+            self.penalty(Vdist, Vfactor, penalty, threshold)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")

@@ -1,12 +1,13 @@
 import numpy as np
 import scipy.linalg as la
+
 # import scipy.sparse.linalg as sla
 # import scipy.sparse as sp
 # import sparse
 # from opt_einsum import contract
 
 from .core import *
-from wavefunc import psi
+from .wavefunc import psi
 
 k = 10  # Number of energy levels to track
 
@@ -27,14 +28,14 @@ def N_convergence(N: int, R, avg=1, dim=3, level=1):
         dx = R / n
         n = n * dim_factor
         D = DVR(n, R, avg=avg, sparse=True)
-        print('dx= {}w'.format(dx))
-        print('R= {}w'.format(R))
-        print('n=', n)
+        print("dx= {}w".format(dx))
+        print("R= {}w".format(R))
+        print("n=", n)
         V, W = D.H_solver()
         E = np.append(E, V[:k].reshape(1, -1), axis=0)
         p.append(
-            psi([x, y, z], n, dx, W.reshape(*(D.n + 1 - D.init), k))[:, 0,
-                                                                     0, :level])
+            psi([x, y, z], n, dx, W.reshape(*(D.n + 1 - D.init), k))[:, 0, 0, :level]
+        )
     dE = np.diff(E, axis=0)
 
     return np.array(N), dE, E, x / R[0], p
