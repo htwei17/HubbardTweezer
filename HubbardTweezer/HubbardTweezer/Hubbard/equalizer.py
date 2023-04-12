@@ -713,9 +713,9 @@ class HubbardEqualizer(MLWF):
         return c
 
     def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None, penalty=10
+        self, A, Vtarget: float, Vfactor: float = None, threshold=400, penalty=10
     ) -> float:
-        Vdiff = self.v_res_func(A, Vtarget, Vfactor, penalty)
+        Vdiff = self.v_res_func(A, Vtarget, Vfactor, threshold, penalty)
         cv = np.sum(Vdiff**2)
         if self.verbosity > 1:
             print(f"Onsite potential cost cv^2 = {cv}")
