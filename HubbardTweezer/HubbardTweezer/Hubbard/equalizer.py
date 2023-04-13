@@ -708,7 +708,7 @@ class HubbardEqualizer(MLWF):
         return c
 
     def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None, threshold=400, penalty=10
+        self, A, Vtarget: float, Vfactor: float = None, threshold=0.4, penalty=10
     ) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor, threshold, penalty)
         cv = np.sum(Vdiff**2)
