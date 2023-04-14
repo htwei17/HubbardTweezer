@@ -621,7 +621,7 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, penalty=1, threashold=0):
+    def penalty(self, Vdist, penalty=1e2, threashold=0):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         Vdist_unmasked = Vdist[~self.mask] - threashold
@@ -708,7 +708,7 @@ class HubbardEqualizer(MLWF):
         return c
 
     def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None, threshold=0.4, penalty=10
+        self, A, Vtarget: float, Vfactor: float = None, threshold=2, penalty=1e2
     ) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor, threshold, penalty)
         cv = np.sum(Vdiff**2)
@@ -766,9 +766,9 @@ class HubbardEqualizer(MLWF):
         A,
         Vtarget: float,
         Vfactor: float = None,
-        threshold=0.4,  # NOTE: \Delta V >= 2t to close tunneling,
+        threshold=2,  # NOTE: \Delta V >= 2t to close tunneling,
         # as from 2-site calculation, t \sigma_x <= \DeltaV/2 \sigma_z
-        penalty=10,
+        penalty=1e2,
     ):
         V = np.real(np.diag(A))
         if len(V) == self.masked_Nsite:
@@ -779,7 +779,7 @@ class HubbardEqualizer(MLWF):
 
         Vdist = V - Vtarget
         if len(Vdist) > self.masked_Nsite:
-            self.penalty(Vdist, penalty, threshold)
+            self.penalty(Vdist, penalty / Vfactor, threshold)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
