@@ -75,6 +75,7 @@ class HubbardEqualizer(MLWF):
         nobounds: bool = False,  # Whether to use bounds or not
         waist="x",  # Waist to vary, None means no waist change
         ghost: bool = False,  # Whether to use ghost atoms or not
+        ghost_penalty=(0, 0),  # Ghost threshold & penalty weight
         random: bool = False,  # Random initial guess
         iofile=None,  # Input/output file
         write_log: bool = False,  # Whether to write detailed log into iofile
@@ -88,6 +89,7 @@ class HubbardEqualizer(MLWF):
         self.ghost_shape = None
         self.ghost = ghost
         if self.ghost:
+            self.ghost_threshold, self.ghost_weight = ghost_penalty
             self.ghost_shape = shape
             if self.ghost_shape == "Lieb":
                 # If use ghost traps,
@@ -621,17 +623,19 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, penalty=1, threashold=0, shape="sigmoid"):
+    def penalty(self, Vdist, shape="sigmoid"):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
-        Vdist_unmasked = Vdist[~self.mask] - threashold
+        Vdist_unmasked = Vdist[~self.mask] - self.ghost_threshold
+        # Criteria: make func value 0 at and beyond desired value,
+        # not neccesarily threshold
         if shape == "exp":
-            Vpen = np.exp(-penalty / 2 * Vdist_unmasked)
+            Vpen = np.exp(-5 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
         elif shape == "sigmoid":
-            Vpen = penalty / (1 + np.exp(Vdist_unmasked))
+            Vpen = 1 / (1 + np.exp(5 * Vdist_unmasked))  # 1e-6 at threshold + 2(kHz)
         else:
-            Vpen = np.where(Vdist_unmasked < 0, penalty * Vdist_unmasked, 0)
-        Vdist[~self.mask] = Vpen
+            Vpen = np.where(Vdist_unmasked < 0, Vdist_unmasked, 0)  # 0 at threshold
+        Vdist[~self.mask] = self.ghost_weight * Vpen
 
     def opt_func(
         self,
@@ -784,8 +788,8 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        if len(Vdist) > self.masked_Nsite:
-            self.penalty(Vdist, penalty / Vfactor, threshold)
+        if len(Vdist) > self.masked_Nsite and penalty > 0:
+            self.penalty(Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
