@@ -621,11 +621,17 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, penalty=1e2, threashold=0):
+    def penalty(self, Vdist, penalty=1, threashold=0, shape="sigmoid"):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         Vdist_unmasked = Vdist[~self.mask] - threashold
-        Vdist[~self.mask] = np.where(Vdist_unmasked < 0, penalty * Vdist_unmasked, 0)
+        if shape == "exp":
+            Vpen = np.exp(-penalty / 2 * Vdist_unmasked)
+        elif shape == "sigmoid":
+            Vpen = penalty / (1 + np.exp(Vdist_unmasked))
+        else:
+            Vpen = np.where(Vdist_unmasked < 0, penalty * Vdist_unmasked, 0)
+        Vdist[~self.mask] = Vpen
 
     def opt_func(
         self,
@@ -708,7 +714,7 @@ class HubbardEqualizer(MLWF):
         return c
 
     def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None, threshold=2, penalty=1e2
+        self, A, Vtarget: float, Vfactor: float = None, threshold=2, penalty=1
     ) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor, threshold, penalty)
         cv = np.sum(Vdiff**2)
@@ -768,7 +774,7 @@ class HubbardEqualizer(MLWF):
         Vfactor: float = None,
         threshold=2,  # NOTE: \Delta V >= 2t to close tunneling,
         # as from 2-site calculation, t \sigma_x <= \DeltaV/2 \sigma_z
-        penalty=1e2,
+        penalty=1,
     ):
         V = np.real(np.diag(A))
         if len(V) == self.masked_Nsite:
