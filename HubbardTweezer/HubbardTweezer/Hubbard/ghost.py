@@ -48,12 +48,12 @@ class GhostTrap:
                 Nx, Ny = lattice.size
                 extra = np.array([], dtype=int)
                 if self.shape in ["square", "Lieb"]:
-                    x_bdry, y_bdry = self.xy_boundaries(Ny)
+                    x_bdry, y_bdry = self.xy_boundaries(lattice, Ny)
                     if self.shape == "Lieb":
                         # Add extra ghost sites for Lieb lattice
                         extra = _lieb_ghost_sites(Nx, Ny)
                 elif self.shape == "triangular" and not self.ls:
-                    y_bdry, x_bdry = self.xy_boundaries(Nx)
+                    y_bdry, x_bdry = self.xy_boundaries(lattice, Nx)
                 else:
                     raise err
                 bdry = [x_bdry, y_bdry, extra]  # x, y boundary site indices

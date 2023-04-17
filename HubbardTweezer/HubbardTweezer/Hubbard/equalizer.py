@@ -102,7 +102,7 @@ class HubbardEqualizer(MLWF):
         # Set target to be already limited in the bulk
         self.ghost = GhostTrap(self.lattice, ghost_shape, *ghost_penalty)
         if ghost:
-            self.ghost.set_mask()
+            self.ghost.set_mask(self.lattice)
 
         if self.ghost.Nsite == 1:
             raise ValueError(

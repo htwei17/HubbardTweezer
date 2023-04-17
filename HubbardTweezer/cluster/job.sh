@@ -23,6 +23,8 @@ R=3
 Rz=7.2
 SYMMETRY=True
 GHOST=False
+GHOST_PARAM=""
+GHOST_PATH=""
 NL_DEFINITION="N=$N
 R=$R
 Rz=$Rz"
@@ -204,8 +206,7 @@ fi
 if [ $GHOST = True ]; then
     GHOST_PATH="/ghost"
     WAIST=None
-else
-    GHOST_PATH=""
+    GHOST_PARAM="ghost_penalty = 1, 1"
 fi
 
 # ========= Write sbatch script =========
@@ -265,6 +266,7 @@ shape = $SHAPE
 scattering_length = 1770
 dimension = $d
 ghost_sites = $GHOST
+$GHOST_PARAM
 waist_direction = $WAIST
 lattice_symmetry = $SYMMETRY
 equalize = $EQ_FLAG

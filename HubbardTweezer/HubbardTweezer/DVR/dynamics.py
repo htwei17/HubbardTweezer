@@ -159,7 +159,7 @@ def add_str(flag, label, param=None):
 
 def get_stop_time(freq_list: np.ndarray, t=0, V0=0) -> np.ndarray:
     # NOTE: input freq_list must be in unit of kHz
-    if t is 0:
+    if t == 0:
         st = 4e-5 * np.exp(freq_list * 0.085)  # More accurate scaling
         # st = 2.5E-5 * np.exp(
         #     freq_list * 0.0954747)  # Legacy scaling to access 3D data
