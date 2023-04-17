@@ -9,8 +9,8 @@ from time import time
 import nlopt
 
 from .core import *
-from .lattice import squeeze_idx
 from .io import *
+from .ghost import GhostTrap
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
@@ -43,18 +43,6 @@ def _set_uv(uv, target, factor):
     return target, factor
 
 
-def _lieb_ghost_sites(Nx, Ny):
-    # Generate interior ghost sites for Lieb lattice
-    # Note that since the boundary is always ghost,
-    # we can safely set all boundary sites to be ghost
-
-    # Generate index pairs for rectangular lattice, column major
-    idx_pairs = np.array([[i, j] for i in range(Nx) for j in range(Ny)])
-    hole = np.all(idx_pairs % 2 == 0, axis=1)
-    hole_idx = np.nonzero(hole)[0]
-    return hole_idx
-
-
 class HubbardEqualizer(MLWF):
     """
     HubbardEqualizer: equalize trap parameters to generate Hubbard model parameters in fermionic tweezer array
@@ -84,21 +72,17 @@ class HubbardEqualizer(MLWF):
         **kwargs,
     ):
         # Set ghost lattice shape
-        shape = kwargs.get("shape", "square")
+        lattice_shape = kwargs.get("shape", "square")
         kwargs.pop("shape", None)
-        self.ghost_shape = None
-        self.ghost = ghost
-        if self.ghost:
-            self.ghost_threshold, self.ghost_weight = ghost_penalty
-            self.ghost_shape = shape
-            if self.ghost_shape == "Lieb":
-                # If use ghost traps,
-                # Lieb lattice has ghost sites in the interior
-                # But its shape is square
-                print("Equalize: Lieb lattice ghost sites.")
-                print("Set shape to square for total system.")
-                shape = "square"
-        super().__init__(N, shape=shape, *args, **kwargs)
+        ghost_shape = lattice_shape
+        if ghost and lattice_shape == "Lieb":
+            # If use ghost traps,
+            # Lieb lattice has ghost sites in the interior
+            # But its shape is square
+            print("Equalize: Lieb lattice ghost sites.")
+            print("Set shape to square for total system.")
+            lattice_shape = "square"
+        super().__init__(N, shape=lattice_shape, *args, **kwargs)
 
         # set equalization label in file output
         self.eq_label = eqtarget
@@ -116,8 +100,11 @@ class HubbardEqualizer(MLWF):
             self.sf = None
 
         # Set target to be already limited in the bulk
-        self.ghost_sites()
-        if self.masked_Nsite == 1:
+        self.ghost = GhostTrap(self.lattice, ghost_shape, *ghost_penalty)
+        if ghost:
+            self.ghost.set_mask()
+
+        if self.ghost.Nsite == 1:
             raise ValueError(
                 "Equalize: only one site in the system, equalization is not valid."
             )
@@ -176,9 +163,9 @@ class HubbardEqualizer(MLWF):
 
         A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
 
-        maskedA = A[self.mask, :][:, self.mask]
-        maskedU = U[self.mask] if u else None
-        links = self.xy_links(self.masked_links)
+        maskedA = self.ghost.mask_quantity(A)
+        maskedU = self.ghost.mask_quantity(U) if u else None
+        links = self.xy_links(self.ghost.links)
         target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
 
         v0, bounds = self.initialize(random, nobounds)
@@ -411,61 +398,6 @@ class HubbardEqualizer(MLWF):
         print(f"Equalize: target onsite potential = {Vtarget}")
         return Vtarget, Utarget, txTarget, tyTarget
 
-    def ghost_sites(self):
-        # Set ghost trap for 1D & 2D lattice
-        # If trap is ghost, mask is False
-        mask = np.ones(self.lattice.N, dtype=bool)
-        # block = np.zeros(self.lattice.N, dtype=bool)
-        err = ValueError("Ghost sites not implemented for this lattice.")
-        if self.ghost:
-            if self.lattice.dim == 1:
-                mask[[0, -1]] = False
-            elif self.lattice.dim == 2:
-                if self.ghost_shape in ["square", "triangular", "Lieb"]:
-                    Nx, Ny = self.lattice.size
-                    extra = np.array([], dtype=int)
-                    if self.ghost_shape in ["square", "Lieb"]:
-                        x_bdry, y_bdry = self.xy_boundaries(Ny)
-                        if self.ghost_shape == "Lieb":
-                            # Add extra ghost sites for Lieb lattice
-                            extra = _lieb_ghost_sites(Nx, Ny)
-                    elif self.ghost_shape == "triangular" and not self.ls:
-                        y_bdry, x_bdry = self.xy_boundaries(Nx)
-                    else:
-                        raise err
-                    bdry = [x_bdry, y_bdry, extra]  # x, y boundary site indices
-                    # which axis to mask
-                    mask_axis = np.nonzero(self.lattice.size > 2)[0]
-                    mask_axis = np.append(mask_axis, 2)  # add extra
-                    if mask_axis.size != 0:
-                        masked_idx = np.concatenate([bdry[i] for i in mask_axis])
-                        mask[masked_idx] = False
-                    # if extra.size != 0:  # Add traps to be blocked by onsite potential
-                    #     block[extra] = True
-                else:
-                    raise err
-            else:
-                raise err
-            masked_idx = np.where(~mask)[0]
-            self.masked_links = squeeze_idx(self.lattice.links, masked_idx)
-        else:
-            self.masked_links = self.lattice.links
-        self.mask = mask
-        self.masked_Nsite = np.sum(mask)
-        # self.block = block
-        print("Equalize: ghost sites are set.")
-
-    def xy_boundaries(self, N):
-        # Identify x and y boundary site indices
-        # For example, for a 4x4 square lattice,
-        # x_bdry = [0, 1, 2, 3, 12, 13, 14, 15]
-        # and y_bdry = [0, 4, 8, 12, 3, 7, 11, 15]
-        x_bdry = np.concatenate((np.arange(N), np.arange(-N, 0)))
-        y_bdry = np.concatenate(
-            (np.arange(0, self.lattice.N, N), np.arange(N - 1, self.lattice.N, N))
-        )
-        return x_bdry, y_bdry
-
     def xy_links(self, links=None):
         # Distinguish x and y n.n. bonds and target t_x t_y values
         # FIXME: Check all possible cases
@@ -492,7 +424,7 @@ class HubbardEqualizer(MLWF):
         elif self.lattice.dim == 1:
             nnt = np.diag(A, k=1)
         else:
-            nnt = A[self.masked_links[:, 0], self.masked_links[:, 1]]
+            nnt = A[self.ghost.links[:, 0], self.ghost.links[:, 1]]
         return nnt
 
     def eff_dof(self):
@@ -623,20 +555,6 @@ class HubbardEqualizer(MLWF):
         self.update_lattice(self.trap_centers)
         return self.Voff, self.waists, self.trap_centers, self.eqinfo
 
-    def penalty(self, Vdist, shape="sigmoid"):
-        # Penalty for negative V outside the mask
-        # Vdist is modified in place
-        Vdist_unmasked = Vdist[~self.mask] - self.ghost_threshold
-        # Criteria: make func value 0 at and beyond desired value,
-        # not neccesarily threshold
-        if shape == "exp":
-            Vpen = np.exp(-5 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
-        elif shape == "sigmoid":
-            Vpen = 1 / (1 + np.exp(5 * Vdist_unmasked))  # 1e-6 at threshold + 2(kHz)
-        else:
-            Vpen = np.where(Vdist_unmasked < 0, Vdist_unmasked, 0)  # 0 at threshold
-        Vdist[~self.mask] = self.ghost_weight * Vpen
-
     def opt_func(
         self,
         point: np.ndarray,
@@ -669,7 +587,7 @@ class HubbardEqualizer(MLWF):
         if not isinstance(target, Iterable):
             target = (None, None, None, None)
 
-        maskedU = U[self.mask] if u else None
+        maskedU = self.ghost.mask_quantity(U) if u else None
 
         if mode in ["cost", "nlopt"]:
             return self._cost_func(
@@ -703,7 +621,7 @@ class HubbardEqualizer(MLWF):
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, maskedU = res
-        maskedA = A[self.mask, :][:, self.mask]
+        maskedA =self.ghost.mask_quantity(A)
 
         # U is different, as calculating U costs time
         cu = self.u_cost_func(maskedU, Utarget, scale_factor) if w[0] else 0
@@ -718,9 +636,9 @@ class HubbardEqualizer(MLWF):
         return c
 
     def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None, threshold=2, penalty=1
+        self, A, Vtarget: float, Vfactor: float = None
     ) -> float:
-        Vdiff = self.v_res_func(A, Vtarget, Vfactor, threshold, penalty)
+        Vdiff = self.v_res_func(A, Vtarget, Vfactor)
         cv = np.sum(Vdiff**2)
         if self.verbosity > 1:
             print(f"Onsite potential cost cv^2 = {cv}")
@@ -753,7 +671,7 @@ class HubbardEqualizer(MLWF):
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, maskedU = res
-        maskedA = A[self.mask, :][:, self.mask]
+        maskedA = self.ghost.mask_quantity(A)
 
         cu = (
             self.u_res_func(maskedU, Utarget, scale_factor)
@@ -775,21 +693,16 @@ class HubbardEqualizer(MLWF):
         self,
         A,
         Vtarget: float,
-        Vfactor: float = None,
-        threshold=2,  # NOTE: \Delta V >= 2t to close tunneling,
-        # as from 2-site calculation, t \sigma_x <= \DeltaV/2 \sigma_z
-        penalty=1,
-    ):
+        Vfactor: float = None    ):
         V = np.real(np.diag(A))
-        if len(V) == self.masked_Nsite:
+        if len(V) == self.ghost.Nsite:
             maskedV = V
         else:
-            maskedV = V[self.mask]
+            maskedV = self.ghost.mask_quantity(V)
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        if len(Vdist) > self.masked_Nsite and penalty > 0:
-            self.penalty(Vdist)
+        self.ghost.penalty(Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")

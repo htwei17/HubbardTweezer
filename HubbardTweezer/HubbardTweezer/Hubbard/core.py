@@ -14,6 +14,7 @@ from ..tools.integrate import romb3d, trapz3dnp
 from ..tools.point_match import nearest_match
 from .riemann import riemann_minimize
 from .lattice import Lattice
+from .ghost import GhostTrap
 
 tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb", "kagome", "zigzag"]
 
@@ -33,8 +34,9 @@ class MLWF(DVR):
 
     """
 
-    mask: np.ndarray
     Nintgrl_grid: int = 257
+    ghost: GhostTrap
+    lattice: Lattice
     # Rintgrl: np.ndarray
 
     def create_lattice(
@@ -166,8 +168,9 @@ class MLWF(DVR):
         if equalize_V0:
             self.equalize_trap_depths()
 
-        # Set to cancel onsite potential offset
-        mask = np.ones(self.lattice.N, dtype=bool)
+        # Set to cancel onsite potential offset, quantities are of no use
+        # They will be overwritten in HubbardEqualizer
+        self.ghost = GhostTrap(self.lattice, shape)
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
@@ -209,7 +212,7 @@ class MLWF(DVR):
         self.A, V = singleband_WF(self, E, W, p, x0)
         if offset is True:
             # Shift onsite potential to zero average
-            self.zero = np.mean(np.real(np.diag(self.A)[self.mask]))
+            self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
         elif isinstance(offset, Number):
             self.zero = offset
         else:
