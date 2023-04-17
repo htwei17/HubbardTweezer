@@ -22,9 +22,9 @@ class GhostTrap:
     mask: np.ndarray = None
     links: np.ndarray = None
     is_masked: bool = False
-    penfunc: str = "sigmoid"
+    penfunc: str = "exp"
 
-    def __init__(self, lattice: Lattice, shape, threshold=0, penalty=0, func="sigmoid"):
+    def __init__(self, lattice: Lattice, shape, threshold=0, penalty=0, func="exp"):
         self.shape = shape
         self.threshold = threshold
         self.weight = penalty
