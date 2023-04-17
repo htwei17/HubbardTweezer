@@ -145,7 +145,7 @@ dim = rep.i(report, "Parameters", "dimension", 1)
 # ====== Create lattice ======
 lattice = rep.a(report, "Parameters", "lattice_size", np.array([4])).astype(int)
 lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520, 1690])))
-shape = rep.s(report, "Parameters", "shape", "square")
+penfunc = rep.s(report, "Parameters", "shape", "square")
 ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
@@ -208,7 +208,7 @@ G = HubbardGraph(
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
     zR=zR,  # Rayleigh range input by hand
-    shape=shape,  # lattice geometries
+    shape=penfunc,  # lattice geometries
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
     equalize=eq,

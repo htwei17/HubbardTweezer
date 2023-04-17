@@ -22,11 +22,13 @@ class GhostTrap:
     mask: np.ndarray = None
     links: np.ndarray = None
     is_masked: bool = False
+    penfunc: str = "sigmoid"
 
-    def __init__(self, lattice: Lattice, shape, threshold=0, penalty=0):
+    def __init__(self, lattice: Lattice, shape, threshold=0, penalty=0, func="sigmoid"):
         self.shape = shape
         self.threshold = threshold
         self.weight = penalty
+        self.penfunc = func
         self.mask = np.ones(lattice.N, dtype=bool)
         self.links = lattice.links
         self.Nsite = np.sum(self.mask)
@@ -94,16 +96,16 @@ class GhostTrap:
         else:
             raise ValueError("Quantity must be 1D or 2D array.")
 
-    def penalty(self, Vdist, shape="sigmoid"):
+    def penalty(self, Vdist):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
         if self.is_masked and self.weight != 0:
             Vdist_unmasked = Vdist[~self.mask] - self.threshold
             # Criteria: make func value 0 at and beyond desired value,
             # not neccesarily threshold
-            if shape == "exp":
+            if self.penfunc == "exp":
                 Vpen = np.exp(-6 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
-            elif shape == "sigmoid":
+            elif self.penfunc == "sigmoid":
                 Vpen = 1 / (
                     1 + np.exp(6 * Vdist_unmasked)
                 )  # 1e-6 at threshold + 2(kHz)
