@@ -102,10 +102,10 @@ class GhostTrap:
             # Criteria: make func value 0 at and beyond desired value,
             # not neccesarily threshold
             if shape == "exp":
-                Vpen = np.exp(-5 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
+                Vpen = np.exp(-6 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
             elif shape == "sigmoid":
                 Vpen = 1 / (
-                    1 + np.exp(5 * Vdist_unmasked)
+                    1 + np.exp(6 * Vdist_unmasked)
                 )  # 1e-6 at threshold + 2(kHz)
             else:
                 Vpen = np.where(Vdist_unmasked < 0, Vdist_unmasked, 0)  # 0 at threshold

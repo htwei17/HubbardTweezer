@@ -217,6 +217,7 @@ G = HubbardGraph(
     Ut=ut,
     Nintgrl_grid=Nintgrl_grid,
     ghost=gho,
+    ghost_penalty=(1, 1),
     random=r,
     x0=x0,
     scale_factor=sf,
@@ -230,9 +231,9 @@ G = HubbardGraph(
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-maskedA = G.A[G.mask, :][:, G.mask]
-maskedU = G.U[G.mask]
-links = G.xy_links(G.masked_links)
+maskedA = G.ghost.mask_quantity(G.A)
+maskedU = G.ghost.mask_quantity(G.U)
+links = G.xy_links(G.ghost.links)
 
 nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
