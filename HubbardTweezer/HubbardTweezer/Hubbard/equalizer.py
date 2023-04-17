@@ -621,7 +621,7 @@ class HubbardEqualizer(MLWF):
     ):
         Vtarget, Utarget, txTarget, tyTarget = target
         A, maskedU = res
-        maskedA =self.ghost.mask_quantity(A)
+        maskedA = self.ghost.mask_quantity(A)
 
         # U is different, as calculating U costs time
         cu = self.u_cost_func(maskedU, Utarget, scale_factor) if w[0] else 0
@@ -635,9 +635,7 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_cost_func(
-        self, A, Vtarget: float, Vfactor: float = None
-    ) -> float:
+    def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor)
         cv = np.sum(Vdiff**2)
         if self.verbosity > 1:
@@ -689,11 +687,7 @@ class HubbardEqualizer(MLWF):
         info.update_log(self, point, report, target, cvec, fval)
         return c
 
-    def v_res_func(
-        self,
-        A,
-        Vtarget: float,
-        Vfactor: float = None    ):
+    def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
         V = np.real(np.diag(A))
         if len(V) == self.ghost.Nsite:
             maskedV = V
@@ -702,7 +696,9 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
-        self.ghost.penalty(Vdist)
+        if len(Vdist) != self.ghost.Nsite:
+            # Iif Vdist not match length of mask, skip
+            self.ghost.penalty(Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
