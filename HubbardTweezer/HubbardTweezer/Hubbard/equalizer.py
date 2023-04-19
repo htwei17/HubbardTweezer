@@ -699,6 +699,9 @@ class HubbardEqualizer(MLWF):
         if len(Vdist) != self.ghost.Nsite:
             # Iif Vdist not match length of mask, skip
             self.ghost.penalty(Vdist)
+        else:
+            # Trim to be with only masked sites
+            Vdist = self.ghost.mask_quantity(Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
