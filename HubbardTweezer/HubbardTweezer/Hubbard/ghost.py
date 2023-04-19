@@ -99,16 +99,23 @@ class GhostTrap:
     def penalty(self, Vdist):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
-        if self.is_masked and self.weight != 0:
-            Vdist_unmasked = Vdist[~self.mask] - self.threshold
-            # Criteria: make func value 0 at and beyond desired value,
-            # not neccesarily threshold
-            if self.penfunc == "exp":
-                Vpen = np.exp(-6 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
-            elif self.penfunc == "sigmoid":
-                Vpen = 1 / (
-                    1 + np.exp(6 * Vdist_unmasked)
-                )  # 1e-6 at threshold + 2(kHz)
+        if len(Vdist) != self.ghost.Nsite:
+            # Iif Vdist not match length of mask, skip
+            if self.is_masked and self.weight != 0:
+                Vdist_unmasked = Vdist[~self.mask] - self.threshold
+                # Criteria: make func value 0 at and beyond desired value,
+                # not neccesarily threshold
+                if self.penfunc == "exp":
+                    Vpen = np.exp(-6 * Vdist_unmasked)  # 1e-6 at threshold + 2(kHz)
+                elif self.penfunc == "sigmoid":
+                    Vpen = 1 / (
+                        1 + np.exp(6 * Vdist_unmasked)
+                    )  # 1e-6 at threshold + 2(kHz)
+                else:
+                    Vpen = np.where(
+                        Vdist_unmasked < 0, Vdist_unmasked, 0
+                    )  # 0 at threshold
+                Vdist[~self.mask] = self.weight * Vpen
             else:
-                Vpen = np.where(Vdist_unmasked < 0, Vdist_unmasked, 0)  # 0 at threshold
-            Vdist[~self.mask] = self.weight * Vpen
+                # Trim to be with only masked sites
+                Vdist[~self.mask] = 0
