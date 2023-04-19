@@ -99,7 +99,7 @@ class GhostTrap:
     def penalty(self, Vdist):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
-        if len(Vdist) != self.ghost.Nsite:
+        if len(Vdist) != self.Nsite:
             # Iif Vdist not match length of mask, skip
             if self.is_masked and self.weight != 0:
                 Vdist_unmasked = Vdist[~self.mask] - self.threshold
