@@ -101,7 +101,7 @@ class HubbardGraph(HubbardEqualizer):
         )
         is_masked_links = np.array(
             [
-                np.logical_or(self.mask[edge[0]], self.mask[edge[1]])
+                np.logical_or(self.ghost.mask[edge[0]], self.ghost.mask[edge[1]])
                 for edge in self.graph.edges
             ]
         )
@@ -127,7 +127,7 @@ class HubbardGraph(HubbardEqualizer):
             self.pos = dict((n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, "") for n in self.graph.nodes)
         self.node_size = self.waists[:, 0] ** WAIST_SCALE * NODE_SIZE
-        max_depth = np.max(abs(self.Voff[self.mask]))
+        max_depth = np.max(abs(self.Voff[self.ghost.mask]))
         self.node_alpha = (self.Voff / max_depth) ** 10
         self.node_alpha = np.clip(self.node_alpha, 0.0, 1)
 
