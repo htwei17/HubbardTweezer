@@ -9,12 +9,14 @@ SHAPE=square
 # Equalization
 Ut=None
 EQ_FLAG=True
-RANDOM=False
+RAND=False
+RAND_SAMPLE=False
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
 TIME="04:00:00"
-LN_SUFFIX=""
+ARRAY="1-1"
+ARRAY_SUFFIX=""
 LOG=True
 METHOD="trf"
 # DVR
@@ -25,7 +27,7 @@ Rz=7.2
 SYMMETRY=True
 GHOST=False
 GHOST_PARAM=""
-GHOST_PATH=""
+SUB_PATH=""
 NL_DEFINITION="N=$N
 R=$R
 Rz=$Rz"
@@ -55,12 +57,13 @@ while :; do
         echo "-e, --eq:             determine which parameter to equalize (Default: $STATUS)"
         echo "                      it can be 'neq' for no equalization,"
         echo "                      'L'('N') for varying L(N) to check convergence ('neq' implied)"
-        echo "-r, --random:         to use random initial guess or not (Default: $RANDOM)"
+        echo "-r, --random:         to use random initial guess or not (Default: $RAND)"
         echo "-u, --Ut:             Hubbard parameter U/t (Default: $Ut)"
         echo "-sy, --symmetry:      to use lattice symmetry or not (DefaultL $SYMMETRY)"
         echo "-g, --ghost:          to use ghost traps or not (Default: $GHOST)"
         echo "-m, --method:         method used to minimize cost function (Default: $METHOD)"
         echo "                      it can be 'trf', 'Nelder-Mead', 'bfgs', 'slsqp', 'bobyqa', 'direct', 'crs2', 'subplex'"
+        echo "-a,--array:           array job ID range (Default: $ARRAY)"
         exit
         ;;
     -l | --L) # Takes an option argument; ensure it has been specified.
@@ -93,7 +96,7 @@ while :; do
         shift
         ;;
     -r | --random)
-        RANDOM=$(readArg --random $2)
+        RAND=$(readArg --random $2)
         shift
         ;;
     -u | --Ut)
@@ -110,6 +113,10 @@ while :; do
         ;;
     -m | --method)
         METHOD=$(readArg --method $2)
+        shift
+        ;;
+    -a | --array)
+        ARRAY=$(readArg --array $2)
         shift
         ;;
     --) # End of all options.
@@ -192,7 +199,8 @@ elif [ $STATUS = "L" ]; then
     PARTITION=scavenge
     TIME="0:02:00"
     METHOD_SUFFIX=""
-    LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
+    ARRAY="12-22:2"
+    ARRAY_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=\$(echo \"scale=20; \$SLURM_ARRAY_TASK_ID*3/20\" | bc)
 Rz=\$(echo \"scale=20;\$R*2.4\" | bc)"
@@ -202,7 +210,8 @@ elif [ $STATUS = "N" ]; then
     PARTITION=scavenge
     TIME="0:02:00"
     METHOD_SUFFIX=""
-    LN_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
+    ARRAY="12-22:2"
+    ARRAY_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
     NL_DEFINITION="N=\$SLURM_ARRAY_TASK_ID
 R=$R
 Rz=$Rz"
@@ -210,9 +219,15 @@ fi
 
 # ========= Waist trap =========
 if [ $GHOST = True ]; then
-    GHOST_PATH="/ghost"
+    SUB_PATH="/ghost"
     WAIST=None
     GHOST_PARAM="ghost_penalty = 1, 1"
+fi
+
+if [[ $EQ_FLAG == "False" ]] && [[ $RAND == "True" ]]; then
+    RAND_SAMPLE=True
+    ARRAY_SUFFIX="_\$SLURM_ARRAY_TASK_ID"
+    SUB_PATH="/samples"
 fi
 
 # ========= Write sbatch script =========
@@ -251,8 +266,8 @@ conda activate ~/env
 
 $NL_DEFINITION
 
-FN=$JOB_NAME$LN_SUFFIX.ini
-WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer$GHOST_PATH/$JOB_NAME$LN_SUFFIX
+FN=$JOB_NAME$ARRAY_SUFFIX.ini
+WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer$SUB_PATH/$JOB_NAME$ARRAY_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
@@ -276,7 +291,7 @@ equalize = $EQ_FLAG
 equalize_target = $STATUS
 U_over_t = $Ut
 method = $METHOD
-random_initial_guess = $RANDOM
+random_initial_guess = $RAND
 ghost_sites = $GHOST
 $GHOST_PARAM
 waist_direction = $WAIST
@@ -293,11 +308,11 @@ echo \"I ran on: \$SLURM_NODELIST\"
 
 # Code run
 $HOME/env/bin/python -O -u src/Hubbard_exe.py \$FN
-cp \$FN \$SLURM_SUBMIT_DIR/output$GHOST_PATH" >>$SLURM_FN
+cp \$FN \$SLURM_SUBMIT_DIR/output$SUB_PATH" >>$SLURM_FN
 
 # ========= Run sbatch =========
-if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]]; then
-    sbatch --array=12-22:2 $SLURM_FN
+if [[ $STATUS == "L" ]] || [[ $STATUS == "N" ]] || [[ $RAND_SAMPLE == "True" ]]; then
+    sbatch --array=$ARRAY $SLURM_FN
 else
-    sbatch --export=L=$Lx $SLURM_FN
+    sbatch $SLURM_FN
 fi
