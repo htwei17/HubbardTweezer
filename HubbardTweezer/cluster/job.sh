@@ -9,6 +9,7 @@ SHAPE=square
 # Equalization
 Ut=None
 EQ_FLAG=True
+RANDOM=False
 WAIST=xy
 STATUS=neq
 PARTITION=scavenge
@@ -54,6 +55,7 @@ while :; do
         echo "-e, --eq:             determine which parameter to equalize (Default: $STATUS)"
         echo "                      it can be 'neq' for no equalization,"
         echo "                      'L'('N') for varying L(N) to check convergence ('neq' implied)"
+        echo "-r, --random:         to use random initial guess or not (Default: $RANDOM)"
         echo "-u, --Ut:             Hubbard parameter U/t (Default: $Ut)"
         echo "-sy, --symmetry:      to use lattice symmetry or not (DefaultL $SYMMETRY)"
         echo "-g, --ghost:          to use ghost traps or not (Default: $GHOST)"
@@ -88,6 +90,10 @@ while :; do
         ;;
     -e | --eq)
         STATUS=$(readArg --eq $2)
+        shift
+        ;;
+    -r | --random)
+        RANDOM=$(readArg --random $2)
         shift
         ;;
     -u | --Ut)
@@ -265,14 +271,15 @@ laser_wavelength = 780
 shape = $SHAPE
 scattering_length = 1770
 dimension = $d
-ghost_sites = $GHOST
-$GHOST_PARAM
-waist_direction = $WAIST
 lattice_symmetry = $SYMMETRY
 equalize = $EQ_FLAG
 equalize_target = $STATUS
 U_over_t = $Ut
 method = $METHOD
+random_initial_guess = $RANDOM
+ghost_sites = $GHOST
+$GHOST_PARAM
+waist_direction = $WAIST
 write_log = $LOG
 no_bounds = False
 verbosity = 3

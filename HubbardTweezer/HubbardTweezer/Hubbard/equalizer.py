@@ -148,8 +148,11 @@ class HubbardEqualizer(MLWF):
         v0, bounds = self.initialize(random, nobounds)
         init_simplex = None
 
-        if isinstance(x0, np.ndarray):
-            v0, init_simplex = self._ext_init_guess(x0, v0)
+        try:
+            if isinstance(x0, np.ndarray):
+                v0, init_simplex = self._ext_init_guess(x0, v0)
+        except:  # x0 is None or other cases
+            print("Equalize: external initial guess is not passed.")
 
         if equalize:
             eig_callback = kwargs.get("eig_callback", True)
@@ -309,20 +312,16 @@ class HubbardEqualizer(MLWF):
         return self.param_unfold(res.x, "final")
 
     def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
-        try:
-            if self.eqmethod == "Nelder-Mead" and x0.shape == (
-                len(v0) + 1,
-                len(v0),
-            ):
-                v0 = x0[0]
-                init_simplex = x0
-                print("Equalize: external initial simplex is passed to NM.")
-            elif len(x0) == len(v0):
-                v0 = x0  # Use passed initial guess
-                print("Equalize: external initial guess is passed.")
-        except:  # x0 is None or other cases
-            print("Equalize: external initial guess is not passed.")
-            pass
+        if self.eqmethod == "Nelder-Mead" and x0.shape == (
+            len(v0) + 1,
+            len(v0),
+        ):
+            v0 = x0[0]
+            init_simplex = x0
+            print("Equalize: external initial simplex is passed to NM.")
+        elif len(x0) == len(v0):
+            v0 = x0  # Use passed initial guess
+            print("Equalize: external initial guess is passed.")
         return v0, init_simplex
 
     def _min_cost_mode(self, v0, bounds, init_simplx, opt_target):
@@ -480,7 +479,14 @@ class HubbardEqualizer(MLWF):
 
         # Waist variation inital guess and bounds
         # UB from resolution limit; LB by wavelength
-        v02, b2 = init_w0(self.l / self.w)
+        v02, b2 = init_w0(
+            self.lattice,
+            self.waists,
+            self.waist_dir,
+            self.w_dof,
+            self.l / self.w,
+            nobounds,
+        )
 
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
@@ -491,6 +497,7 @@ class HubbardEqualizer(MLWF):
         bounds = tuple(b1 + b2 + b3)
 
         if random:
+            # TODO: edit the random distribution
             v0 = np.array([np.random.uniform(b[0], b[1]) for b in bounds])
         else:
             v0 = np.concatenate((v01, v02, v03))

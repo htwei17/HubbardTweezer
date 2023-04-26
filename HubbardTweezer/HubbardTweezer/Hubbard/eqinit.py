@@ -1,16 +1,19 @@
 import numpy as np
 from numbers import Number
+from typing import Iterable
 
 from .core import symm_fold
 from .lattice import Lattice
 
+dmin = 1.4 # Minimum trap center spacing in unit of wx
+# 1.4 wx is roughtly -0.75V0 barrier height
 
 def init_V0(Voff: np.ndarray, lattice: Lattice, nobounds: bool = False):
     v01 = symm_fold(lattice.reflect, Voff)
     if nobounds:
         b1 = list((-np.inf, np.inf) for i in range(lattice.Nindep))
     else:
-        b1 = list((0.9, 1.1) for i in range(lattice.Nindep))  # 10% ~ 5kHz fluctuation
+        b1 = list((0.95, 1.05) for i in range(lattice.Nindep))  # 5% ~ 2.5kHz fluctuation
     return v01, b1
 
 
@@ -38,12 +41,16 @@ def init_w0(
 
 
 def init_aij(
-    lattice: Lattice, lc, trap_centers: np.ndarray, tc_dof, nobounds: bool = False
+    lattice: Lattice,
+    lc: Iterable,
+    trap_centers: np.ndarray,
+    tc_dof,
+    nobounds: bool = False,
 ):
     if nobounds:
         s3 = (-np.inf, np.inf)
     else:
-        s3 = (lc[0] - 1) / 2 # Make sure trap center spacing > wx
+        s3 = abs(np.min(lc) - dmin) / 2
     v03 = symm_fold(lattice.reflect, trap_centers).flatten()
     b3 = list(
         (v03[i] - s3, v03[i] + s3) for i in range(2 * lattice.Nindep) if tc_dof[i]
