@@ -49,7 +49,7 @@ class MLWF(DVR):
 
         self.lattice = Lattice(lattice, shape, self.ls)
 
-        self.set_lc(lc, shape)
+        self.set_lc(lc, shape)  # Convert lc to (lc, lc) and in unit of wx
 
         # Assume WF are localized at trap centers, location in unit of wx
         self.tc0 = self.lattice.nodes * self.lc

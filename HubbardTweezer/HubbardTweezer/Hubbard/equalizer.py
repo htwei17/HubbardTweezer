@@ -10,7 +10,10 @@ import nlopt
 
 from .core import *
 from .io import *
+from .eqinit import *
 from .ghost import GhostTrap
+
+set_target_from_random = False  # If we want our target to be from our (random) initial guess, then set this to be True
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
@@ -41,6 +44,29 @@ def _set_uv(uv, target, factor):
         if factor < 1e-1:
             factor = 1e-1
     return target, factor
+
+
+def _nlopt_min(eqinfo, v0, bounds, opt: nlopt.opt, opt_target):
+    ba = np.array(bounds)
+    lb, ub = ba[:, 0], ba[:, 1]
+    tol = 1e-8
+    f = lambda x, grad: opt_target(x, eqinfo)
+    opt.set_min_objective(f)
+    opt.set_lower_bounds(lb)
+    opt.set_upper_bounds(ub)
+    opt.set_ftol_abs(tol)
+    xopt = opt.optimize(v0)
+    return xopt
+
+
+def _nlopt_ressult(opt: nlopt.opt, xopt):
+    opt_val = opt.last_optimum_value()
+    result = opt.last_optimize_result()
+    message = opt.get_stopval()
+    res = OptimizeResult(
+        x=xopt, fun=opt_val, status=result, success=result >= 0, message=message
+    )
+    return res
 
 
 class HubbardEqualizer(MLWF):
@@ -109,42 +135,54 @@ class HubbardEqualizer(MLWF):
                 "Equalize: only one site in the system, equalization is not valid."
             )
 
+        if self.waist_dir not in ["x", "y", "xy", "yx", None]:
+            self.waist_dir = None
+        elif self.waist_dir == "yx":
+            self.waist_dir = "xy"
+
+        if not isinstance(x0, np.ndarray):
+            print("Illegal x0 provided. Use no initial guess.")
+            x0 = None
+
+        # Set init guess & bounds
+        v0, bounds = self.initialize(random, nobounds)
+        init_simplex = None
+
+        if isinstance(x0, np.ndarray):
+            v0, init_simplex = self._ext_init_guess(x0, v0)
+
         if equalize:
-            if (
-                self.lattice.dim > 1
-                and self.waist_dir != None
-                and self.waist_dir != "xy"
-            ):
-                self.waist_dir = "xy"
-
-            if not isinstance(x0, np.ndarray):
-                print("Illegal x0 provided. Use no initial guess.")
-                x0 = None
-
             eig_callback = kwargs.get("eig_callback", True)
             if eig_callback:
                 print("Equalize: eig_callback is True.")
             unitary_callback = kwargs.get("unitary_callback", False)
 
+            if set_target_from_random:
+                # Set trap config thus target from initial guess
+                self.param_unfold(v0, "Initial")
+
             self.equalize(
+                v0=v0,
+                bounds=bounds,
+                init_simplex=init_simplex,
                 target=eqtarget,
                 Ut=Ut,
-                x0=x0,
-                random=random,
-                nobounds=nobounds,
                 eig_callback=eig_callback,
                 unitary_callback=unitary_callback,
                 iofile=iofile,
             )
+        else:
+            # Set trap configuration for calculating Hubbard parameters only
+            self.param_unfold(v0, "Initial")
 
     def equalize(
         self,
+        v0: np.ndarray,
+        bounds: Iterable,
+        init_simplex: np.ndarray = None,
         target: str = "UvT",
         Ut: float = None,  # Target onsite interaction in unit of tx
-        x0: np.ndarray = None,
         weight: np.ndarray = np.ones(3),
-        random: bool = False,
-        nobounds: bool = False,
         eig_callback: bool = False,
         unitary_callback: bool = False,
         iofile: ConfigObj = None,
@@ -152,41 +190,25 @@ class HubbardEqualizer(MLWF):
         print(f"Equalize: varying waist direction = {self.waist_dir}.")
         print(f"Equalize: method = {self.eqmethod}")
         print(f"Equalize: quantities = {target}\n")
+
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
         # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
 
+        # Set ED callback
         if eig_callback:
             W0 = []
         else:
             W0 = None
 
+        # Set target
         A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
-
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
         links = self.xy_links(self.ghost.links)
         target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
 
-        v0, bounds = self.initialize(random, nobounds)
-        init_simplx = None
-
-        if isinstance(x0, np.ndarray):
-            try:
-                if self.eqmethod == "Nelder-Mead" and x0.shape == (
-                    len(v0) + 1,
-                    len(v0),
-                ):
-                    v0 = x0[0]
-                    init_simplx = x0
-                    print("Equalize: external initial simplex is passed to NM.")
-                elif len(x0) == len(v0):
-                    v0 = x0  # Use passed initial guess
-                    print("Equalize: external initial guess is passed.")
-            except:  # x0 is None or other cases
-                print("Equalize: external initial guess is not passed.")
-                pass
-
+        # Create eqinfo log
         self.eqinfo.create_log(v0, target)
 
         # Decide if each step cost function used the last step's unitary matrix
@@ -252,13 +274,13 @@ class HubbardEqualizer(MLWF):
         if mode == "res":
             res = self._min_res_mode(v0, bounds, opt_target)
         elif mode == "cost":
-            res = self._min_cost_mode(v0, bounds, init_simplx, opt_target)
+            res = self._min_cost_mode(v0, bounds, init_simplex, opt_target)
         elif mode == "func":
             # FIXME: not working if variable number of unknowns
             # are smaller than number of equations
             res = root(opt_target, v0, args=self.eqinfo, method=self.eqmethod, tol=1e-7)
         elif mode == "nlopt":
-            xopt = self._nlopt_min(v0, bounds, opt, opt_target)
+            xopt = _nlopt_min(self.eqinfo, v0, bounds, opt, opt_target)
             if goptim:
                 self.eqmethod = "trf"
 
@@ -278,7 +300,7 @@ class HubbardEqualizer(MLWF):
 
                 res = self._min_res_mode(xopt, bounds, _res_target)
             else:
-                res = self._nlopt_ressult(opt, xopt)
+                res = _nlopt_ressult(opt, xopt)
 
         t1 = time()
         print(f"Equalization took {t1 - t0} seconds.")
@@ -286,26 +308,22 @@ class HubbardEqualizer(MLWF):
         self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, "final")
 
-    def _nlopt_min(self, v0, bounds, opt: nlopt.opt, opt_target):
-        ba = np.array(bounds)
-        lb, ub = ba[:, 0], ba[:, 1]
-        tol = 1e-8
-        f = lambda x, grad: opt_target(x, self.eqinfo)
-        opt.set_min_objective(f)
-        opt.set_lower_bounds(lb)
-        opt.set_upper_bounds(ub)
-        opt.set_ftol_abs(tol)
-        xopt = opt.optimize(v0)
-        return xopt
-
-    def _nlopt_ressult(self, opt: nlopt.opt, xopt):
-        opt_val = opt.last_optimum_value()
-        result = opt.last_optimize_result()
-        message = opt.get_stopval()
-        res = OptimizeResult(
-            x=xopt, fun=opt_val, status=result, success=result >= 0, message=message
-        )
-        return res
+    def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
+        try:
+            if self.eqmethod == "Nelder-Mead" and x0.shape == (
+                len(v0) + 1,
+                len(v0),
+            ):
+                v0 = x0[0]
+                init_simplex = x0
+                print("Equalize: external initial simplex is passed to NM.")
+            elif len(x0) == len(v0):
+                v0 = x0  # Use passed initial guess
+                print("Equalize: external initial guess is passed.")
+        except:  # x0 is None or other cases
+            print("Equalize: external initial guess is not passed.")
+            pass
+        return v0, init_simplex
 
     def _min_cost_mode(self, v0, bounds, init_simplx, opt_target):
         # Method-specific options
@@ -458,40 +476,17 @@ class HubbardEqualizer(MLWF):
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
         # v01 = np.ones(self.lattice.Nindep)
-        v01 = symm_fold(self.lattice.reflect, self.Voff)
-        if nobounds:
-            b1 = list((-np.inf, np.inf) for i in range(self.lattice.Nindep))
-        else:
-            b1 = list((0, 2) for i in range(self.lattice.Nindep))
+        v01, b1 = init_V0(self.Voff, self.lattice, nobounds)
 
         # Waist variation inital guess and bounds
         # UB from resolution limit; LB by wavelength
-        if nobounds:
-            s2 = (-np.inf, np.inf)
-        else:
-            s2 = (self.l / self.w, 1.2)
-        if self.waist_dir == None:
-            v02 = np.array([])
-            b2 = []
-        else:
-            # v02 = np.ones(2 * self.lattice.Nindep)
-            v02 = symm_fold(self.lattice.reflect, self.waists).flatten()
-            b2 = list(s2 for i in range(2 * self.lattice.Nindep) if self.w_dof[i])
-            v02 = v02[self.w_dof]
+        v02, b2 = init_w0(self.l / self.w)
 
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
-        if nobounds:
-            s3 = (-np.inf, np.inf)
-        else:
-            s3 = (1 - 1 / self.lc[0]) / 2
-        v03 = symm_fold(self.lattice.reflect, self.trap_centers).flatten()
-        b3 = list(
-            (v03[i] - s3, v03[i] + s3)
-            for i in range(2 * self.lattice.Nindep)
-            if self.tc_dof[i]
+        v03, b3 = init_aij(
+            self.lattice, self.lc, self.trap_centers, self.tc_dof, nobounds
         )
-        v03 = v03[self.tc_dof]
 
         bounds = tuple(b1 + b2 + b3)
 
@@ -500,11 +495,9 @@ class HubbardEqualizer(MLWF):
         else:
             v0 = np.concatenate((v01, v02, v03))
 
-        self._set_trap_params(v0, self.verbosity or random, "Intial")
-
         return v0, bounds
 
-    def _set_trap_params(self, v0: np.ndarray, verb, status):
+    def set_trap_params(self, v0: np.ndarray, verb, status):
         trap_depth = v0[: self.lattice.Nindep]
         if self.waist_dir != None:
             trap_waist = np.ones((self.lattice.Nindep, 2))
@@ -547,7 +540,7 @@ class HubbardEqualizer(MLWF):
         return nnt, txTarget, tyTarget, xlinks, ylinks
 
     def param_unfold(self, point: np.ndarray, status: str = "current"):
-        td, tw, tc = self._set_trap_params(point, self.verbosity, status)
+        td, tw, tc = self.set_trap_params(point, self.verbosity, status)
         self.symm_unfold(self.Voff, td)
         if self.waist_dir != None:
             self.symm_unfold(self.waists, tw)
