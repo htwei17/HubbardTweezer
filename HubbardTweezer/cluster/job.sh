@@ -221,7 +221,8 @@ fi
 if [ $GHOST = True ]; then
     SUB_PATH="/ghost"
     WAIST=None
-    GHOST_PARAM="ghost_penalty = 1, 1"
+    GHOST_PARAM="
+ghost_penalty = 1, 1"
 fi
 
 if [[ $EQ_FLAG == "False" ]] && [[ $RAND == "True" ]]; then
@@ -292,8 +293,7 @@ equalize_target = $STATUS
 U_over_t = $Ut
 method = $METHOD
 random_initial_guess = $RAND
-ghost_sites = $GHOST
-$GHOST_PARAM
+ghost_sites = $GHOST$GHOST_PARAM
 waist_direction = $WAIST
 write_log = $LOG
 no_bounds = False
