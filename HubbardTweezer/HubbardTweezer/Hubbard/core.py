@@ -60,11 +60,11 @@ class MLWF(DVR):
         lattice_range = np.max(abs(self.tc0), axis=0)
         lattice_range = np.resize(np.pad(lattice_range, (0, 2), constant_values=0), dim)
         if self.verbosity:
-            print(f"lattice: lattice shape is {shape}")
-            print(f"lattice: Full lattice sizes: {lattice}")
+            print(f"Lattice: lattice shape is {shape}")
+            print(f"Lattice: Full lattice sizes: {lattice}")
             if self.verbosity > 1:
-                print(f"lattice: lattice constants: {self.lc}w")
-                print(f"lattice: dx fixed to: {dx[self.nd]}w")
+                print(f"Lattice: lattice constants: {self.lc}w")
+                print(f"Lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range + self.R00
         R0 *= self.nd
@@ -88,7 +88,7 @@ class MLWF(DVR):
         print(f"Lattice: lattice shape is {shape}; lattice constants set to: {lc}")
 
         # Set lattice constants in unit of wx
-        if self.model == "Gaussian" or self.model == "lattice":
+        if self.model in ["Gaussian", "lattice"]:
             self.lc = np.array(lc) * 1e-9 / self.w
         elif self.model == "sho":
             self.lc = np.array(lc)
@@ -101,11 +101,11 @@ class MLWF(DVR):
         lattice = np.resize(np.pad(self.lattice.size, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
         if self.verbosity:
-            print(f"lattice: Full lattice sizes updated to: {lattice[self.nd]}")
+            print(f"Lattice: Full lattice sizes updated to: {lattice[self.nd]}")
             if self.verbosity > 1:
                 # Let there be R0's wide outside the edge trap center
-                print(f"lattice: lattice constants updated to: {lc}w")
-                print(f"lattice: dx fixed to: {dx[self.nd]}w")
+                print(f"Lattice: lattice constants updated to: {lc}w")
+                print(f"Lattice: dx fixed to: {dx[self.nd]}w")
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
