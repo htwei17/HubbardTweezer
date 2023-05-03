@@ -127,7 +127,7 @@ class MLWF(DVR):
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
         lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
-        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first
+        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
         *args,
         **kwargs,

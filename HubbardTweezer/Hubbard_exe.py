@@ -165,6 +165,7 @@ Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
 eqt = rep.s(report, "Parameters", "equalize_target", "vT")
+eqV0 = rep.b(report, "Parameters", "equalize_V0", False)
 wd = rep.s(report, "Parameters", "waist_direction", None)
 meth = rep.s(report, "Parameters", "method", "trf")
 nb = rep.b(report, "Parameters", "no_bounds", False)
@@ -215,6 +216,7 @@ G = HubbardGraph(
     equalize=eq,
     eqtarget=eqt,
     lattice_symmetry=ls,
+    equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
     Nintgrl_grid=Nintgrl_grid,
     ghost=gho,
