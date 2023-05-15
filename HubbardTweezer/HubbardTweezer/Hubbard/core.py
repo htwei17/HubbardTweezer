@@ -318,7 +318,9 @@ class MLWF(DVR):
         p_list = list(product(*p_tuple))
         return p_list
 
-    def eigen_basis(self, W0: list = None) -> tuple[list, list, list]:
+    def eigen_basis(
+        self, W0: list = None, standard: str = "symmetry"
+    ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
         if self.dvr_symm:
@@ -329,22 +331,27 @@ class MLWF(DVR):
             if W0 is not None:  # Pad W0 to match p_list
                 W0.extend([None] * (len(p_list) - len(W0)))
             for pidx in range(len(p_list)):
+                p = p_list[pidx]
                 # print(f'Solve {p} sector.')
                 if W0 is None:
                     W0p = None
                 else:
                     W0p = W0[pidx]
-                E_sb, W_sb, p_sb = self.solve_sector(
-                    p_list[pidx], k + 1, E_sb, W_sb, p_sb, W0p
-                )
+                E_sb, W_sb, p_sb = self.solve_sector(p, k + 1, E_sb, W_sb, p_sb, W0p)
                 if W0 is not None:
                     W0[pidx] = W_sb[-k - 1]  # Inplace update x,y,z-folded W0
 
-            # Sort everything by energy, only keetp lowest k states
-            idx = np.argsort(E_sb)[: k + 1]
-            E_sb = E_sb[idx]
-            W_sb = [W_sb[i] for i in idx[:k]]
-            p_sb = p_sb[idx, :]
+            if standard == "energy":
+                # Sort everything by energy, only keetp lowest k states
+                idx = np.argsort(E_sb)[: k + 1]
+                E_sb = E_sb[idx]
+                W_sb = [W_sb[i] for i in idx[:k]]
+                p_sb = p_sb[idx, :]
+            elif standard == "symmetry":
+                idx = np.argsort(E_sb)
+                E_sb = E_sb[idx]
+                W_sb = [W_sb[i] for i in idx]
+                p_sb = p_sb[idx, :]
         else:
             p_sb = np.zeros((k, dim))
             E_sb, W_sb = self.H_solver(k + 1)
@@ -354,25 +361,55 @@ class MLWF(DVR):
             print(f"Energies: {E_sb}")
             if self.ls:
                 print(f"parities: {[p_sb]}")
-        elif self.verbosity > 1 and E_sb[k - 1] - E_sb[0] > E_sb[k] - E_sb[k - 1]:
-            print("Wannier warning: band gap is smaller than band width.")
+        # elif self.verbosity > 1 and E_sb[k - 1] - E_sb[0] > E_sb[k] - E_sb[k - 1]:
+        #     print("Wannier warning: band gap is smaller than band width.")
 
-        E_sb = E_sb[:k]
-        p_sb = p_sb[:k]
+        if standard == "symmetry" and self.bands == 1:
+            standard = "energy"
 
-        E = [
-            E_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
-            for b in range(self.bands)
-        ]
-        W = [
-            W_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
-            for b in range(self.bands)
-        ]
-        parity = [
-            p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
-            for b in range(self.bands)
-        ]
-
+        if standard == "energy":
+            E_sb = E_sb[:k]
+            p_sb = p_sb[:k]
+            E = [
+                E_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
+                for b in range(self.bands)
+            ]
+            W = [
+                W_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
+                for b in range(self.bands)
+            ]
+            parity = [
+                p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
+                for b in range(self.bands)
+            ]
+        elif standard == "symmetry" and self.bands == 2:
+            # Hand coded pz-even and pz-odd bands
+            E_even = np.array([])
+            E_odd = np.array([])
+            W_even = []
+            W_odd = []
+            parity_even = np.array([], dtype=int).reshape(0, dim)
+            parity_odd = np.array([], dtype=int).reshape(0, dim)
+            count_even = 0
+            count_odd = 0
+            for pidx in range(len(p_sb)):
+                p = p_sb[pidx]
+                if p[2] == 1 and count_even < self.lattice.N:
+                    E_even = np.append(E_even, E_sb[pidx])
+                    W_even.append(W_sb[pidx])
+                    parity_even = np.append(parity_even, p[None], axis=0)
+                    count_even += 1
+                elif p[2] == -1 and count_odd < self.lattice.N:
+                    E_odd = np.append(E_odd, E_sb[pidx])
+                    W_odd.append(W_sb[pidx])
+                    parity_odd = np.append(parity_odd, p[None], axis=0)
+                    count_odd += 1
+            E = [E_even, E_odd]
+            W = [W_even, W_odd]
+            parity = [parity_even, parity_odd]
+        else:
+            raise ValueError("Invalid band forming standard.")
+        # TODO: add multi-band support for symmetry standard
         return E, W, parity
 
     def Xmat(self, W, parity):
