@@ -513,22 +513,51 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     return U[:, order]
 
 
-def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
+def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs):
     # Interaction between i band and j band
-    Uint = np.zeros((dvr.bands, dvr.bands, dvr.lattice.N))
-    for i in range(dvr.bands):
-        for j in range(i, dvr.bands):
-            Uint[i, j, :] = singleband_interaction(
-                dvr, U[i], U[j], W[i], W[j], parity[i], parity[j]
+    onsite = kwargs.get("onsite", True)
+    if onsite:
+        Uint = np.zeros((dvr.bands, dvr.bands, dvr.lattice.N))
+        for i in range(dvr.bands):
+            for j in range(i, dvr.bands):
+                Uint[i, j, :] = singleband_interaction(
+                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                )
+                if i != j:
+                    Uint[j, i, :] = Uint[i, j, :]
+    else:
+        Uint = np.zeros(
+            (
+                dvr.bands,
+                dvr.bands,
+                dvr.lattice.N,
+                dvr.lattice.N,
+                dvr.lattice.N,
+                dvr.lattice.N,
             )
-            if i != j:
-                Uint[j, i, :] = Uint[i, j, :]
+        )
+        for i in range(dvr.bands):
+            for j in range(i, dvr.bands):
+                Uint[i, j] = singleband_interaction(
+                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                )
+                if i != j:
+                    Uint[j, i] = Uint[i, j]
     return Uint
 
 
 def singleband_interaction(
-    dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray, intgrl: str = "trapz"
+    dvr: MLWF,
+    Ui,
+    Uj,
+    Wi,
+    Wj,
+    pi: np.ndarray,
+    pj: np.ndarray,
+    method: str = "trapz",
+    onsite=True,
 ) -> np.ndarray:
+    # Interactions between single band i and j
     t0 = time()
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
@@ -544,20 +573,42 @@ def singleband_interaction(
             dx.append(0)
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
     Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
-    wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    if intgrl == "romb":  # Not recommanded as is not converging well
-        Uint_onsite = romb3d(wannier, dx)
+    if onsite:
+        integrand = abs(Vi) ** 2 * abs(Vj) ** 2
+        Uint = integrate(x, dx, integrand, method)
+        if dvr.model == "sho":
+            print(
+                f"Test with analytic calculation on {i + 1}-th site",
+                np.real(Uint) * (np.sqrt(2 * np.pi)) ** dvr.dim * np.prod(dvr.hl),
+            )
+        t1 = time()
+        if dvr.verbosity:
+            print(f"Single band interaction time: {t1 - t0}s.")
     else:
-        Uint_onsite = trapz3dnp(wannier, x)
-    if dvr.model == "sho":
-        print(
-            f"Test with analytic calculation on {i + 1}-th site",
-            np.real(Uint_onsite) * (np.sqrt(2 * np.pi)) ** dvr.dim * np.prod(dvr.hl),
-        )
-    t1 = time()
-    if dvr.verbosity:
-        print(f"Single band interaction time: {t1 - t0}s.")
-    return u * Uint_onsite
+        # The matrix size is huge so do it sequentially
+        dvr.Nintgrl_grid = 129
+        Uint = np.zeros([dvr.lattice.N] * 4)
+        for i in range(dvr.lattice.N):
+            for j in range(dvr.lattice.N):
+                for k in range(dvr.lattice.N):
+                    for l in range(dvr.lattice.N):
+                        integrand = (
+                            Vi[:, :, :, i].conj()
+                            * Vj[:, :, :, j].conj()
+                            * Vj[:, :, :, k]
+                            * Vi[:, :, :, l]
+                        )
+                        Uint[i, j, k, l] = integrate(x, dx, integrand, method)
+        dvr.Nintgrl_grid = 257  # Reset
+    return u * Uint
+
+
+def integrate(x, dx, integrand, method):
+    if method == "romb":  # Not recommanded as is not converging well
+        U = romb3d(integrand, dx)
+    else:
+        U = trapz3dnp(integrand, x)
+    return U
 
 
 def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:

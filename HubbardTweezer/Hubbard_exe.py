@@ -253,6 +253,13 @@ if plot:
 
 # ====== Write output ======
 write_singleband(report, G)
+# Off-diagonal elements of U
+if G.bands == 1:
+    print("Singleband off-diagonal U calculation.")
+    __, W, __ = multiband_WF(G, *eig_sol)
+    U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
+    values = {"U_ijkl": U}
+    rep.create_report(report, "Singleband_Parameters", **values)
 write_trap_params(report, G)
 
 eqt = "uvt" if eqt == "neq" else eqt
