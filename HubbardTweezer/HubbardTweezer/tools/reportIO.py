@@ -10,6 +10,7 @@ tweezers Hubbard parameters calculators
 
 from typing import Iterable
 from configobj import ConfigObj
+import json
 import numpy as np
 
 global reportObj
@@ -25,118 +26,81 @@ def get_report(report) -> ConfigObj:
 ############ READING THE REPORT ############
 def f(report: ConfigObj, section: str, key=None, default=np.nan) -> float:
     # Return a float in a section from the already loaded report
-    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
+    if key == None:  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = float(report[section][key])
     except:  # If the key is not in the report
         ret = default
-    if ret == 'None':
-        print(f'Input item {key} is set to None.')
+    if ret == "None":
+        print(f"Input item {key} is set to None.")
         ret = None
     return ret
 
 
 def i(report: ConfigObj, section: str, key=None, default=-1) -> int:
     # Return an int in a section from the already loaded report
-    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
+    if key == None:  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = int(report[section][key])
     except:  # If the key is not in the report
         ret = default
-    if ret == 'None':
-        print(f'Input item {key} is set to None.')
+    if ret == "None":
+        print(f"Input item {key} is set to None.")
         ret = None
     return ret
 
 
-def s(report: ConfigObj, section: str, key=None, default='') -> str:
+def s(report: ConfigObj, section: str, key=None, default="") -> str:
     # Return a string from the already loaded report
-    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
+    if key == None:  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         ret = str(report[section][key])
     except:  # If the key is not in the report
         ret = default
     # If None is input for string, this will not throw an ERROR
-    if ret == 'None':
-        print(f'Input item {key} is set to None.')
+    if ret == "None":
+        print(f"Input item {key} is set to None.")
         ret = None
     return ret
 
 
-def a(report: ConfigObj,
-      section: str,
-      key=None,
-      default=np.array([])) -> np.ndarray:
-    # Return a numerical array from the already loaded report
-    # NOTE: only works for 1, 2 and 3D arrays
+def a(report: ConfigObj, section: str, key=None, default=np.array([])) -> np.ndarray:
     try:
-        # For 1D arrays
-        # In case somebody writes "a = 4" instead of "a = 4,"
-        # s.t. the object is a float instead of a string
-        if isinstance(report[section][key], Iterable):
+        if isinstance(report[section][key], str):
+            # If the value is a single string (i.e., a string representing an array)
+            # Try to parse the string as JSON to get a list
+            # This should work for any number of dimensions
+            ret = np.array(json.loads(report[section][key]))
+        elif isinstance(report[section][key], Iterable):
+            # If the value is a list of strings, convert it to a numpy array
+            # This is from data formatted as a = 1, 2, 3, 4, 5
             ret = np.array(report[section][key]).astype(float)
         else:
-            ret = np.array([report[section][key]]).astype(float)
+            # If the value is not an Iterable, convert it to a 1D numpy array
+            ret = np.array([report[section][key]])
     except:
-        try:
-            # For 2D arrays
-            ret_2 = report[section][key]
-            ret = []
-            for i in range(0, len(ret_2)):
-                current_row = np.array(
-                    ret_2[i].lstrip("[").rstrip("]").split(",")).astype(float)
-                ret.append(current_row)
-            ret = np.vstack(ret)
-        except:
-            try:
-                # For 3D arrays
-                ret_3 = report[section][key]
-                ret_2 = []
-                ret = []
-                for i in range(0, len(ret_3)):
-                    ret_2 = ret_3[i].lstrip("[").rstrip("]").split(",")
-                    ret_matrix = []
-                    rb = 1
-                    num_elem = len(ret_2)
-                    for j in range(0, num_elem):
-                        current_element = ret_2[j]
-                        if "]" in current_element:
-                            rb += 1
-                            current_element = float(
-                                current_element.split("]")[0])
-                        elif "[" in current_element:
-                            current_element = float(
-                                current_element.split("[")[1])
-                        else:
-                            pass
-                        ret_matrix.append(float(current_element))
-                    ec = int(num_elem / rb)
-                    ret_matrix = np.array(ret_matrix).reshape(rb, ec)
-                    ret.append(ret_matrix)
-                ret = np.array(ret).reshape(rb, ec, len(ret_3))
-            except:
-                # If this is not any array listed above
-                ret = default
+        # If anything goes wrong, return the default value
+        ret = default
     return ret
 
 
 def b(report: ConfigObj, section: str, key=None, default=None) -> bool:
     # Return an array of booleans from the already loaded report
-    if (key == None):  # Formate "section:key" separated by ":" if key unspecified
+    if key == None:  # Formate "section:key" separated by ":" if key unspecified
         section, key = section.split(":")
     try:
         dat = report[section][key]
         if isinstance(dat, str):
-            ret = True if dat == 'True' else False
+            ret = True if dat == "True" else False
         else:
-            ret = np.array([True if x == 'True' else False for x in dat])
+            ret = np.array([True if x == "True" else False for x in dat])
     except:
         ret = default
-    if ret == 'None' or ret == 'None,' or ret == None:
-        print(f'Input item {key} is set to None.')
+    if ret is None:
+        print(f"Input item {key} is set to None.")
         ret = None
     return ret
 
@@ -147,7 +111,7 @@ def create_report(report, section: str, **kwargs) -> None:
     # Create a report section if it doesn't exist
     if isinstance(report, str):
         report = get_report(report)
-        print('Report loaded')
+        print("Report loaded")
 
     if not section in report.keys():
         # Create a new section if it doesn't exist
@@ -157,7 +121,9 @@ def create_report(report, section: str, **kwargs) -> None:
     for key, value in kwargs.items():
         # if type(value) == list or np.ndarray:
         try:
-            report[section][key] = value.tolist()
+            # Convert the array to a list and then to a JSON string
+            # This function dumps the array formatted as "[1, 2, 3, 4, 5]"
+            report[section][key] = json.dumps(value.tolist())
         except:
             report[section][key] = value
     report.write()
