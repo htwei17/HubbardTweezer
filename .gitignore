@@ -9,6 +9,7 @@
 *.jpeg
 *.gif
 *.bmp
+*.tar.gz
 
 # Temp files
 .DS_Store
