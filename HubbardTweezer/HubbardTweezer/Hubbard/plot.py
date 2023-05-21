@@ -8,26 +8,32 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 
 from .equalizer import *
 
-LINE_WIDTH = 6
-# FONT_FAMILY = 'serif'
-FONT_FAMILY = "cursive"
+LINE_WIDTH = 8
+# FONT_FAMILY = "Apple Chancery"
 # FONT_FAMILY = 'fantasy'
+# FONT_FAMILY = 'Palatino Linotype'
+# FONT_FAMILY = 'Comic Sans MS'
+# FONT_FAMILY = "Times New Roman"
+# FONT_FAMILY = "Agency FB"
+FONT_FAMILY = "Algerian"
+# FONT_FAMILY = "Calibri"
+FONT_WEIGHT = 800
+
 # BOND_COLOR = '#4AC26D'
 # BOND_TEXT_COLOR = np.array([0.122972391,	0.63525259,	0.529459411])
 BOND_TEXT_COLOR = "darkcyan"
-BOND_TEXT_SIZE = 32
-NODE_SIZE = 2400
+BOND_TEXT_SIZE = 24
+NODE_SIZE = 2800 # Big plots 4200, small plots 2800
 MIN_GAP = 18
 # NODE_COLOR = '#BFDF25'
 NODE_EDGE_WIDTH = LINE_WIDTH
 # NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
-NODE_TEXT_SIZE = 28
+NODE_TEXT_SIZE = 28 # long text 22, short 28
 # OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
 OVERHEAD_COLOR = "firebrick"
 OVERHEAD_SUZE = 30
-FONT_WEIGHT = 200
 WAIST_SCALE = 3
-SCALEBAR_TEXT_SIZE = 32
+SCALEBAR_TEXT_SIZE = 28
 
 color_scheme1 = {
     "bond": "teal",
@@ -61,8 +67,10 @@ params = {
     # 'axes.titlesize': 'xx-large',
     # 'xtick.labelsize': 'xx-large',
     # 'ytick.labelsize': 'xx-large'
-    "mathtext.fontset": "cm",
+    # "mathtext.fontset": "cm",
     "font.family": FONT_FAMILY,
+    # "font.weight": "bold",
+    'axes.unicode_minus': True
 }
 plt.rcParams.update(params)
 
@@ -97,7 +105,7 @@ class HubbardGraph(HubbardEqualizer):
             for edge in self.graph.edges
         )
         self.edge_alpha = np.array(
-            [self.graph[edge[0]][edge[1]]["weight"] for edge in self.graph.edges]
+            [(self.graph[edge[0]][edge[1]]["weight"])**1.6 for edge in self.graph.edges]
         )
         is_masked_links = np.array(
             [
@@ -183,7 +191,7 @@ class HubbardGraph(HubbardEqualizer):
         else:
             raise ValueError(f"Invalid band argument {band}.")
         if label == "param" and nnn:
-            self.add_nnn()
+            self.add_nnn(limit=nnn)
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
             self.lattice.dim = 1
             self.lattice.size = np.array([self.lattice.N, 1])
@@ -215,7 +223,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis("off")
         plt.savefig(
-            f"{self.lattice.size} nx {self.dim}d {self.lattice.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf",
+            f"{self.lattice.size} nx {self.dim}d {self.ghost.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf",
             transparent=True,
             bbox_inches="tight",
         )
@@ -256,14 +264,14 @@ class HubbardGraph(HubbardEqualizer):
                 self.pos,
                 self.nn_edge_label,
                 nnn=False,
-                font_size=NODE_TEXT_SIZE,
+                font_size=BOND_TEXT_SIZE,
                 font_color=self.color["bond_text"],
             )
             self.draw_edge_labels(
                 self.pos,
                 self.nnn_edge_label,
                 nnn=True,
-                font_size=NODE_TEXT_SIZE,
+                font_size=BOND_TEXT_SIZE,
                 font_color=self.color["bond_text"],
             )
 
@@ -415,7 +423,7 @@ class HubbardGraph(HubbardEqualizer):
         )
 
     def add_scalebar(
-        self, ax: plt.Axes = None, color="teal", scale=1.0, unit="$\mu m$"
+        self, ax: plt.Axes = None, color="teal", scale=1.0, unit="$\mathrm{\mu m}$"
     ):
         if ax is None:
             ax = plt.gca()
