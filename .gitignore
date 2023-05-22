@@ -28,6 +28,7 @@ HubbardTweezer/data
 
 # Executables
 *.exe
-Computation/src/python
-Computation/src.zip
 pymanopt
+
+# Packages
+pkg
