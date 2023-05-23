@@ -14,8 +14,7 @@
 * [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch)
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
 * [`networkx`](https://github.com/networkx/networkx)
-* `numpy`
-* `scipy`
+* `scipy` along with `numpy`
 * `ortools`
 * `matplotlib`
 * `pympler`
