@@ -1,7 +1,7 @@
 from numbers import Number
 from typing import Iterable, Literal, Union
-import numpy as np
 import sys
+from time import time
 import numpy as np
 import numpy.linalg as la
 import scipy.linalg as sla
@@ -9,22 +9,8 @@ import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
-from time import time
 
-
-# Fundamental constants
-a0 = 5.29177E-11  # Bohr radius, in unit of meter
-# micron = 1000  # Length scale micrn, in unit of nm
-# Eha = 6579.68392E12 * 2 * np.pi  # Hartree energy, in unit of Hz
-amu = 1.66053907E-27  # atomic mass, in unit of kg
-h = 6.62607015E-34  # Planck constant
-# l = 780E-9 / a0  # 780nm, light wavelength
-
-dim = 3  # space dimension
-
-# NOTE: 1. Harmonic length propto sqrt(w)
-#       2. All length units are in wx, wy are rep by a factor wy/wx.
-#          z direction zRx, zRy are also in unit of wx.
+from .const import *
 
 
 def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
@@ -37,7 +23,7 @@ def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
 def _kinetic_offdiag(T: np.ndarray) -> np.ndarray:
     # Kinetic energy matrix off-diagonal elements
     non0 = T != 0  # To avoid warning on 0-divide-0
-    T[non0] = 2 * np.power(-1., T[non0]) / T[non0]**2
+    T[non0] = 2 * np.power(-1.0, T[non0]) / T[non0] ** 2
     return T
 
 
@@ -94,12 +80,12 @@ class DVR:
     def update_ab(self):
         # Update absorber
         if self.verbosity:
-            print('DVR: dx={}w is set.'.format(self.dx[self.nd]))
-            print('DVR: n={} is set.'.format(self.n[self.nd]))
-            print('DVR: R0={}w is set.'.format(self.R0[self.nd]))
+            print("DVR: dx={}w is set.".format(self.dx[self.nd]))
+            print("DVR: n={} is set.".format(self.n[self.nd]))
+            print("DVR: R0={}w is set.".format(self.R0[self.nd]))
         if self.absorber:
             if self.verbosity:
-                print('DVR: Absorber width LI={:g}w'.format(self.LI))
+                print("DVR: Absorber width LI={:g}w".format(self.LI))
             # if __debug__:
             #     print(self.R0[0])
             #     print(self.dx[0])
@@ -109,9 +95,8 @@ class DVR:
             self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
             if self.verbosity > 1:
-                print('DVR: n is set to {} by adding absorber.'.format(
-                    self.n[self.nd]))
-                print('DVR: R={}w is set.'.format(self.R[self.nd]))
+                print("DVR: n is set to {} by adding absorber.".format(self.n[self.nd]))
+                print("DVR: R={}w is set.".format(self.R[self.nd]))
 
     def update_p(self, p):
         # Update parity
@@ -119,26 +104,27 @@ class DVR:
         self.init = get_init(self.n, p)
 
     def __init__(
-            self,
-            n: np.ndarray,
-            R0: np.ndarray,
-            avg: float = 1,
-            model: str = 'Gaussian',
-            # 2nd entry in array is (wx, wy) in unit of nm
-            # if given in single number w it is (w, w)
-            trap: tuple[float, Union[float, tuple[float, float]]] = (
-                104.52, 1000),
-            atom: float = 6.015122,  # Atom mass, in amu. Default Lithium-6
-            laser: float = 780,  # 780nm, laser wavelength in unit of nm
-            # Rayleigh range input by hand, in unit of nm
-            zR: Union[None, float] = None,
-            symmetry: bool = True,
-            # Parity of each dimension, used when symmetry is True
-            parity: Union[None, np.ndarray] = None,
-            absorber: bool = False,
-            ab_param: tuple[float, float] = (57.04, 1),
-            sparse: bool = False,
-            verbosity: int = 2  # How much information to print
+        self,
+        n: np.ndarray,
+        R0: np.ndarray,
+        avg: float = 1,
+        model: str = "Gaussian",
+        # 2nd entry in array is (wx, wy) in unit of nm
+        # if given in single number w it is (w, w)
+        trap: tuple[float, Union[float, tuple[float, float]]] = (104.52, 1000),
+        atom: float = 6.015122,  # Atom mass, in amu. Default Lithium-6
+        laser: float = 780,  # 780nm, laser wavelength in unit of nm
+        # Rayleigh range input by hand, in unit of nm
+        zR: Union[None, float] = None,
+        symmetry: bool = True,
+        # Parity of each dimension, used when symmetry is True
+        parity: Union[None, np.ndarray] = None,
+        absorber: bool = False,
+        ab_param: tuple[float, float] = (57.04, 1),
+        sparse: bool = False,
+        verbosity: int = 2,  # How much information to print
+        *args,
+        **kwargs,
     ) -> None:
         self.n = n.copy()
         self.R0 = R0.copy()  # Physical region size, In unit of wx
@@ -174,19 +160,20 @@ class DVR:
             else:
                 self.p[self.nd] = parity[self.nd].astype(int)
             if self.verbosity:
-                axis = np.array(['x', 'y', 'z'])
-                print(f'{axis[self.nd]}-reflection symmetry is used.')
+                axis = np.array(["x", "y", "z"])
+                print(f"{axis[self.nd]}-reflection symmetry is used.")
         self.init = get_init(self.n, self.p)
 
-        if model == 'Gaussian':
+        if model == "Gaussian" or model == "lattice":
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
             self.m: Literal = atom * amu  # Atom mass, in unit of electron mass
-            self.l: Literal = laser * 1E-9  # Laser wavelength, in unit of Bohr radius
-            self.kHz: Literal = 1E3  # Make in the frequency unit of kHz
-            self.kHz_2p: Literal = 2 * np.pi * 1E3  # Make in the agnular kHz frequency
-            self.V0: float = trap[
-                0] * self.kHz_2p  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
+            self.l: Literal = laser * 1e-9  # Laser wavelength, in unit of Bohr radius
+            self.kHz: Literal = 1e3  # Make in the frequency unit of kHz
+            self.kHz_2p: Literal = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
+            self.V0: float = (
+                trap[0] * self.kHz_2p
+            )  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
 
             # Input in unit of nm, converted to m
             if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
@@ -194,15 +181,14 @@ class DVR:
                 self.wxy: np.ndarray = np.ones(2)
             elif isinstance(trap[1], Iterable):  # Convert to np.array
                 wx: Number = trap[1][0]  # In unit of nm
-                self.wxy: np.ndarray = np.array(
-                    trap[1]) / wx  # wi in unit of wx
+                self.wxy: np.ndarray = np.array(trap[1]) / wx  # wi in unit of wx
             elif isinstance(trap[1], Number):  # Number convert to np.array
                 wx: Number = trap[1]  # In unit of nm
                 self.wxy: np.ndarray = np.ones(2)
             else:
                 wx: Literal = 1000
                 self.wxy: np.ndarray = np.ones(2)
-            self.w: Literal = wx * 1E-9  # Convert micron to m
+            self.w: Literal = wx * 1e-9  # Convert micron to m
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
@@ -218,15 +204,13 @@ class DVR:
 
             # Trap frequencies
             self.omega = np.array([*(np.sqrt(2) / self.wxy), 1 / self.zR0])
-            self.omega *= np.sqrt(2 * self.avg * self.hb *
-                                  self.V0 / self.m) / self.w
+            self.omega *= np.sqrt(2 * self.avg * self.hb * self.V0 / self.m) / self.w
             # Trap harmonic lengths
             self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
 
             if self.verbosity:
-                print(
-                    f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
-        elif model == 'sho':
+                print(f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
+        elif model == "sho":
             # Harmonic parameters
             self.hb: Literal = 1.0  # Reduced Planck constant
             self.omega = np.ones(dim)  # Harmonic frequencies
@@ -236,11 +220,11 @@ class DVR:
             self.V0 = 1.0
             self.kHz: Literal = 1.0
             self.kHz_2p: Literal = 1.0
-            self.hl: np.ndarray = np.sqrt(self.hb /
-                                          (self.m * self.omega))  # Harmonic lengths
+            self.hl: np.ndarray = np.sqrt(
+                self.hb / (self.m * self.omega)
+            )  # Harmonic lengths
 
-            print(
-                f"param_set: trap parameter V0={avg * self.V0} w0={self.w}")
+            print(f"param_set: trap parameter V0={avg * self.V0} w0={self.w}")
 
         self.R0 *= self.nd
         self.R *= self.nd
@@ -250,18 +234,20 @@ class DVR:
 
         # Abosorbers
         if absorber:
-            self.VI *= self.kHz_2p  # Absorption potential strength in unit of angular kHz frequency
+            self.VI *= (
+                self.kHz_2p
+            )  # Absorption potential strength in unit of angular kHz frequency
             self.VIdV0 = self.VI / self.V0  # Energy in unit of V0
 
     def Vfun(self, x, y, z):
         # Potential function
-        if self.model == 'Gaussian':
+        if self.model == "Gaussian":
             # Tweezer potential funciton, Eq. 2 in PRA
-            d0 = 1 + (z / self.zR0)**2 / 2
-            dxy = (x / self.wxy[0])**2 / (1 + (z / self.zR[0])**2)
-            dxy += (y / self.wxy[1])**2 / (1 + (z / self.zR[1])**2)
+            d0 = 1 + (z / self.zR0) ** 2 / 2
+            dxy = (x / self.wxy[0]) ** 2 / (1 + (z / self.zR[0]) ** 2)
+            dxy += (y / self.wxy[1]) ** 2 / (1 + (z / self.zR[1]) ** 2)
             V = -1 / d0 * np.exp(-2 * dxy)
-        elif self.model == 'sho':
+        elif self.model == "sho":
             # Harmonic potential function
             V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)
         return V
@@ -288,9 +274,10 @@ class DVR:
         #       potential(x, y, z) is a function handle to be processed as potential function for solving
         x = []
         for i in range(dim):
-            x.append(np.arange(self.init[i], self.n[i] + 1) *
-                     self.dx[i])  # In unit of micron
-        X = np.meshgrid(*x, indexing='ij')
+            x.append(
+                np.arange(self.init[i], self.n[i] + 1) * self.dx[i]
+            )  # In unit of micron
+        X = np.meshgrid(*x, indexing="ij")
         # 3 index tensor V(x, y, z)
         V: np.ndarray = self.avg * self.Vfun(*X)
         if self.absorber:  # add absorber
@@ -354,8 +341,9 @@ class DVR:
             T = 0
             for i in range(dim):
                 if isinstance(T0[i], np.ndarray):
-                    T += contract('ij,kl,mn->ikmjln', *delta[:i], T0[i],
-                                  *delta[i + 1:])
+                    T += contract(
+                        "ij,kl,mn->ikmjln", *delta[:i], T0[i], *delta[i + 1 :]
+                    )
             return T
 
     def H_op(self, T: list, V, no, psi0: np.ndarray):
@@ -364,11 +352,11 @@ class DVR:
         psi0 = psi0.reshape(*no)
         psi: np.ndarray = V * psi0  # delta_xx' delta_yy' delta_zz' V(x,y,z)
         # T_xx' delta_yy' delta_zz'
-        psi += np.einsum('ij,jkl->ikl', T[0], psi0)
+        psi += contract("ij,jkl->ikl", T[0], psi0)
         # delta_xx' T_yy' delta_zz'
-        psi += np.einsum('jl,ilk->ijk', T[1], psi0)
+        psi += contract("jl,ilk->ijk", T[1], psi0)
         # delta_xx' delta_yy' T_zz'
-        psi += np.einsum('ij,klj->kli', T[2], psi0)
+        psi += contract("ij,klj->kli", T[2], psi0)
         return psi.reshape(-1)
 
     def H_mat(self):
@@ -379,7 +367,8 @@ class DVR:
         # np.set_printoptions(precision=2, suppress=True)
         if self.verbosity:
             print(
-                f"H_mat: n={self.n[self.nd]} dx={self.dx[self.nd]}w p={self.p[self.nd]} {self.model} diagonalization starts.")
+                f"H_mat: n={self.n[self.nd]} dx={self.dx[self.nd]}w p={self.p[self.nd]} {self.model} diagonalization starts."
+            )
         T = self.Tmat()
         V, no = self.Vmat()
         H = T + V
@@ -392,15 +381,24 @@ class DVR:
             print(f"H_mat: H matrix memory usage: {H.nbytes / 2**20:.2f} MiB.")
         return H
 
-    def H_solver(self, k: int = -1) -> tuple[np.ndarray, np.ndarray]:
+    def H_solver(
+        self,
+        k: int = -1,  # number of eigenvalues to be calculated
+        v0: np.ndarray = None,  # initial guess for eigenvectors
+    ) -> tuple[np.ndarray, np.ndarray]:
         # Solve Hamiltonian matrix
 
         if self.sparse:
             if self.verbosity:
                 print(
-                    "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated."
-                    .format(self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model,
-                            k))
+                    "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated.".format(
+                        self.n[self.nd],
+                        self.dx[self.nd],
+                        self.p[self.nd],
+                        self.model,
+                        k,
+                    )
+                )
 
             self.p *= self.n != 0
             self.dx *= self.n != 0
@@ -411,36 +409,45 @@ class DVR:
             #     print(T[i])
             # print(V)
             if self.verbosity > 2:
-                print("H_op: n={} dx={}w p={} {} operator constructed.".format(
-                    self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model))
+                print(
+                    "H_op: n={} dx={}w p={} {} operator constructed.".format(
+                        self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model
+                    )
+                )
 
             t0 = time()
-            def applyH(psi) -> np.ndarray: return self.H_op(T, V, no, psi)
+
+            def applyH(psi) -> np.ndarray:
+                return self.H_op(T, V, no, psi)
+
             N = np.product(no)
             H = LinearOperator((N, N), matvec=applyH)
+
+            if v0 is not None:  # Flatten v0
+                v0 = v0.reshape(-1)
 
             if k <= 0:
                 k = 10
             if self.absorber:
                 if self.verbosity > 2:
-                    print('H_solver: diagonalize sparse non-hermitian matrix.')
+                    print("H_solver: diagonalize sparse non-hermitian matrix.")
 
-                E, W = ssla.eigs(H, k, which='SA')
+                E, W = ssla.eigs(H, k, which="SA", v0=v0)
             else:
                 if self.verbosity > 2:
-                    print('H_solver: diagonalize sparse hermitian matrix.')
-                E, W = ssla.eigsh(H, k, which='SA')
+                    print("H_solver: diagonalize sparse hermitian matrix.")
+                E, W = ssla.eigsh(H, k, which="SA", v0=v0)
         else:
             # avg factor is used to control the time average potential strength
             H = self.H_mat()
             t0 = time()
             if self.absorber:
                 if self.verbosity > 2:
-                    print('H_solver: diagonalize non-hermitian matrix.')
+                    print("H_solver: diagonalize non-hermitian matrix.")
                 E, W = la.eig(H)
             else:
                 if self.verbosity > 2:
-                    print('H_solver: diagonalize hermitian matrix.')
+                    print("H_solver: diagonalize hermitian matrix.")
                 E, W = la.eigh(H)
             if k > 0:
                 E = E[:k]
@@ -450,8 +457,8 @@ class DVR:
 
         if self.verbosity:
             print(
-                f'H_solver: {self.model} Hamiltonian solved. Time spent: {t1 - t0:.2f}s.')
-            print(
-                f"H_solver: eigenstates memory usage: {W.nbytes/2**20: .2f} MiB.")
+                f"H_solver: {self.model} Hamiltonian solved. Time spent: {t1 - t0:.2f}s."
+            )
+            print(f"H_solver: eigenstates memory usage: {W.nbytes/2**20: .2f} MiB.")
         # No absorber, all eigenstates are real
         return E, W

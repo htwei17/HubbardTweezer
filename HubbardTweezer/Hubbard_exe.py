@@ -2,15 +2,16 @@ import numpy as np
 import sys
 from os.path import exists
 
-from Hubbard.io import *
-from Hubbard.plot import HubbardGraph
-from Hubbard.equalizer import *
-import tools.reportIO as rep
+from HubbardTweezer.Hubbard.io import *
+from HubbardTweezer.Hubbard.plot import HubbardGraph
+from HubbardTweezer.Hubbard.equalizer import *
+import HubbardTweezer.tools.reportIO as rep
 
 
 def help_message(s=2):
     # print help message and exit
-    print('''
+    print(
+        """
     Usage: python Hubbard_exe.py <input ini file path>
     
     The program will read [Parameters] setion in the input file
@@ -52,6 +53,9 @@ def help_message(s=2):
     U_over_t:   Hubbard U/t ratio (default: None)
                 None means avg U / avg t_x calculated in initial guess
 
+    Hubbard parameter hyperparameters:
+    Nintgrl_grid:   number of grid points in integration (default: 257)
+    
     Hubbard parameter equalization:
     equalize:   equalize Hubbard parameters or not (default: False)
     equalize_target:    target Hubbard parameters to be equalized (default: vT)
@@ -111,7 +115,8 @@ def help_message(s=2):
     [Multiband_Parameters]
     (optional) Hubbard parameters for the multiband Hubbard model, unit kHz.
     Each item is similar to [Singleband_Parameters] with band indices added.
-    ''')
+    """
+    )
     sys.exit(s)
 
 
@@ -120,12 +125,12 @@ try:
     inFile = sys.argv[1]
     # outFile = sys.argv[2]
 
-    if inFile == '--help' or inFile == '-h':
+    if inFile == "--help" or inFile == "-h":
         help_message(2)
     elif exists(inFile):
         report = rep.get_report(inFile)
     else:
-        raise FileNotFoundError('Hubbard_exe: input file not found')
+        raise FileNotFoundError("Hubbard_exe: input file not found")
 except FileNotFoundError as ferr:
     print(ferr)
     print("Usage: python Hubbard_exe.py <input ini file path>")
@@ -138,11 +143,9 @@ L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
 dim = rep.i(report, "Parameters", "dimension", 1)
 
 # ====== Create lattice ======
-lattice = rep.a(report, "Parameters", "lattice_size",
-                np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Parameters", "lattice_const",
-                 np.array([1520, 1690])))
-shape = rep.s(report, "Parameters", "shape", 'square')
+lattice = rep.a(report, "Parameters", "lattice_size", np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520, 1690])))
+penfunc = rep.s(report, "Parameters", "shape", "square")
 ls = rep.b(report, "Parameters", "lattice_symmetry", True)
 
 # ====== Physical parameters ======
@@ -157,23 +160,30 @@ avg = rep.f(report, "Parameters", "average", 1)
 # ====== Hubbard parameters ======
 band = rep.i(report, "Parameters", "band", 1)
 ut = rep.f(report, "Parameters", "U_over_t", None)
+Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
-eqt = rep.s(report, "Parameters", "equalize_target", 'vT')
+eqt = rep.s(report, "Parameters", "equalize_target", "vT")
+eqV0 = rep.b(report, "Parameters", "equalize_V0", False)
 wd = rep.s(report, "Parameters", "waist_direction", None)
-meth = rep.s(report, "Parameters", "method", 'trf')
+meth = rep.s(report, "Parameters", "method", "trf")
 nb = rep.b(report, "Parameters", "no_bounds", False)
 gho = rep.b(report, "Parameters", "ghost_sites", False)
+ghopen = rep.a(report, "Parameters", "ghost_penalty", np.array([1, 1]))
 r = rep.b(report, "Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Parameters", "scale_factor", None)
 log = rep.b(report, "Parameters", "write_log", False)
 # Try to read existing equalization result as initial guess for next equalization
-meth = 'Nelder-Mead' if meth == 'NM' else meth
-if meth == 'Nelder-Mead':
+meth = "Nelder-Mead" if meth == "NM" else meth
+if meth == "Nelder-Mead":
     # Try to read simplex first, then x0
-    x0 = rep.a(report, "Equalization_Result", "simplex",
-               rep.a(report, "Equalization_Result", "x", None))
+    x0 = rep.a(
+        report,
+        "Equalization_Result",
+        "simplex",
+        rep.a(report, "Equalization_Result", "x", None),
+    )
 else:
     x0 = rep.a(report, "Equalization_Result", "x", None)
 
@@ -195,19 +205,22 @@ G = HubbardGraph(
     band=band,
     dim=dim,
     avg=avg,
-    model='Gaussian',  # Tweezer potetnial
+    model="Gaussian",  # Tweezer potetnial
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
     zR=zR,  # Rayleigh range input by hand
-    shape=shape,  # lattice geometries
+    shape=penfunc,  # lattice geometries
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
     equalize=eq,
     eqtarget=eqt,
     lattice_symmetry=ls,
+    equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
+    Nintgrl_grid=Nintgrl_grid,
     ghost=gho,
+    ghost_penalty=ghopen,
     random=r,
     x0=x0,
     scale_factor=sf,
@@ -216,36 +229,44 @@ G = HubbardGraph(
     symmetry=symm,
     iofile=report,
     write_log=log,
-    verbosity=verb)
+    verbosity=verb,
+)
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
-maskedA = G.A[G.mask, :][:, G.mask]
-maskedU = G.U[G.mask]
-links = G.xy_links(G.masked_links)
+maskedA = G.ghost.mask_quantity(G.A)
+maskedU = G.ghost.mask_quantity(G.U)
+links = G.xy_links(G.ghost.links)
 
 nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.min)
 # Print out Hubbard parameters
 if G.verbosity > 1:
-    print(f'scale_factor = {G.sf}')
-    print(f'V = {np.diag(G.A)}')
-    print(f't = {abs(G.nn_tunneling(G.A))}')
-    print(f'U = {G.U}')
+    print(f"scale_factor = {G.sf}")
+    print(f"V = {np.diag(G.A)}")
+    print(f"t = {abs(G.nn_tunneling(G.A))}")
+    print(f"U = {G.U}")
 if plot:
-    G.draw_graph('adjust', A=G.A, U=G.U)
+    G.draw_graph("adjust", A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
 write_singleband(report, G)
+# Off-diagonal elements of U
+if G.bands == 1:
+    print("Singleband off-diagonal U calculation.")
+    __, W, __ = multiband_WF(G, *eig_sol)
+    U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
+    values = {"U_ijkl": U}
+    rep.create_report(report, "Singleband_Parameters", **values)
 write_trap_params(report, G)
 
-eqt = 'uvt' if eqt == 'neq' else eqt
+eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 Vtarget = np.mean(np.real(np.diag(maskedA)))
-ttarget = G.txy_target(nnt, links)
+ttarget = G.txy_target(nnt, links, np.mean)
 Utarget = np.mean(maskedU)
 cu = G.u_cost_func(maskedU, Utarget, G.sf)
 ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
@@ -255,14 +276,14 @@ c = w @ cvec
 cvec = np.sqrt(cvec)
 fval = np.sqrt(c)
 ctot = la.norm(cvec)
-G.eqinfo['sf'] = G.sf
+G.eqinfo["sf"] = G.sf
 # Final U/t, so is determined by average values
-G.eqinfo['Ut'] = Utarget / ttarget[0]
+G.eqinfo["Ut"] = Utarget / ttarget[0]
 
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
 else:
-    v0, __ = G.init_guess(random=False)
+    v0, __ = G.initialize(random=False)
     G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
     G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False
@@ -271,11 +292,11 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    A, W, wf_centers = multiband_WF(G, *eig_sol)
+    maskedA, W, wf_centers = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
-        Vi = np.real(np.diag(A[i]))
-        tij = abs(np.real(A[i] - np.diag(Vi)))
+        Vi = np.real(np.diag(maskedA[i]))
+        tij = abs(np.real(maskedA[i] - np.diag(Vi)))
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
         values[f"wf_{i+1}_centers"] = wf_centers[i]

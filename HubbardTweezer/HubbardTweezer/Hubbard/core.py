@@ -1,20 +1,22 @@
 import numpy as np
 from numpy.linalg import LinAlgError
 from typing import Iterable
+from numbers import Number
 from opt_einsum import contract
 from time import time
 from itertools import product
 import numpy.linalg as la
 
+from ..DVR import DVR
+from ..DVR.const import *
+from ..DVR.wavefunc import psi
+from ..tools.integrate import romb3d, trapz3dnp
+from ..tools.point_match import nearest_match
 from .riemann import riemann_minimize
 from .lattice import Lattice
-from DVR.core import *
-from DVR.wavefunc import psi
-from tools.integrate import romb3d, trapz3dnp
-from tools.point_match import nearest_match
+from .ghost import GhostTrap
 
-tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb",
-                    "kagome", "zigzag"]
+tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb", "kagome", "zigzag"]
 
 
 class MLWF(DVR):
@@ -32,15 +34,22 @@ class MLWF(DVR):
 
     """
 
-    def create_lattice(self,
-                       lattice: np.ndarray,
-                       lc: tuple[float, float] = (1520, 1690),
-                       shape: str = "square"):
+    Nintgrl_grid: int = 257
+    ghost: GhostTrap
+    lattice: Lattice
+    # Rintgrl: np.ndarray
+
+    def create_lattice(
+        self,
+        lattice: np.ndarray,
+        lc: tuple[float, float] = (1520, 1690),
+        shape: str = "square",
+    ):
         # graph : each line represents coordinate (x, y) of one lattice site
 
         self.lattice = Lattice(lattice, shape, self.ls)
 
-        self.set_lc(lc, shape)
+        self.set_lc(lc, shape)  # Convert lc to (lc, lc) and in unit of wx
 
         # Assume WF are localized at trap centers, location in unit of wx
         self.tc0 = self.lattice.nodes * self.lc
@@ -49,14 +58,13 @@ class MLWF(DVR):
 
         dx = self.dx.copy()
         lattice_range = np.max(abs(self.tc0), axis=0)
-        lattice_range = np.resize(
-            np.pad(lattice_range, (0, 2), constant_values=0), dim)
+        lattice_range = np.resize(np.pad(lattice_range, (0, 2), constant_values=0), dim)
         if self.verbosity:
-            print(f"lattice: lattice shape is {shape}")
-            print(f"lattice: Full lattice sizes: {lattice}")
+            print(f"Lattice: lattice shape is {shape}")
+            print(f"Lattice: Full lattice sizes: {lattice}")
             if self.verbosity > 1:
-                print(f"lattice: lattice constants: {self.lc}w")
-                print(f"lattice: dx fixed to: {dx[self.nd]}w")
+                print(f"Lattice: lattice constants: {self.lc}w")
+                print(f"Lattice: dx fixed to: {dx[self.nd]}w")
         # Let there be R0's wide outside the edge trap center
         R0 = lattice_range + self.R00
         R0 *= self.nd
@@ -77,11 +85,10 @@ class MLWF(DVR):
         # Confirm (lc, lc) case that the lattice is isotropic
         if shape not in tri_lattice_list and lc[0] == lc[1]:
             self.isotropic = True
-        print(
-            f'Lattice: lattice shape is {shape}; lattice constants set to: {lc}')
+        print(f"Lattice: lattice shape is {shape}; lattice constants set to: {lc}")
 
         # Set lattice constants in unit of wx
-        if self.model == "Gaussian":
+        if self.model in ["Gaussian", "lattice"]:
             self.lc = np.array(lc) * 1e-9 / self.w
         elif self.model == "sho":
             self.lc = np.array(lc)
@@ -91,16 +98,14 @@ class MLWF(DVR):
 
         self.trap_centers = tc.copy()
         dx = self.dx.copy()
-        lattice = np.resize(
-            np.pad(self.lattice.size, (0, 2), constant_values=1), dim)
+        lattice = np.resize(np.pad(self.lattice.size, (0, 2), constant_values=1), dim)
         lc = np.resize(self.lc, dim)
         if self.verbosity:
-            print(
-                f"lattice: Full lattice sizes updated to: {lattice[self.nd]}")
+            print(f"Lattice: Full lattice sizes updated to: {lattice[self.nd]}")
             if self.verbosity > 1:
                 # Let there be R0's wide outside the edge trap center
-                print(f"lattice: lattice constants updated to: {lc}w")
-                print(f"lattice: dx fixed to: {dx[self.nd]}w")
+                print(f"Lattice: lattice constants updated to: {lc}w")
+                print(f"Lattice: dx fixed to: {dx[self.nd]}w")
         R0 = (lattice - 1) * lc / 2 + self.R00
         R0 *= self.nd
         self.update_R0(R0, dx)
@@ -110,26 +115,23 @@ class MLWF(DVR):
         self.zR = np.pi * self.w * self.wxy**2 / self.l
         self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
         self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-        self.omega *= np.sqrt(self.avg * self.hb *
-                              self.V0 / self.m) / self.w
+        self.omega *= np.sqrt(self.avg * self.hb * self.V0 / self.m) / self.w
 
     def __init__(
         self,
         N: int,
-        lattice: np.ndarray = np.array(
-            [2], dtype=int),  # Square lattice dimensions
+        lattice: np.ndarray = np.array([2], dtype=int),  # Square lattice dimensions
         lc=(1520, 1690),  # Lattice constant, in unit of nm
         isotropic: bool = False,  # Check if the lattice is isotropic
         ascatt=1770,  # Scattering length, in unit of Bohr radius, default 1770
         shape="square",  # Shape of the lattice
         band=1,  # Number of bands
         lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
-        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first
+        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
         *args,
         **kwargs,
     ) -> None:
-
         self.N = N
         self.scatt_len = ascatt * a0
         self.dim = dim
@@ -141,10 +143,16 @@ class MLWF(DVR):
         n = np.zeros(3, dtype=int)
         n[:dim] = N
 
-        absorber = kwargs.get('absorber', False)
+        absorber = kwargs.get("absorber", False)
         if absorber:
             raise TypeError(
-                "Absorber is not supported for Wannier Function construction!")
+                "Absorber is not supported for Wannier Function construction!"
+            )
+
+        self.Nintgrl_grid = kwargs.get(
+            "Nintgrl_grid", 257
+        )  # Numerical integration grid point number
+        print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
 
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
@@ -160,6 +168,10 @@ class MLWF(DVR):
         if equalize_V0:
             self.equalize_trap_depths()
 
+        # Set to cancel onsite potential offset, quantities are of no use
+        # They will be overwritten in HubbardEqualizer
+        self.ghost = GhostTrap(self.lattice, shape)
+
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
         V = 0
@@ -167,6 +179,13 @@ class MLWF(DVR):
         if self.model == "sho" and self.lattice.N == 2:
             # Two-site SHO case
             V += super().Vfun(abs(x) - self.lc[0] / 2, y, z)
+        elif self.model == "lattice":
+            # Optical lattice potential in 2D
+            V = (
+                np.cos(2 * np.pi * x / self.lc[0])
+                + np.cos(2 * np.pi * y / self.lc[1])
+                - 2
+            ) / 2
         else:
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!
@@ -177,9 +196,8 @@ class MLWF(DVR):
         return V
 
     def singleband_Hubbard(
-        self, u=False, x0=None, offset=True, band=1, eig_sol=None
+        self, u=False, x0=None, W0=None, offset=True, band=1, eig_sol=None
     ):
-
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         if band == 1:
@@ -187,14 +205,14 @@ class MLWF(DVR):
         if eig_sol != None:
             E, W, p = eig_sol
         else:
-            E, W, p = self.eigen_basis()
+            E, W, p = self.eigen_basis(W0=W0)
         E = E[band - 1]
         W = W[band - 1]
         p = p[band - 1]
         self.A, V = singleband_WF(self, E, W, p, x0)
         if offset is True:
             # Shift onsite potential to zero average
-            self.zero = np.mean(np.real(np.diag(self.A)))
+            self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
         elif isinstance(offset, Number):
             self.zero = offset
         else:
@@ -225,11 +243,11 @@ class MLWF(DVR):
         try:
             # Equalize trap depth
             # Powered to compensate for trap unevenness
-            self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N))**2
+            self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N)) ** 2
             if self.verbosity:
                 print(f"Equalize: trap depths equalzlied to {self.Voff}.")
         except:
-            raise LinAlgError('Homogenize: failed to solve for Voff.')
+            raise LinAlgError("Homogenize: failed to solve for Voff.")
 
     def nn_tunneling(self, A: np.ndarray):
         # Pick up nearest neighbor tunnelings
@@ -251,21 +269,20 @@ class MLWF(DVR):
                 if graph:  # Symmetrize graph node coordinates
                     # NOTE: repeated nodes will be removed
                     info[row][self.lattice.inv_coords[row]] = 0
-                    target[self.lattice.reflect[row, :]
-                           ] = parity * info[row][None]
+                    target[self.lattice.reflect[row, :]] = parity * info[row][None]
                 else:  # Symmetrize trap depth
                     target[self.lattice.reflect[row, :]] = info[row]
         else:
             target[:] = info
 
     # TODO: Integrate multisector solver with DVR
-    def solve_sector(self, sector: np.ndarray, k: int, E, W, parity):
+    def solve_sector(self, sector: np.ndarray, k: int, E, W, parity, v0):
         # Add a symmetry sector to the list of eigensolutions
         p = self.p.copy()
-        p[:len(sector)] = sector
+        p[: len(sector)] = sector
         self.update_p(p)
 
-        Em, Wm = self.H_solver(k)
+        Em, Wm = self.H_solver(k, v0)
         E = np.append(E, Em)
         W += [Wm[:, i].reshape(self.n + 1 - self.init) for i in range(k)]
         # Parity sector marker
@@ -301,7 +318,9 @@ class MLWF(DVR):
         p_list = list(product(*p_tuple))
         return p_list
 
-    def eigen_basis(self) -> tuple[list, list, list]:
+    def eigen_basis(
+        self, W0: list = None, standard: str = "symmetry"
+    ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
         if self.dvr_symm:
@@ -309,38 +328,88 @@ class MLWF(DVR):
             E_sb = np.array([])
             W_sb = []
             p_sb = np.array([], dtype=int).reshape(0, dim)
-            for p in p_list:
+            if W0 is not None:  # Pad W0 to match p_list
+                W0.extend([None] * (len(p_list) - len(W0)))
+            for pidx in range(len(p_list)):
+                p = p_list[pidx]
                 # print(f'Solve {p} sector.')
-                E_sb, W_sb, p_sb = self.solve_sector(
-                    p, k + 1, E_sb, W_sb, p_sb)
+                if W0 is None:
+                    W0p = None
+                else:
+                    W0p = W0[pidx]
+                E_sb, W_sb, p_sb = self.solve_sector(p, k + 1, E_sb, W_sb, p_sb, W0p)
+                if W0 is not None:
+                    W0[pidx] = W_sb[-k - 1]  # Inplace update x,y,z-folded W0
 
-            # Sort everything by energy, only keetp lowest k states
-            idx = np.argsort(E_sb)[:k+1]
-            E_sb = E_sb[idx]
-            W_sb = [W_sb[i] for i in idx[:k]]
-            p_sb = p_sb[idx, :]
+            if standard == "energy":
+                # Sort everything by energy, only keetp lowest k states
+                idx = np.argsort(E_sb)[: k + 1]
+                E_sb = E_sb[idx]
+                W_sb = [W_sb[i] for i in idx[:k]]
+                p_sb = p_sb[idx, :]
+            elif standard == "symmetry":
+                idx = np.argsort(E_sb)
+                E_sb = E_sb[idx]
+                W_sb = [W_sb[i] for i in idx]
+                p_sb = p_sb[idx, :]
         else:
             p_sb = np.zeros((k, dim))
             E_sb, W_sb = self.H_solver(k + 1)
             W_sb = [W_sb[:, i].reshape(2 * self.n + 1) for i in range(k)]
 
         if self.verbosity > 2:
-            print(f'Energies: {E_sb}')
+            print(f"Energies: {E_sb}")
             if self.ls:
-                print(f'parities: {[p_sb]}')
-        elif self.verbosity > 1 and E_sb[k-1] - E_sb[0] > E_sb[k] - E_sb[k-1]:
-            print('Wannier warning: band gap is smaller than band width.')
+                print(f"parities: {[p_sb]}")
+        # elif self.verbosity > 1 and E_sb[k - 1] - E_sb[0] > E_sb[k] - E_sb[k - 1]:
+        #     print("Wannier warning: band gap is smaller than band width.")
 
-        E_sb = E_sb[:k]
-        p_sb = p_sb[:k]
+        if standard == "symmetry" and self.bands == 1:
+            standard = "energy"
 
-        E = [E_sb[b * self.lattice.N: (b + 1) * self.lattice.N]
-             for b in range(self.bands)]
-        W = [W_sb[b * self.lattice.N: (b + 1) * self.lattice.N]
-             for b in range(self.bands)]
-        parity = [p_sb[b * self.lattice.N: (b + 1) * self.lattice.N, :]
-                  for b in range(self.bands)]
-
+        if standard == "energy":
+            E_sb = E_sb[:k]
+            p_sb = p_sb[:k]
+            E = [
+                E_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
+                for b in range(self.bands)
+            ]
+            W = [
+                W_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
+                for b in range(self.bands)
+            ]
+            parity = [
+                p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
+                for b in range(self.bands)
+            ]
+        elif standard == "symmetry" and self.bands == 2:
+            # Hand coded pz-even and pz-odd bands
+            E_even = np.array([])
+            E_odd = np.array([])
+            W_even = []
+            W_odd = []
+            parity_even = np.array([], dtype=int).reshape(0, dim)
+            parity_odd = np.array([], dtype=int).reshape(0, dim)
+            count_even = 0
+            count_odd = 0
+            for pidx in range(len(p_sb)):
+                p = p_sb[pidx]
+                if p[2] == 1 and count_even < self.lattice.N:
+                    E_even = np.append(E_even, E_sb[pidx])
+                    W_even.append(W_sb[pidx])
+                    parity_even = np.append(parity_even, p[None], axis=0)
+                    count_even += 1
+                elif p[2] == -1 and count_odd < self.lattice.N:
+                    E_odd = np.append(E_odd, E_sb[pidx])
+                    W_odd.append(W_sb[pidx])
+                    parity_odd = np.append(parity_odd, p[None], axis=0)
+                    count_odd += 1
+            E = [E_even, E_odd]
+            W = [W_even, W_odd]
+            parity = [parity_even, parity_odd]
+        else:
+            raise ValueError("Invalid band forming standard.")
+        # TODO: add multi-band support for symmetry standard
         return E, W, parity
 
     def Xmat(self, W, parity):
@@ -400,10 +469,13 @@ class MLWF(DVR):
             Rx = None
         return Rx
 
+
 # ========================== OPTIMIZATION ALGORITHMS ==========================
 
 
-def singleband_WF(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple[np.ndarray, np.ndarray]:
+def singleband_WF(
+    dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True
+) -> tuple[np.ndarray, np.ndarray]:
     # Singleband Wannier function optimization
     # x0 is the initial guess
 
@@ -422,8 +494,9 @@ def singleband_WF(dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True) -> tuple
             # In high dimension, X, Y, Z don't commute
             solution = riemann_minimize(R, x0, dvr.verbosity)
             U = site_order(dvr, solution, R)
-            wf_centers = np.array([np.diag(U.conj().T @ R[i] @ U)
-                                   for i in range(dvr.lattice.dim)]).T
+            wf_centers = np.array(
+                [np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]
+            ).T
     else:
         U = np.ones((1, 1))
         wf_centers = np.zeros((1, 2))
@@ -469,8 +542,7 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
         order = np.argsort(x)
     elif dvr.lattice.dim > 1:
         # Find WF center of mass
-        x = np.array([np.diag(U.conj().T @ R[i] @ U)
-                     for i in range(dvr.lattice.dim)]).T
+        x = np.array([np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]).T
         order = nearest_match(dvr.trap_centers, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
@@ -478,20 +550,51 @@ def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     return U[:, order]
 
 
-def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable):
+def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs):
     # Interaction between i band and j band
-    Uint = np.zeros((dvr.bands, dvr.bands, dvr.lattice.N))
-    for i in range(dvr.bands):
-        for j in range(i, dvr.bands):
-            Uint[i, j, :] = singleband_interaction(
-                dvr, U[i], U[j], W[i], W[j], parity[i], parity[j]
+    onsite = kwargs.get("onsite", True)
+    if onsite:
+        Uint = np.zeros((dvr.bands, dvr.bands, dvr.lattice.N))
+        for i in range(dvr.bands):
+            for j in range(i, dvr.bands):
+                Uint[i, j, :] = singleband_interaction(
+                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                )
+                if i != j:
+                    Uint[j, i, :] = Uint[i, j, :]
+    else:
+        Uint = np.zeros(
+            (
+                dvr.bands,
+                dvr.bands,
+                dvr.lattice.N,
+                dvr.lattice.N,
+                dvr.lattice.N,
+                dvr.lattice.N,
             )
-            if i != j:
-                Uint[j, i, :] = Uint[i, j, :]
+        )
+        for i in range(dvr.bands):
+            for j in range(i, dvr.bands):
+                Uint[i, j] = singleband_interaction(
+                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                )
+                if i != j:
+                    Uint[j, i] = Uint[i, j]
     return Uint
 
 
-def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.ndarray, intgrl: str = "romb") -> np.ndarray:
+def singleband_interaction(
+    dvr: MLWF,
+    Ui,
+    Uj,
+    Wi,
+    Wj,
+    pi: np.ndarray,
+    pj: np.ndarray,
+    method: str = "trapz",
+    onsite=True,
+) -> np.ndarray:
+    # Interactions between single band i and j
     t0 = time()
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
@@ -499,38 +602,57 @@ def singleband_interaction(dvr: MLWF, Ui, Uj, Wi, Wj, pi: np.ndarray, pj: np.nda
     x = []
     dx = []
     for i in range(dim):
-        if dvr.nd[i]:
-            x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], 129))
+        if dvr.nd[i]:  # Think of a way to make numerical integration converge
+            x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], dvr.Nintgrl_grid))
             dx.append(x[i][1] - x[i][0])
         else:
             x.append(np.array([0]))
             dx.append(0)
     Vi = wannier_func(x, Ui, dvr, Wi, pi)
     Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
-    wannier = abs(Vi) ** 2 * abs(Vj) ** 2
-    if intgrl == "romb":
-        Uint_onsite = romb3d(wannier, dx)
+    if onsite:
+        integrand = abs(Vi) ** 2 * abs(Vj) ** 2
+        Uint = integrate(x, dx, integrand, method)
+        if dvr.model == "sho":
+            print(
+                f"Test with analytic calculation on {i + 1}-th site",
+                np.real(Uint) * (np.sqrt(2 * np.pi)) ** dvr.dim * np.prod(dvr.hl),
+            )
+        t1 = time()
+        if dvr.verbosity:
+            print(f"Single band interaction time: {t1 - t0}s.")
     else:
-        Uint_onsite = trapz3dnp(wannier, x)
-    if dvr.model == "sho":
-        print(
-            f"Test with analytic calculation on {i + 1}-th site",
-            np.real(Uint_onsite) * (np.sqrt(2 * np.pi)
-                                    ) ** dvr.dim * np.prod(dvr.hl),
-        )
-    t1 = time()
-    if dvr.verbosity:
-        print(f"Single band interaction time: {t1 - t0}s.")
-    return u * Uint_onsite
+        # The matrix size is huge so do it sequentially
+        dvr.Nintgrl_grid = 129
+        Uint = np.zeros([dvr.lattice.N] * 4)
+        for i in range(dvr.lattice.N):
+            for j in range(dvr.lattice.N):
+                for k in range(dvr.lattice.N):
+                    for l in range(dvr.lattice.N):
+                        integrand = (
+                            Vi[:, :, :, i].conj()
+                            * Vj[:, :, :, j].conj()
+                            * Vj[:, :, :, k]
+                            * Vi[:, :, :, l]
+                        )
+                        Uint[i, j, k, l] = integrate(x, dx, integrand, method)
+        dvr.Nintgrl_grid = 257  # Reset
+    return u * Uint
+
+
+def integrate(x, dx, integrand, method):
+    if method == "romb":  # Not recommanded as is not converging well
+        U = romb3d(integrand, dx)
+    else:
+        U = trapz3dnp(integrand, x)
+    return U
 
 
 def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
-    x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i]
-         for i in range(dim)]
+    x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(dim)]
     V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
     for i in range(p.shape[0]):
         V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
-        # print(f'{i+1}-th Wannier function finished.')
     return V @ U
 
 
