@@ -1,12 +1,12 @@
 from matplotlib.axes import Axes
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
-from scipy.optimize import curve_fit
 import matplotlib as mpl
 import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from cycler import cycler
+import numpy as np
+from scipy.optimize import curve_fit
 
 from .io import DVRDynamicsIO
 from .dynamics import *
