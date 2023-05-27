@@ -17,18 +17,10 @@
 *.pyo
 __pycache__
 
-# Temp outputs
+# Outputs
 *.csv
 *.h5
 *.ini
-HubbardTweezer/src/Hubbard/equalizer_lsq.py
-
-# Folders
-output
 
 # Executables
 *.exe
-pymanopt
-
-# Packages
-pkg
