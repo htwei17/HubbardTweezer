@@ -1,5 +1,4 @@
 /*
-!*.py
 !LICENSE
 !*.md
 
@@ -7,4 +6,4 @@
 __pycache__
 test
 cluster
-!HubbardTweezer
+!src
