@@ -1,7 +1,10 @@
 /*
 !*.py
+!LICENSE
+!*.md
 
 # Folders
 __pycache__
-HubbardTweezer/src/test
+HubbardTweezer/test
 HubbardTweezer/cluster
+!HubbardTweezer/HubbardTweezer
