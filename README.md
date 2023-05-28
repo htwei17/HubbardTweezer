@@ -41,4 +41,4 @@
 
 ## TODO
 
-* A comprehensive documentation
+* A beginner's tutorial
