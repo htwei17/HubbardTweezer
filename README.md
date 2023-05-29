@@ -7,7 +7,7 @@
 
 Hubbard parameter calculator for 1&2D optical tweezer array systems
 
-Documentation [here](doc/mannual.md). 
+Documentation [here](doc/mannual.md).
 
 Please cite the [paper]() if you wish to publish research work based on HubbardTweezer:
 
@@ -23,12 +23,11 @@ Please cite the [paper]() if you wish to publish research work based on HubbardT
 
 ## Dependencies
 
-* [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch)
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
+* [`networkx`](https://github.com/networkx/networkx) which depends on `matplotlib`
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
-* [`networkx`](https://github.com/networkx/networkx)
 * `scipy` along with `numpy`
 * `ortools`
-* `matplotlib`
+* `configobj`
 * `pympler`
 * `h5py`
-* `configobj`

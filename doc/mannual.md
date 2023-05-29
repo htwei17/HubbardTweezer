@@ -2,6 +2,10 @@
 
 ----------------------------------------
 
+Here is the introductory manual for the code in [paper]().
+
+For scientific principles, please refer to the paper main text.
+
 In general, the code is run by feeding an `ini` file in which required parameters are set.
 
 ```shell
@@ -33,120 +37,6 @@ Specifically for the program to read a length=1 array, what needs to do is to ad
 number = 2 # 2 read as number
 tuple = 2, # (2,) read as a tuple
 ```
-
-## Parameter definitions
-
-### Items to input the file
-
-#### `[Parameters]`
-
-DVR hyperparameters:
-
-* N:  DVR half grid point number (default: 20)
-* L0: DVR grid half-size in unit of x_waist (default: 3, 3, 7.2)
-* dimensin:   DVR dimension (default: 1)
-
-DVR calculation settings:
-
-* sparse: (optional) use sparse matrix or not (default: True)
-* symmetry:   (optional) use symmetry in DVR calculation or not (default: True)
-
-Lattice parameters:
-
-* lattice_size:   lattice size (default: 4,)
-* lattice_constant:   lattice spacing in unit of nm
-                    if one number eg. 1500, means a_x=a_y (default: 1520, 1690)
-* shape:  lattice shape (default: square)
-* lattice_symmetry:   use lattice reflection symmetry or not (default: True)
-
-Physical parameters:
-
-* scattering_length:  scattering length in unit of a_0 (default: 1770)
-* V0:    trap depth in unit of kHz (default: 104.52)
-* waist: xy waist in unit of nm (default: 1000, 1000)
-* atom_mass:  atom mass in unit of amu (default: 6.015122)
-* zR:    (optional) Rayleigh range in unit of nm
-        None means calculated from laser wavelength (default: None)
-* laser_wavelength:   laser wavelength in unit of nm (default: 780)
-* average:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1)
-
-* Hubbard parameter calculation:
-* band:   number of bands to calculate Hubbard parameters (default: 1)
-* U_over_t:   Hubbard U/t ratio (default: None)
-            None means avg U / avg t_x calculated in initial guess
-
-Hubbard parameter hyperparameters:
-
-* Nintgrl_grid:   number of grid points in integration (default: 257)
-
-Hubbard parameter equalization:
-
-* equalize:   equalize Hubbard parameters or not (default: False)
-* equalize_target:    target Hubbard parameters to be equalized (default: `vT`)
-                    see `Hubbard.equalizer` for more details
-* method:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
-            see `scipy.optimize.minimize`, `least_squares`, and `nlopt` documentations for more details
-* no_bounds:  (optional) do not use bounds in optimization (default: False)
-* random_initial_guess:   (optional) use random initial guess (default: False)
-* scale_factor:   (optional) energy scale factor to make cost function dimensionless
-                None means avg t_x calculated in initial guess
-                in unit of kHz (default: None)
-* write_log:  (optional) print parameters of every step to log file or not (default: False).
-            See `[Equalization_Log]` in output file
-* plot:   plot Hubbard parameter graphs or not (default: False)
-
-* verbosity:  (optional) 0~3, levels of how much information to print (default: 0)
-
-#### `[Equalization_Info]`
-
-* x:  (optional) initial free trap parameters for equalization as 1D array
-
-### Items output by the program
-
-Here N is the number of sites, and k is the number of bands.
-
-#### `[Singleband_Parameters]`
-
-The Hubbard parameters for the single-band Hubbard model, unit kHz.
-
-* t_ij:   NxN array, tunneling matrix between sites i and j
-* V_i:    Nx1 array, on-site potential at site i
-* U_i:    Nx1 array, on-site Hubbard interaction at site i
-* wf_centers:    Nx2 array, calculated Wannier orbital center positions
-
-#### `[Trap_Adjustments]`
-
-The factors to adjust traps to equalize Hubbard parameters.
-
-* V_offset:   Nx1 array, factor to scale trap depth, true depth = V_offset *V_0
-* trap_centers:   Nx2 array, trap center position in unit of waist_x and waist_y
-* waist_factors:  Nx2 array, factor to scale trap waist, true waist_x/y = waist_factors_x/y* waist_x/y
-
-#### `[Equalization_Result]`
-
-This section lists the equalization status and result.
-
-* x:  optimized free trap parameters as minimization function input
-* cost_func_by_terms:  cost function values C_U, C_t, C_V by terms of U, t, and V
-* cost_func_value: cost function value feval to be minimized
-                    `feval = w_1 * C_U + w_2 * C_t + w_3 * C_V`
-* total_cost_func:    total cost function value `C = C_U + C_t + C_V`
-* func_eval_number:   number of cost function evaluations
-* scale_factor:   energy scale factor to make cost function dimensionless.
-                See scale_factor in `[Parameters]`
-* success:    minimization success or not
-* equalize_status:    minimization status given by scipy.optimize.minimize
-* termination_reason: termination message given by scipy.optimize.minimize
-* U_over_t:   Hubbard U/t ratio
-
-#### `[Equalization_Log]` (optional)
-
-Log of equalization process, turn on/off by `write_log`. Each item is an array of values introduced in `[Equalization_Result]`, which each row shows one step.
-
-#### `[Multiband_Parameters]` (optional)
-
-Multiband Hubbard parameters, unit kHz.
-Each item is similar to `[Singleband_Parameters]` with band indices added.
 
 ## Example
 
@@ -223,6 +113,146 @@ write_log = True
 no_bounds = False
 verbosity = 3
 ```
+
+## Parameter definitions
+
+### Items to input the file
+
+#### `[Parameters]`
+
+##### DVR hyperparameters
+
+* N:  DVR half grid point number (default: 20)
+* L0: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
+* dimensin:   DVR dimension (default: 1)
+
+##### DVR calculation settings
+
+* sparse: (optional) use sparse matrix or not (default: True)
+* symmetry:   (optional) use symmetry in DVR calculation or not (default: True)
+
+##### Lattice parameters
+
+* lattice_size:   lattice size (default: 4,)
+* lattice_constant:   lattice spacing in unit of nm
+                    if one number eg. 1500, means $a_x=a_y$ (default: 1520, 1690)
+* shape:  lattice shape (default: square)
+* lattice_symmetry:   use lattice reflection symmetry or not (default: True)
+
+##### Physical parameters
+
+* scattering_length:  scattering length in unit of $a_0$ (default: 1770)
+* V0:    trap depth in unit of kHz (default: 104.52)
+* waist: xy waist in unit of nm (default: 1000, 1000)
+* atom_mass:  atom mass in unit of amu (default: 6.015122)
+* zR:    (optional) Rayleigh range in unit of nm
+        None means calculated from laser wavelength (default: None)
+* laser_wavelength:   laser wavelength in unit of nm (default: 780)
+* average:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1)
+
+* Hubbard parameter calculation:
+* band:   number of bands to calculate Hubbard parameters (default: 1)
+* U_over_t:   Hubbard $U/t$ ratio (default: None)
+            None means $\mathrm{avg} U / \mathrm{avg} t_x$ calculated in initial guess
+
+##### Hubbard parameter hyperparameters
+
+* Nintgrl_grid:   number of grid points in integration (default: 257)
+
+##### Hubbard parameter equalization
+
+* equalize:   equalize Hubbard parameters or not (default: False)
+
+##### Equalization target
+
+* equalize_target:    target Hubbard parameters to be equalized (default: `vT`)
+                    see `Hubbard.equalizer` for more details
+
+1. `u`,`v`,`t`: Hubbard parameters to equalize without setting target values, meaning the program minimizes the variance of Hubbard parameters
+2. `U`, `V`, `T`: Hubbard parameters to equalize to target values, meaning the program minimizes the difference between Hubbard parameters and target values
+
+##### Equalization algorithm
+
+* method:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
+            see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
+* no_bounds:  (optional) do not use bounds in optimization (default: False)
+* random_initial_guess:   (optional) use random initial guess (default: False)
+* scale_factor:   (optional) energy scale factor to make cost function dimensionless
+                None means $\min t$ calculated in initial guess
+                in unit of kHz (default: None)
+* write_log:  (optional) print parameters of every step to log file or not (default: False).
+            See `[Equalization_Log]` in output file
+
+##### Equalization proposal: adjust waist
+
+* waist_direction:  (optional) direction of waist adjustment. `x`, `y`, `xy` are supported
+                    None means no waist adjustment (default: None)
+
+##### Equalization proposal: ghost trap
+
+* ghost_sites:   (optional) add ghost sites to the lattice or not (default: False)
+* ghost_penalty: (optional) 2-entry tuple (penalty, threshold) to determine the ghost penalty added to the cost function
+                 threshold is in unit of kHz (default: 1, 1)
+
+ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
+$\mathrm{penalty} = \mathrm{factor}\times \exp\{-6(q-\mathrm{threshold})\}$
+
+##### Plotting and verbosity
+
+* plot:   plot Hubbard parameter graphs or not (default: False)
+
+* verbosity:  (optional) 0~3, levels of how much information to print (default: 0)
+
+#### input in `[Equalization_Result]`
+
+* x:  (optional) initial free trap parameters for equalization as 1D array
+
+### Items output by the program
+
+Here N is the number of sites, and k is the number of bands.
+
+#### `[Singleband_Parameters]`
+
+The Hubbard parameters for the single-band Hubbard model, unit kHz.
+
+* t_ij:   NxN array, tunneling matrix between sites i and j
+* V_i:    Nx1 array, on-site potential at site i
+* U_i:    Nx1 array, on-site Hubbard interaction at site i
+* wf_centers:    Nx2 array, calculated Wannier orbital center positions
+
+#### `[Trap_Adjustments]`
+
+The factors to adjust traps to equalize Hubbard parameters.
+
+* V_offset:   Nx1 array, factor to scale trap depth, true depth = V_offset *V_0
+* trap_centers:   Nx2 array, trap center position in unit of waist_x and waist_y
+* waist_factors:  Nx2 array, factor to scale trap waist, true waist_x/y = waist_factors_x/y* waist_x/y
+
+#### output in `[Equalization_Result]`
+
+This section lists the equalization status and result.
+
+* x:  optimized free trap parameters as minimization function input
+* cost_func_by_terms:  cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, t, and V
+* cost_func_value: cost function value feval to be minimized
+                    $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
+* total_cost_func:    total cost function value $C = C_U + C_t + C_V$
+* func_eval_number:   number of cost function evaluations
+* scale_factor:   energy scale factor to make cost function dimensionless.
+                See scale_factor in `[Parameters]`
+* success:    minimization success or not
+* equalize_status:    minimization status given by scipy.optimize.minimize
+* termination_reason: termination message given by scipy.optimize.minimize
+* U_over_t:   Hubbard $U/t$ ratio
+
+#### `[Equalization_Log]` (optional)
+
+Log of equalization process, turn on/off by `write_log`. Each item is an array of values introduced in `[Equalization_Result]`, which each row shows one step.
+
+#### `[Multiband_Parameters]` (optional)
+
+Multiband Hubbard parameters, unit kHz.
+Each item is similar to `[Singleband_Parameters]` with band indices added.
 
 ## Code structure
 
