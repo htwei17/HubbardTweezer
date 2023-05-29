@@ -15,6 +15,7 @@ LINE_WIDTH = 8
 # FONT_FAMILY = 'Comic Sans MS'
 # FONT_FAMILY = "Times New Roman"
 # FONT_FAMILY = "Agency FB"
+# FONT_FAMILY = "cursive"
 FONT_FAMILY = "Algerian"
 # FONT_FAMILY = "Calibri"
 FONT_WEIGHT = 800
@@ -23,12 +24,12 @@ FONT_WEIGHT = 800
 # BOND_TEXT_COLOR = np.array([0.122972391,	0.63525259,	0.529459411])
 BOND_TEXT_COLOR = "darkcyan"
 BOND_TEXT_SIZE = 24
-NODE_SIZE = 2800 # Big plots 4200, small plots 2800
+NODE_SIZE = 2800  # Big plots 4200, small plots 2800
 MIN_GAP = 18
 # NODE_COLOR = '#BFDF25'
 NODE_EDGE_WIDTH = LINE_WIDTH
 # NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
-NODE_TEXT_SIZE = 28 # long text 22, short 28
+NODE_TEXT_SIZE = 28  # long text 22, short 28
 # OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
 OVERHEAD_COLOR = "firebrick"
 OVERHEAD_SUZE = 30
@@ -70,7 +71,7 @@ params = {
     # "mathtext.fontset": "cm",
     "font.family": FONT_FAMILY,
     # "font.weight": "bold",
-    'axes.unicode_minus': True
+    "axes.unicode_minus": True,
 }
 plt.rcParams.update(params)
 
@@ -105,16 +106,17 @@ class HubbardGraph(HubbardEqualizer):
             for edge in self.graph.edges
         )
         self.edge_alpha = np.array(
-            [(self.graph[edge[0]][edge[1]]["weight"])**1.6 for edge in self.graph.edges]
+            [(self.graph[edge[0]][edge[1]]["weight"]) for edge in self.graph.edges]
         )
-        is_masked_links = np.array(
-            [
-                np.logical_or(self.ghost.mask[edge[0]], self.ghost.mask[edge[1]])
-                for edge in self.graph.edges
-            ]
-        )
-        max_len = max(self.edge_alpha[is_masked_links])
-        self.edge_alpha /= max_len
+        # is_masked_links = np.array(
+        #     [
+        #         np.logical_or(self.ghost.mask[edge[0]], self.ghost.mask[edge[1]])
+        #         for edge in self.graph.edges
+        #     ]
+        # )
+        max_len = max(self.edge_alpha)
+        x = self.edge_alpha / max_len
+        self.edge_alpha = (np.exp((x) ** 2) - (1 - x) ** 0.1) / np.exp(1)
         self.edge_alpha = np.clip(self.edge_alpha, 0.0, 1)
 
     def set_nodes(self, label="param"):
@@ -135,8 +137,9 @@ class HubbardGraph(HubbardEqualizer):
             self.pos = dict((n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, "") for n in self.graph.nodes)
         self.node_size = self.waists[:, 0] ** WAIST_SCALE * NODE_SIZE
-        max_depth = np.max(abs(self.Voff[self.ghost.mask]))
-        self.node_alpha = (self.Voff / max_depth) ** 10
+        max_depth = np.max(abs(self.Voff))
+        x = abs(self.Voff) / max_depth
+        self.node_alpha = (np.exp((x) ** 5) - ((1 - x) ** 0.1)) / np.exp(1)
         self.node_alpha = np.clip(self.node_alpha, 0.0, 1)
 
     def add_nnn(self, center=0, limit=3):
