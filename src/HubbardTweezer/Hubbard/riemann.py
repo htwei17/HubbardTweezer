@@ -3,6 +3,9 @@ import torch
 import pymanopt
 
 
+eps = np.finfo(float).eps
+
+
 def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Cost function to Wannier optimize
     o = 0
@@ -26,8 +29,7 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
 def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.ndarray:
     # It's proven above that U can be purely real
     # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
-    verbosity = verbosity if verbosity <= 2 else 2
-    verbosity = verbosity-1 if verbosity > 0 else 0
+    verbosity = int(np.clip(verbosity, 0, 3))
     N: int = R[0].shape[0]  # matrix dimension
     # Convert list of ndarray to list of Tensor
     R = [torch.from_numpy(Ri) for Ri in R]
@@ -42,8 +44,11 @@ def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.nda
     # By RMP 84.4(2012), cc is efficient
     # Cost func is always positive but not quadratic in U
     optimizer = pymanopt.optimizers.ConjugateGradient(
-        max_iterations=1000, min_step_size=1e-12, verbosity=verbosity)
-    result = optimizer.run(
-        problem, initial_point=x0, reuse_line_searcher=True)
+        max_iterations=1000,
+        min_step_size=eps,
+        min_gradient_norm=eps,
+        verbosity=verbosity,
+    )
+    result = optimizer.run(problem, initial_point=x0, reuse_line_searcher=True)
     solution = result.point
     return solution

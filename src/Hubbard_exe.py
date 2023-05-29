@@ -161,6 +161,7 @@ avg = rep.f(report, "Parameters", "average", 1)
 band = rep.i(report, "Parameters", "band", 1)
 ut = rep.f(report, "Parameters", "U_over_t", None)
 Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
+offdiag_U = rep.b(report, "Parameters", "offdiagonal_U", False)
 
 # ====== Equalization ======
 eq = rep.b(report, "Parameters", "equalize", False)
@@ -254,7 +255,7 @@ if plot:
 # ====== Write output ======
 write_singleband(report, G)
 # Off-diagonal elements of U
-if G.bands == 1:
+if G.bands == 1 and offdiag_U:
     print("Singleband off-diagonal U calculation.")
     __, W, __ = multiband_WF(G, *eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
