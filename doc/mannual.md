@@ -25,6 +25,15 @@ key2 = value2
 
 What the program does is to read parameters set in `[Parameters]` section and write calculation results to the other sections, such as `[Singleband_Parameters]` for single-band Hubbard parameters, `[Equalization_Result]` for equalization solutions and `[Trap_Adjustments]` for how the traps need to be adjusted in experiment to realize the desired Hubbard parameters.
 
+### Data type: number vs array
+
+Specifically for the program to read a length=1 array, what needs to do is to add a comma after the number:
+
+```ini
+number = 2 # 2 read as number
+tuple = 2, # (2,) read as a tuple
+```
+
 ## Parameter definitions
 
 ### Items to input the file
@@ -181,12 +190,50 @@ The other sections in the file are not what we are interested.
 
 ### Equalize Hubbard parameters for a 4-site chain
 
+Here we want to equalize Hubbard parameters for a 4-site chain by `trf` optimization algorithm in `scipy`, without using ghost trap or waist tuning. The input file `4x1_eq.ini` is as below:
 
-
-## `plot.py`
+```ini
+[Parameters]
+N = 20
+L0 = 3, 3, 7.2
+lattice_size = 4,
+lattice_const = 1550,
+V0 = 52.26
+waist = 1000,
+laser_wavelength = 780
+shape = square
+scattering_length = 1770
+dimension = 3
+lattice_symmetry = True
+equalize = True
+equalize_target = UvT
+waist_direction = None
+U_over_t = None
+method = trf
+write_log = True
+no_bounds = False
+verbosity = 3
+```
 
 ## Code structure
 
-### DVR part
+The code consists of two modules `DVR` and `Hubbard`. Their main modules are explained below.
 
-### MLWF part
+1. `DVR`: DYR dynamics
+
+* `DVR.core`: `DVR` base class to calculate DVR spectra
+* `DVR.dynamics`: define `dynamics` class and `DVR_exe` function
+* `DVR.output`: output storage `.h5` file interal structure definitions
+* `DVR_exe.py`: execute script of DVR dynamics on command line
+
+1. `Hubbard`: Hubbard parameter calculations
+
+* The code now supports square/rectangular, Lieb, triangular, honeycomb (defect honeycomb) and kagome lattices
+* `Hubbard.core` : `MLWF` class to construct maximally localized Wannier funcitons
+* `Hubbard.equalizer` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
+* `Hubbard.plot`: `HubbardGraph` class to plot Hubbard parameters on lattice graphs
+* `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
+
+## `Hubbard.plot`
+
+`Hubbard.plot` is the submodule to print and save Hubbard parameter graphs.
