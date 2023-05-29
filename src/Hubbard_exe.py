@@ -39,8 +39,8 @@ def help_message(s=2):
     lattice_symmetry:   use lattice reflection symmetry or not (default: True)
     
     Physical parameters:
-    scattering_length:  scattering length in unit of a_0 (default: 1770)
-    V_0:    trap depth in unit of kHz (default: 104.52)
+    scattering_length:  scattering length in unit of Bohr radius a_0 (default: 1770)
+    V0:    trap depth in unit of kHz (default: 104.52)
     waist: xy waist in unit of nm (default: 1000, 1000)
     atom_mass:  atom mass in unit of amu (default: 6.015122)
     zR:    (optional) Rayleigh range in unit of nm
