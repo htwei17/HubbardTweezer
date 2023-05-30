@@ -22,13 +22,13 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Q: Can X, Y, Z be diagonalized simultaneously in high dims?
     # A: If the space is conplete then by QM theory it is possible
     #    to diagonalize X, Y, Z simultaneously.
-    #    But this is not the case as it's a subspace.
+    #    But this is not the case as it's incomplete.
     return o.real
 
 
 def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.ndarray:
-    # It's proven above that U can be purely real
-    # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
+    # It can be proven that U can be purely real
+    # See details in the paper & notes
     verbosity = int(np.clip(verbosity, 0, 3))
     N: int = R[0].shape[0]  # matrix dimension
     # Convert list of ndarray to list of Tensor

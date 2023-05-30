@@ -2,6 +2,8 @@
 
 ----------------------------------------
 
+<!-- TODO: add dependencies -->
+
 Here is the introductory manual for the code in [paper]().
 
 For scientific principles, please refer to the paper main text.
@@ -48,12 +50,12 @@ We write the input `2x2.ini` file as below:
 [Parameters]
 N = 15
 L0 = 3, 3, 7.2
+shape = square
 lattice_size = 2, 2
 lattice_const = 1550, 1600
 V0 = 52.26
 waist = 1000,
 laser_wavelength = 780
-shape = square
 scattering_length = 1770
 dimension = 3
 lattice_symmetry = True
@@ -68,6 +70,8 @@ write_log = True
 no_bounds = False
 verbosity = 3
 ```
+
+<!-- NOTE: delete irrelavent flags in 1st example -->
 
 Then we run the command (make sure give the program correct paths):
 
@@ -85,9 +89,10 @@ U_i = "[1.213458140903253, 1.2134581273579168, 1.2134581305101972, 1.21345814288
 wf_centers = "[[-0.7254249258931982, -0.7620829552187119], [-0.7254249258811576, 0.7620829551109817], [0.7254249258875868, -0.7620829551332057], [0.7254249258867685, 0.7620829552409356]]"
 ```
 
-The other sections in the file are not what we are interested.
+The other sections in the file are not what we are interested in.
 
-### Equalize Hubbard parameters for a 4-site chain
+<!-- TODO: edit paper since the node locations are WF centers -->
+### Example 2: Equalize Hubbard parameters for a 4-site chain
 
 Here we want to equalize Hubbard parameters for a 4-site chain by `trf` optimization algorithm in `scipy`, without using ghost trap or waist tuning. The input file `4x1_eq.ini` is as below:
 
@@ -124,36 +129,44 @@ verbosity = 3
 
 * N:  DVR half grid point number (default: 20)
 * L0: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
-* dimensin:   DVR dimension (default: 1)
+* dimension:   DVR grid spatial dimension (default: 1)
 
 ##### DVR calculation settings
 
 * sparse: (optional) use sparse matrix or not (default: True)
-* symmetry:   (optional) use symmetry in DVR calculation or not (default: True)
+* symmetry:   (optional) use reflection symmetry in DVR calculation or not (default: True)
 
+###### Reflection symmetry
+
+<!-- TODO: -->
 ##### Lattice parameters
 
-* lattice_size:   lattice size (default: 4,)
+* lattice_size:  number of traps in each lattice dimension (default: 4,)
 * lattice_constant:   lattice spacing in unit of nm
                     if one number eg. 1500, means $a_x=a_y$ (default: 1520, 1690)
-* shape:  lattice shape (default: square)
+* shape:  lattice shape. Supported values: TODO: (default: square)
+
 * lattice_symmetry:   use lattice reflection symmetry or not (default: True)
+
+<!-- TODO: explain difference from lattice_symm to DVR_symm -->
 
 ##### Physical parameters
 
 * scattering_length:  scattering length in unit of $a_0$ (default: 1770)
 * V0:    trap depth in unit of kHz (default: 104.52)
-* waist: xy waist in unit of nm (default: 1000, 1000)
+* waist: (w_x, w_y) waist in unit of nm. If only one is set it means w_x=w_y (default: 1000, 1000)
 * atom_mass:  atom mass in unit of amu (default: 6.015122)
 * zR:    (optional) Rayleigh range in unit of nm
         None means calculated from laser wavelength (default: None)
 * laser_wavelength:   laser wavelength in unit of nm (default: 780)
-* average:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1)
+<!-- * average:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
 * Hubbard parameter calculation:
 * band:   number of bands to calculate Hubbard parameters (default: 1)
 * U_over_t:   Hubbard $U/t$ ratio (default: None)
             None means $\mathrm{avg} U / \mathrm{avg} t_x$ calculated in initial guess
+
+<!-- TODO: add site-dependent trap depths -->
 
 ##### Hubbard parameter hyperparameters
 
