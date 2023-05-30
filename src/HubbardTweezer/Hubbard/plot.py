@@ -323,7 +323,7 @@ class HubbardGraph(HubbardEqualizer):
             ax = plt.gca()
         # Shift in unit of w, since wy is not defined in 1D
         if self.lattice.dim == 1:
-            shift = (0, 0.06) if nnn else (0, 0.05)
+            shift = (0, 0.04) if nnn else (0, 0.05)
         elif self.lattice.dim == 2:
             shift = (-0.35, 0.35)
         self.overhead_pos = dict(
@@ -372,7 +372,7 @@ class HubbardGraph(HubbardEqualizer):
             (x2, y2) = pos[n2]
             (x, y) = ((x1 + x2) / 2, (y1 + y2) / 2)
             if nnn:
-                rad = 0.025 if self.lattice.dim == 1 else 0.1
+                rad = 0.018 if self.lattice.dim == 1 else 0.1
                 (dx, dy) = (x2 - x1, y2 - y1)
                 (x, y) = (x + rad * dy, y - rad * dx)
 
