@@ -15,8 +15,8 @@ LINE_WIDTH = 8
 # FONT_FAMILY = 'Comic Sans MS'
 # FONT_FAMILY = "Times New Roman"
 # FONT_FAMILY = "Agency FB"
-# FONT_FAMILY = "cursive"
-FONT_FAMILY = "Algerian"
+FONT_FAMILY = "cursive"
+# FONT_FAMILY = "Algerian"
 # FONT_FAMILY = "Calibri"
 FONT_WEIGHT = 800
 
@@ -68,7 +68,7 @@ params = {
     # 'axes.titlesize': 'xx-large',
     # 'xtick.labelsize': 'xx-large',
     # 'ytick.labelsize': 'xx-large'
-    # "mathtext.fontset": "cm",
+    "mathtext.fontset": "cm",
     "font.family": FONT_FAMILY,
     # "font.weight": "bold",
     "axes.unicode_minus": True,
