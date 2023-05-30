@@ -17,6 +17,9 @@
 *.pyo
 __pycache__
 
+# Folders
+.vscode
+
 # Outputs
 *.csv
 *.h5
