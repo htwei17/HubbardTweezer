@@ -15,7 +15,10 @@ LINE_WIDTH = 8
 # FONT_FAMILY = 'Comic Sans MS'
 # FONT_FAMILY = "Times New Roman"
 # FONT_FAMILY = "Agency FB"
-FONT_FAMILY = "cursive"
+# FONT_FAMILY = "cursive"
+# FONT_FAMILY = "Helvetica Neue"
+FONT_FAMILY = "Futura"
+# FONT_FAMILY = "Arial"
 # FONT_FAMILY = "Algerian"
 # FONT_FAMILY = "Calibri"
 FONT_WEIGHT = 800
@@ -29,7 +32,7 @@ MIN_GAP = 18
 # NODE_COLOR = '#BFDF25'
 NODE_EDGE_WIDTH = LINE_WIDTH
 # NODE_TEXT_COLOR = np.array([0.282250485,	0.146422331, 0.461908376])
-NODE_TEXT_SIZE = 28  # long text 22, short 28
+NODE_TEXT_SIZE = 28  # non-equalized 22, equalized 28
 # OVERHEAD_COLOR = np.array([0.62352941, 0.85490196, 0.22745098])
 OVERHEAD_COLOR = "firebrick"
 OVERHEAD_SUZE = 30
@@ -68,7 +71,7 @@ params = {
     # 'axes.titlesize': 'xx-large',
     # 'xtick.labelsize': 'xx-large',
     # 'ytick.labelsize': 'xx-large'
-    "mathtext.fontset": "cm",
+    # "mathtext.fontset": "cm", # NOTE: enable this for latex labels
     "font.family": FONT_FAMILY,
     # "font.weight": "bold",
     "axes.unicode_minus": True,
@@ -116,7 +119,7 @@ class HubbardGraph(HubbardEqualizer):
         # )
         max_len = max(self.edge_alpha)
         x = self.edge_alpha / max_len
-        self.edge_alpha = (np.exp((x) ** 2) - (1 - x) ** 0.1) / np.exp(1)
+        self.edge_alpha = (np.exp((x)) - (1 - x) ** 0.1) / np.exp(1)
         self.edge_alpha = np.clip(self.edge_alpha, 0.0, 1)
 
     def set_nodes(self, label="param"):
@@ -124,7 +127,9 @@ class HubbardGraph(HubbardEqualizer):
             # Label onsite chemical potential
             self.pos = dict((n, self.wf_centers[n]) for n in self.graph.nodes())
             depth = np.real(np.diag(self.A)) * 1e3  # Convert to kHz
-            self.node_label = dict((n, f"{int(depth[n])}") for n in self.graph.nodes)
+            self.node_label = dict(
+                (n, f"{int(depth[n])}".replace("-", "\u2212")) for n in self.graph.nodes
+            )
         elif label == "adjust":
             # Label trap offset
             self.pos = dict(
@@ -132,14 +137,17 @@ class HubbardGraph(HubbardEqualizer):
                 (n, self.trap_centers[n])
                 for n in self.graph.nodes()
             )
-            self.node_label = dict((n, f"{self.Voff[n]:.3g}") for n in self.graph.nodes)
+            self.node_label = dict(
+                (n, f"{self.Voff[n]:.3g}".replace("-", "\u2212"))
+                for n in self.graph.nodes
+            )
         else:
             self.pos = dict((n, self.wf_centers[n]) for n in self.graph.nodes())
             self.node_label = dict((n, "") for n in self.graph.nodes)
         self.node_size = self.waists[:, 0] ** WAIST_SCALE * NODE_SIZE
         max_depth = np.max(abs(self.Voff))
         x = abs(self.Voff) / max_depth
-        self.node_alpha = (np.exp((x) ** 5) - ((1 - x) ** 0.1)) / np.exp(1)
+        self.node_alpha = (np.exp(x) - ((1 - x) ** 0.1)) / np.exp(1)
         self.node_alpha = np.clip(self.node_alpha, 0.0, 1)
 
     def add_nnn(self, center=0, limit=3):
@@ -331,7 +339,7 @@ class HubbardGraph(HubbardEqualizer):
             for n in self.graph.nodes()
         )
         self.overhead_label = dict(
-            (n, f"{self.U[n]*1e3:.0f}") for n in self.graph.nodes
+            (n, f"{self.U[n]*1e3:.0f}".replace("-", "\u2212")) for n in self.graph.nodes
         )
 
         nx.draw_networkx_labels(
