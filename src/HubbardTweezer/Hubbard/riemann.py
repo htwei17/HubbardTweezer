@@ -22,7 +22,7 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Q: Can X, Y, Z be diagonalized simultaneously in high dims?
     # A: If the space is conplete then by QM theory it is possible
     #    to diagonalize X, Y, Z simultaneously.
-    #    But this is not the case as it's a subspace.
+    #    But this is not the case as it's incomplete.
     return o.real
 
 
