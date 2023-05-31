@@ -27,7 +27,7 @@ def help_message(s=2):
 
     * N:  DVR half grid point number (default: 20)
     * L0: DVR grid half-size in unit of x_waist (default: 3, 3, 7.2)
-    * dimensin:   DVR dimension (default: 1)
+    * DVR_dimension:   DVR dimension (default: 1)
 
     ### DVR calculation settings:
 
@@ -156,7 +156,7 @@ except FileNotFoundError as ferr:
 # ====== DVR parameters ======
 N = rep.i(report, "Parameters", "N", 20)
 L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
-dim = rep.i(report, "Parameters", "dimension", 1)
+dim = rep.i(report, "Parameters", "DVR_dimension", 1)
 
 # ====== Create lattice ======
 lattice = rep.a(report, "Parameters", "lattice_size", np.array([4])).astype(int)

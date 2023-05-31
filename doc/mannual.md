@@ -1,12 +1,25 @@
-# Get started on HubbardTweezer
+# HubbardTweezer Documentation
 
 ----------------------------------------
 
-<!-- TODO: add dependencies -->
-
-Here is the introductory manual for the code in [paper]().
+Here is the introductory manual for the code in [paper]() TODO!.
 
 For scientific principles, please refer to the paper main text.
+
+## Dependencies
+
+In order to run the code, you need to install the following packages:
+
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
+* [`networkx`](https://github.com/networkx/networkx) which depends on `matplotlib`
+* [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
+* `scipy` along with `numpy`
+* `ortools`
+* `configobj`
+* `pympler`
+* `h5py`
+
+## Get started on HubbardTweezer
 
 In general, the code is run by feeding an `ini` file in which required parameters are set.
 
@@ -50,24 +63,18 @@ We write the input `2x2.ini` file as below:
 [Parameters]
 N = 15
 L0 = 3, 3, 7.2
+V0 = 52.26
+waist = 1000,
+DVR_dimension = 3
+
 shape = square
 lattice_size = 2, 2
 lattice_const = 1550, 1600
-V0 = 52.26
-waist = 1000,
 laser_wavelength = 780
 scattering_length = 1770
-dimension = 3
 lattice_symmetry = True
 equalize = False
-equalize_target = UvT
-U_over_t = None
-method = neq
-random_initial_guess = True
-ghost_sites = False
-waist_direction = None
 write_log = True
-no_bounds = False
 verbosity = 3
 ```
 
@@ -107,7 +114,7 @@ waist = 1000,
 laser_wavelength = 780
 shape = square
 scattering_length = 1770
-dimension = 3
+DVR_dimension = 3
 lattice_symmetry = True
 equalize = True
 equalize_target = UvT
@@ -129,7 +136,7 @@ verbosity = 3
 
 * N:  DVR half grid point number (default: 20)
 * L0: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
-* dimension:   DVR grid spatial dimension (default: 1)
+* DVR_dimension:   DVR grid spatial dimension (default: 1)
 
 ##### DVR calculation settings
 
