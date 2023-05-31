@@ -651,7 +651,7 @@ def integrate(x, dx, integrand, method):
 def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(dim)]
     V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
-    for i in range(p.shape[0]):
+    for i in range(p.shape[0]): # Loop over trap sites, p.shape[0] = Ntrap
         V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
     return V @ U
 
