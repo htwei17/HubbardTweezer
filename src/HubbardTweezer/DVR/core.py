@@ -431,11 +431,12 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize sparse non-hermitian matrix.")
-
+                    print("H_solver: matrix dimension = {}".format(N))
                 E, W = ssla.eigs(H, k, which="SA", v0=v0)
             else:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize sparse hermitian matrix.")
+                    print("H_solver: matrix dimension = {}".format(N))
                 E, W = ssla.eigsh(H, k, which="SA", v0=v0)
         else:
             # avg factor is used to control the time average potential strength
@@ -444,10 +445,12 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize non-hermitian matrix.")
+                    print("H_solver: matrix dimension = {}".format(H.shape[0]))
                 E, W = la.eig(H)
             else:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize hermitian matrix.")
+                    print("H_solver: matrix dimension = {}".format(H.shape[0]))
                 E, W = la.eigh(H)
             if k > 0:
                 E = E[:k]
