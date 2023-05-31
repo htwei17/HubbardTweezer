@@ -154,43 +154,44 @@ except FileNotFoundError as ferr:
     sys.exit(1)
 
 # ====== DVR parameters ======
-N = rep.i(report, "Parameters", "N", 20)
-L0 = rep.a(report, "Parameters", "L0", np.array([3, 3, 7.2]))
-dim = rep.i(report, "Parameters", "DVR_dimension", 1)
+N = rep.i(report, "DVR_Parameters", "N", 20)
+L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]))
+dim = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
+s = rep.b(report, "DVR_Parameters", "sparse", True)
+symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
-lattice = rep.a(report, "Parameters", "lattice_size", np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Parameters", "lattice_const", np.array([1520, 1690])))
-penfunc = rep.s(report, "Parameters", "shape", "square")
-ls = rep.b(report, "Parameters", "lattice_symmetry", True)
+lattice = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690])))
+penfunc = rep.s(report, "Lattice_Parameters", "shape", "square")
+ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
 
-# ====== Physical parameters ======
-a_s = rep.f(report, "Parameters", "scattering_length", 1000)
-V0 = rep.f(report, "Parameters", "V0", 104.52)
-w = rep.a(report, "Parameters", "waist", np.array([1000, 1000]))
-m = rep.f(report, "Parameters", "atom_mass", 6.015122)
-zR = rep.f(report, "Parameters", "zR", None)
-l = rep.f(report, "Parameters", "laser_wavelength", 780)
-avg = rep.f(report, "Parameters", "average", 1)
+# ====== Physical trap parameters ======
+a_s = rep.f(report, "Trap_Parameters", "scattering_length", 1000)
+V0 = rep.f(report, "Trap_Parameters", "V0", 104.52)
+w = rep.a(report, "Trap_Parameters", "waist", np.array([1000, 1000]))
+m = rep.f(report, "Trap_Parameters", "atom_mass", 6.015122)
+zR = rep.f(report, "Trap_Parameters", "zR", None)
+l = rep.f(report, "Trap_Parameters", "laser_wavelength", 780)
+avg = rep.f(report, "Trap_Parameters", "average", 1)
 
-# ====== Hubbard parameters ======
-band = rep.i(report, "Parameters", "band", 1)
-ut = rep.f(report, "Parameters", "U_over_t", None)
-Nintgrl_grid = rep.i(report, "Parameters", "Nintgrl_grid", 257)
-offdiag_U = rep.b(report, "Parameters", "offdiagonal_U", False)
+# ====== Hubbard settings ======
+band = rep.i(report, "Hubbard_Settings", "band", 1)
+ut = rep.f(report, "Hubbard_Settings", "U_over_t", None)
+Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 257)
+offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
 
 # ====== Equalization ======
-eq = rep.b(report, "Parameters", "equalize", False)
-eqt = rep.s(report, "Parameters", "equalize_target", "vT")
-eqV0 = rep.b(report, "Parameters", "equalize_V0", False)
-wd = rep.s(report, "Parameters", "waist_direction", None)
-meth = rep.s(report, "Parameters", "method", "trf")
-nb = rep.b(report, "Parameters", "no_bounds", False)
-gho = rep.b(report, "Parameters", "ghost_sites", False)
-ghopen = rep.a(report, "Parameters", "ghost_penalty", np.array([1, 1]))
-r = rep.b(report, "Parameters", "random_initial_guess", False)
-sf = rep.f(report, "Parameters", "scale_factor", None)
-log = rep.b(report, "Parameters", "write_log", False)
+eq = rep.b(report, "Equalization_Parameters", "equalize", False)
+eqt = rep.s(report, "Equalization_Parameters", "equalize_target", "vT")
+eqV0 = rep.b(report, "Equalization_Parameters", "equalize_V0", False)
+wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
+meth = rep.s(report, "Equalization_Parameters", "method", "trf")
+nb = rep.b(report, "Equalization_Parameters", "no_bounds", False)
+gho = rep.b(report, "Equalization_Parameters", "ghost_sites", False)
+ghopen = rep.a(report, "Equalization_Parameters", "ghost_penalty", np.array([1, 1]))
+r = rep.b(report, "Equalization_Parameters", "random_initial_guess", False)
+sf = rep.f(report, "Equalization_Parameters", "scale_factor", None)
 # Try to read existing equalization result as initial guess for next equalization
 meth = "Nelder-Mead" if meth == "NM" else meth
 if meth == "Nelder-Mead":
@@ -207,10 +208,9 @@ else:
 # ====== Plotting ======
 plot = rep.b(report, "Parameters", "plot", False)
 
-# ====== DVR settings ======
-s = rep.b(report, "Parameters", "sparse", True)
-symm = rep.b(report, "Parameters", "symmetry", True)
-verb = rep.i(report, "Parameters", "verbosity", 0)
+# ====== Verbosity ======
+log = rep.b(report, "Verbosity", "write_log", False)
+verb = rep.i(report, "Verbosity", "verbosity", 0)
 
 # ====== Equalize ======
 G = HubbardGraph(

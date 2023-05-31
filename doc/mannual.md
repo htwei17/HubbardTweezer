@@ -2,7 +2,7 @@
 
 ----------------------------------------
 
-Here is the introductory manual for the code in [paper]() TODO!.
+Here is the introductory manual for the code in [paper]() TODO:fill in the link.
 
 For scientific principles, please refer to the paper main text.
 
@@ -60,25 +60,26 @@ tuple = 2, # (2,) read as a tuple
 We write the input `2x2.ini` file as below:
 
 ```ini
-[Parameters]
-N = 15
+[DVR_Parameters]
+N = 20
 L0 = 3, 3, 7.2
+DVR_dimension = 3
+[Trap_Parameters]
 V0 = 52.26
 waist = 1000,
-DVR_dimension = 3
-
+scattering_length = 1770
+laser_wavelength = 780
+[Lattice_Parameters]
 shape = square
 lattice_size = 2, 2
 lattice_const = 1550, 1600
-laser_wavelength = 780
-scattering_length = 1770
 lattice_symmetry = True
+[Equalization_Parameters]
 equalize = False
+[Verbosity]
 write_log = True
 verbosity = 3
 ```
-
-<!-- NOTE: delete irrelavent flags in 1st example -->
 
 Then we run the command (make sure give the program correct paths):
 
@@ -98,66 +99,68 @@ wf_centers = "[[-0.7254249258931982, -0.7620829552187119], [-0.7254249258811576,
 
 The other sections in the file are not what we are interested in.
 
-<!-- TODO: edit paper since the node locations are WF centers -->
 ### Example 2: Equalize Hubbard parameters for a 4-site chain
 
 Here we want to equalize Hubbard parameters for a 4-site chain by `trf` optimization algorithm in `scipy`, without using ghost trap or waist tuning. The input file `4x1_eq.ini` is as below:
 
 ```ini
-[Parameters]
+[DVR_Parameters]
 N = 20
 L0 = 3, 3, 7.2
-lattice_size = 4,
-lattice_const = 1550,
+DVR_dimension = 3
+[Trap_Parameters]
 V0 = 52.26
 waist = 1000,
-laser_wavelength = 780
-shape = square
 scattering_length = 1770
-DVR_dimension = 3
+laser_wavelength = 780
+[Lattice_Parameters]
+shape = square
+lattice_size = 4,
+lattice_const = 1550,
 lattice_symmetry = True
+[Equalization_Parameters]
 equalize = True
 equalize_target = UvT
 waist_direction = None
 U_over_t = None
 method = trf
-write_log = True
 no_bounds = False
+[Verbosity]
+write_log = True
 verbosity = 3
 ```
+
+The main difference is in `[Equalization_Parameters]` section.
 
 ## Parameter definitions
 
 ### Items to input the file
 
-#### `[Parameters]`
-
-##### DVR hyperparameters
+#### `[DVR_Parameters]`
 
 * N:  DVR half grid point number (default: 20)
 * L0: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
 * DVR_dimension:   DVR grid spatial dimension (default: 1)
-
-##### DVR calculation settings
-
 * sparse: (optional) use sparse matrix or not (default: True)
-* symmetry:   (optional) use reflection symmetry in DVR calculation or not (default: True)
+* DVR_symmetry:   (optional) use reflection symmetry sector in DVR calculation or not (default: True)
 
-###### Reflection symmetry
+###### Explain reflection symmetry
 
-<!-- TODO: -->
-##### Lattice parameters
+  <!-- TODO: explain reflection symmetry -->
+
+##### `[Lattice_Parameters]`
 
 * lattice_size:  number of traps in each lattice dimension (default: 4,)
 * lattice_constant:   lattice spacing in unit of nm
                     if one number eg. 1500, means $a_x=a_y$ (default: 1520, 1690)
-* shape:  lattice shape. Supported values: TODO: (default: square)
-
+* shape:  lattice shape. Supported values: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb` and `kagome` (default: `square`)
 * lattice_symmetry:   use lattice reflection symmetry or not (default: True)
 
-<!-- TODO: explain difference from lattice_symm to DVR_symm -->
+###### difference from lattice_symmetry to DVR_symmetry
 
-##### Physical parameters
+  <!-- TODO: explain difference from lattice_symmetry to DVR_symmetry -->
+
+##### `[Trap_Parameters]`
 
 * scattering_length:  scattering length in unit of $a_0$ (default: 1770)
 * V0:    trap depth in unit of kHz (default: 104.52)
@@ -167,31 +170,25 @@ verbosity = 3
         None means calculated from laser wavelength (default: None)
 * laser_wavelength:   laser wavelength in unit of nm (default: 780)
 <!-- * average:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
+##### `[Hubbard_Settings]`
 
-* Hubbard parameter calculation:
+* Nintgrl_grid:   number of grid points in integration (default: 257)
 * band:   number of bands to calculate Hubbard parameters (default: 1)
 * U_over_t:   Hubbard $U/t$ ratio (default: None)
             None means $\mathrm{avg} U / \mathrm{avg} t_x$ calculated in initial guess
 
 <!-- TODO: add site-dependent trap depths -->
 
-##### Hubbard parameter hyperparameters
-
-* Nintgrl_grid:   number of grid points in integration (default: 257)
-
-##### Hubbard parameter equalization
+##### `[Equalization_Parameters]`
 
 * equalize:   equalize Hubbard parameters or not (default: False)
-
-##### Equalization target
-
 * equalize_target:    target Hubbard parameters to be equalized (default: `vT`)
                     see `Hubbard.equalizer` for more details
 
-1. `u`,`v`,`t`: Hubbard parameters to equalize without setting target values, meaning the program minimizes the variance of Hubbard parameters
-2. `U`, `V`, `T`: Hubbard parameters to equalize to target values, meaning the program minimizes the difference between Hubbard parameters and target values
+###### Explain equalization target
 
-##### Equalization algorithm
+  1. `u`,`v`,`t`: Hubbard parameters to equalize without setting target values, meaning the program minimizes the variance of Hubbard parameters
+  2. `U`, `V`, `T`: Hubbard parameters to equalize to target values, meaning the program minimizes the difference between Hubbard parameters and target values
 
 * method:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
             see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
@@ -203,24 +200,23 @@ verbosity = 3
 * write_log:  (optional) print parameters of every step to log file or not (default: False).
             See `[Equalization_Log]` in output file
 
-##### Equalization proposal: adjust waist
-
 * waist_direction:  (optional) direction of waist adjustment. `x`, `y`, `xy` are supported
                     None means no waist adjustment (default: None)
 
-##### Equalization proposal: ghost trap
+##### Equalization proposal: adjust waist
 
 * ghost_sites:   (optional) add ghost sites to the lattice or not (default: False)
 * ghost_penalty: (optional) 2-entry tuple (penalty, threshold) to determine the ghost penalty added to the cost function
                  threshold is in unit of kHz (default: 1, 1)
 
+##### Equalization proposal: ghost trap
+
 ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
 $\mathrm{penalty} = \mathrm{factor}\times \exp\{-6(q-\mathrm{threshold})\}$
 
-##### Plotting and verbosity
+##### `[Verbosity]`
 
 * plot:   plot Hubbard parameter graphs or not (default: False)
-
 * verbosity:  (optional) 0~3, levels of how much information to print (default: 0)
 
 #### input in `[Equalization_Result]`
