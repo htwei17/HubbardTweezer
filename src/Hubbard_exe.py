@@ -178,7 +178,7 @@ avg = rep.f(report, "Trap_Parameters", "average", 1)
 # ====== Hubbard settings ======
 band = rep.i(report, "Hubbard_Settings", "band", 1)
 ut = rep.f(report, "Hubbard_Settings", "U_over_t", None)
-Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 257)
+Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 200)
 offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
 
 # ====== Equalization ======
@@ -194,6 +194,7 @@ r = rep.b(report, "Equalization_Parameters", "random_initial_guess", False)
 sf = rep.f(report, "Equalization_Parameters", "scale_factor", None)
 # Try to read existing equalization result as initial guess for next equalization
 meth = "Nelder-Mead" if meth == "NM" else meth
+# Try to read initial guess for equalization
 if meth == "Nelder-Mead":
     # Try to read simplex first, then x0
     x0 = rep.a(
@@ -205,12 +206,10 @@ if meth == "Nelder-Mead":
 else:
     x0 = rep.a(report, "Equalization_Result", "x", None)
 
-# ====== Plotting ======
-plot = rep.b(report, "Parameters", "plot", False)
-
-# ====== Verbosity ======
+# ====== Verbosity & Plotting ======
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
+plot = rep.b(report, "Verbosity", "plot", False)
 
 # ====== Equalize ======
 G = HubbardGraph(
@@ -248,6 +247,9 @@ G = HubbardGraph(
     write_log=log,
     verbosity=verb,
 )
+
+# ====== Adjust Voff if just do Hubbard parameter calculation ======
+G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)
