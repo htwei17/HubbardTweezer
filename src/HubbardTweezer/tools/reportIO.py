@@ -79,8 +79,8 @@ def a(report: ConfigObj, section: str, key=None, default=np.array([])) -> np.nda
             # This is from data formatted as a = 1, 2, 3, 4, 5
             ret = np.array(report[section][key]).astype(float)
         else:
-            # If the value is not an Iterable, convert it to a 1D numpy array
-            ret = np.array([report[section][key]])
+            # If the value is not an Iterable
+            raise TypeError("Input is not an Iterable.")
     except:
         # If anything goes wrong, return the default value
         ret = default
