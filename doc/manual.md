@@ -149,9 +149,11 @@ verbosity = 3
 ```
 
 The main difference is in `[Equalization_Parameters]` section. By running the same command as above
+
 ```shell
 python Hubbard_exe.py 4x1_eq.ini
 ```
+
 we get the result:
 
 ```ini
@@ -186,31 +188,35 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 #### `[DVR_Parameters]`
 
-* `N`:  DVR grid point number parameter from the outermost trap center to the box edges (default: 20)
-* `L0`: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
+* `N`:  number of DVR grid points from the outermost trap center to the box edges (default: 20)
+* `L0`: distance from the outermost trap center to the box edges in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
 * `DVR_dimension`:   DVR grid spatial dimension (default: 1)
-* `sparse`: (optional) use sparse matrix or not (default: True)
-* `DVR_symmetry`:   (optional) use reflection symmetry sector in DVR calculation or not (default: True)
+* `sparse`:   (optional) use sparse matrix  (default: True)
+* `DVR_symmetry`:   (optional) use reflection symmetries in DVR calculation (default: True)
 
-> ##### Explain reflection symmetry
+> ##### Reflection symmetry
 >
->The property above determines whether to use reflection symmetry in DVR calculation. If `True`, DVR Hamiltonian is solved in several reflection symmetry sectors. If `False`, DVR Hamiltonian is solved in the whole space at a time. The information of which reflection symmetries are used is in `[Lattice_Parameters]` section.
+> If `DVR_symmetry` is `False`, the DVR Hamiltonian is solved without block-diagonalizing the reflection symmetry sectors. If `True`, it solves the DVR Hamiltonian in symmetry sectors specified by the properties `lattice_symmetry` and `band` defined later.
 
 #### `[Lattice_Parameters]`
 
-* `lattice_size`:  number of traps in each lattice dimension (default: 4,)
+* `lattice_size`:  tuple or number of traps in each lattice dimension
+                    if only one number is given, this means the lattice is a 1D chain (default: `4,`)
 * `lattice_constant`:   lattice spacing in unit of nm
-                    if one number eg. 1500, means $a_x=a_y$ (default: 1520, 1690)
+                    if only one number is given e.g. `1500`, this means $a_x=a_y$ (default: 1520, 1690)
 * `shape`:  lattice shape. Supported values: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb` and `kagome` (default: `square`)
-* `lattice_symmetry`:   use lattice reflection symmetry or not (default: True)
+* `lattice_symmetry`:   use lattice reflection symmetry (default: True)
 
-> ##### Difference from lattice_symmetry to DVR_symmetry
+> ##### Relation between `lattice_symmetry` and `DVR_symmetry`
 >
-> `DVR_symmetry` determine if these symmetries are used in DVR eigenstate calculation. And `lattice_symmetry` determine if there are $x$ and $y$ reflection symmetries in the lattice.
-> 
-> With `DVR_symmetry` to be `True`, if only lowest band is solved, then the $z$-even sector is calculated. But if more than one band is calculated, then the $z$-odd sector is also calculated.
+> The program generates a list of reflection symmetry sectors for DVR calculation to solve the Hamiltonian, labeled by $x$, $y$ and $z$-reflection parities `[px,py,pz]` with `px`, `py`, `pz` each to be 1, -1 or 0. 1 mean even-parity, -1 means odd-parity, 0 means no reflection symmetry is used in this direction. The list is generated based on the values of properties `lattice_symmetry` and `band` defined later.
 >
-> If `DVR_symmetry` is `False`, then no matter `lattice_symmetry` is `True` or not, no symmetries are used in calculation. But if `DVR_symmetry` is `True`, then the reflection symmetry sectors are used based on `lattice_symmetry` and the bands to solve. In this case, if `lattice_symmetry` is `True`, the $x$ and $y$ reflection symmetry sectors are used in the calculation, no matter what lattice shape is.
+> `DVR_symmetry` determine if the reflection symmetries are used in DVR eigenstate calculation. `lattice_symmetry` determine if there are $x$ and $y$ reflection symmetries in the lattice used.
+>
+> If `DVR_symmetry` is `True`:
+> `band` is `1`, then `pz` is fixed to `1`, meaning only even sector is calculated. If `band` is larger than `1`, then `pz=[1,-1]` are both calculated.
+>
+> If `DVR_symmetry` is `False`, then no matter `lattice_symmetry` is, no reflection symmetries are used in calculation. But if `DVR_symmetry` is `True`, then the reflection symmetry sectors are used based on `lattice_symmetry` and the bands to solve. In this case, if `lattice_symmetry` is `True`, then `px=[1,-1]` and `py=[1,-1]` are calculated.
 
 #### `[Trap_Parameters]`
 
@@ -229,6 +235,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 * `band`:   number of bands to be calculated in Hubbard model (default: 1)
 * `U_over_t`:   Hubbard $U/t$ ratio (default: None)
             None means $\mathrm{avg} U / \mathrm{avg} t_x$ calculated in initial guess
+* `offdiagonal_U`:   
 
 #### input in `[Trap_Adjustment]` section
 
@@ -239,7 +246,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 #### `[Equalization_Parameters]`
 
-* `equalize`:   equalize Hubbard parameters or not (default: False)
+* `equalize`:   equalize Hubbard parameters  (default: False)
 * `equalize_target`:    target Hubbard parameters to be equalized (default: `vT`)
                     see `Hubbard.equalizer` for more details
 
@@ -263,7 +270,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 ##### Equalization proposal: ghost trap
 
-* `ghost_sites`:   (optional) add ghost sites to the lattice or not (default: False)
+* `ghost_sites`:   (optional) add ghost sites to the lattice  (default: False)
 * `ghost_penalty`: (optional) 2-entry tuple (penalty, threshold) to determine the ghost penalty added to the cost function
                  threshold is in unit of kHz (default: 1, 1)
 
@@ -272,9 +279,9 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 #### `[Verbosity]`
 
-* `write_log`:  (optional) print parameters of every step to log file or not (default: False).
+* `write_log`:  (optional) print parameters of every step to log file  (default: False).
             See `[Equalization_Log]` in output file
-* `plot`:   plot Hubbard parameter graphs or not (default: False)
+* `plot`:   plot Hubbard parameter graphs  (default: False)
 * `verbosity`:  (optional) 0~3, levels of how much information to print (default: 0)
 
 #### input in `[Equalization_Result]` section
@@ -315,7 +322,7 @@ This section lists the equalization status and result.
 * `func_eval_number`:   number of cost function evaluations
 * `scale_factor`:   energy scale factor to make cost function dimensionless.
                 See scale_factor in `[Parameters]`
-* `success`:    minimization success or not
+* `success`:    minimization success
 * `equalize_status`:    minimization status given by scipy.optimize.minimize
 * `termination_reason`: termination message given by scipy.optimize.minimize
 * `U_over_t`:   Hubbard $U/t$ ratio
