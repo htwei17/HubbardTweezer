@@ -110,6 +110,8 @@ class HubbardEqualizer(MLWF):
             lattice_shape = "square"
         super().__init__(N, shape=lattice_shape, *args, **kwargs)
 
+        self.FIXED_V = kwargs.get("FIXED_V", 1)
+
         # set equalization label in file output
         self.eq_label = eqtarget
         self.waist_dir = waist
@@ -259,7 +261,9 @@ class HubbardEqualizer(MLWF):
                 f"Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf."
             )
 
+
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
+            point = np.insert(point, 8, self.FIXED_V)
             return self.opt_func(
                 point,
                 info,
@@ -272,6 +276,8 @@ class HubbardEqualizer(MLWF):
                 mode=mode,
                 report=iofile,
             )
+        
+        bounds = boundas[0:8] + bounds[9:]
 
         t0 = time()
         if mode == "res":
