@@ -186,7 +186,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 #### `[DVR_Parameters]`
 
-* `N`:  DVR half grid point number (default: 20)
+* `N`:  DVR grid point number parameter from the outermost trap center to the box edges (default: 20)
 * `L0`: DVR grid half-size in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
 * `DVR_dimension`:   DVR grid spatial dimension (default: 1)
 * `sparse`: (optional) use sparse matrix or not (default: True)

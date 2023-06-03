@@ -211,6 +211,9 @@ log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 plot = rep.b(report, "Verbosity", "plot", False)
 
+# FIX V
+fixV = rep.f(report, "Equalization_Parameters", "fix_V", 1)
+
 # ====== Equalize ======
 G = HubbardGraph(
     N,
@@ -246,6 +249,7 @@ G = HubbardGraph(
     iofile=report,
     write_log=log,
     verbosity=verb,
+    FIXED_V=fixV,
 )
 
 # ====== Adjust Voff if just do Hubbard parameter calculation ======
