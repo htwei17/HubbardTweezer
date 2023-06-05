@@ -192,11 +192,11 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 * `L0`: distance from the outermost trap center to the box edges in unit of $x$ direction waist $w_x$ (default: 3, 3, 7.2)
 * `DVR_dimension`:   DVR grid spatial dimension (default: 1)
 * `sparse`:   (optional) use sparse matrix  (default: True)
-* `DVR_symmetry`:   (optional) use reflection symmetries in DVR calculation (default: True)
+<!-- * `DVR_symmetry`:   (optional) use reflection symmetries in DVR calculation (default: True) -->
 
-> ##### Reflection symmetry
+<!-- > ##### Reflection symmetry
 >
-> If `DVR_symmetry` is `False`, the DVR Hamiltonian is solved without block-diagonalizing the reflection symmetry sectors. If `True`, it solves the DVR Hamiltonian in symmetry sectors specified by the properties `lattice_symmetry` and `band` defined later.
+> If `DVR_symmetry` is `False`, the DVR Hamiltonian is solved without block-diagonalizing the reflection symmetry sectors. If `True`, it solves the DVR Hamiltonian in symmetry sectors specified by the properties `lattice_symmetry` and `band` defined later. -->
 
 #### `[Lattice_Parameters]`
 
@@ -204,12 +204,15 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
                     if only one number is given, this means the lattice is a 1D chain (default: `4,`)
 * `lattice_constant`:   lattice spacing in unit of nm
                     if only one number is given e.g. `1500`, this means $a_x=a_y$ (default: 1520, 1690)
-* `shape`:  lattice shape. Supported values: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb` and `kagome` (default: `square`)
+* `shape`:  lattice shape. Supported values: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb`, `kagome` and `custom` (default: `square`)
+
+<!-- TODO: add custom lattice shape -->
+
 * `lattice_symmetry`:   use lattice reflection symmetry (default: True)
 
-> ##### Relation between `lattice_symmetry` and `DVR_symmetry`
+> ##### Reflection symmetry
 >
-> The program generates a list of reflection symmetry sectors for DVR calculation to solve the Hamiltonian, labeled by $x$, $y$ and $z$-reflection parities `[px,py,pz]` with `px`, `py`, `pz` each to be 1, -1 or 0. 1 mean even-parity, -1 means odd-parity, 0 means no reflection symmetry is used in this direction. The list is generated based on the values of properties `lattice_symmetry` and `band` defined later.
+> The program generates a list of reflection symmetry sectors for DVR calculation to solve the Hamiltonian, labeled by $x$, $y$ and $z$-reflection parities `[px,py,pz]` with `px`, `py`, `pz` each to be `1`, `-1` or `0`. `1` mean even-parity, `-1` means odd-parity, `0` means no reflection symmetry is used in this direction. The list is generated based on the values of properties `lattice_symmetry` and `band` defined later.
 >
 > `DVR_symmetry` determine if the reflection symmetries are used in DVR eigenstate calculation. `lattice_symmetry` determine if there are $x$ and $y$ reflection symmetries in the lattice used.
 >
@@ -235,7 +238,8 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 * `band`:   number of bands to be calculated in Hubbard model (default: 1)
 * `U_over_t`:   Hubbard $U/t$ ratio (default: None)
             None means $\mathrm{avg} U / \mathrm{avg} t_x$ calculated in initial guess
-* `offdiagonal_U`:   
+* `offdiagonal_U`:   calculate $U_{ijkl}$
+            only support `band=1` (default: False)
 
 #### input in `[Trap_Adjustment]` section
 

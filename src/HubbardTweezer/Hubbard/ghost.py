@@ -24,10 +24,10 @@ class GhostTrap:
     is_masked: bool = False
     penfunc: str = "exp"
 
-    def __init__(self, lattice: Lattice, shape, threshold=0, penalty=0, func="exp"):
+    def __init__(self, lattice: Lattice, shape, penalty=0, threshold=0, func="exp"):
         self.shape = shape
-        self.threshold = threshold
         self.weight = penalty
+        self.threshold = threshold
         self.penfunc = func
         self.mask = np.ones(lattice.N, dtype=bool)
         self.links = lattice.links
