@@ -89,7 +89,7 @@ class HubbardEqualizer(MLWF):
         nobounds: bool = False,  # Whether to use bounds or not
         waist="x",  # Waist to vary, None means no waist change
         ghost: bool = False,  # Whether to use ghost atoms or not
-        ghost_penalty=(0, 0),  # Ghost threshold & penalty weight
+        ghost_penalty=(0, 0),  # Ghost penalty weight & threshold
         random: bool = False,  # Random initial guess
         iofile=None,  # Input/output file
         write_log: bool = False,  # Whether to write detailed log into iofile
@@ -109,8 +109,6 @@ class HubbardEqualizer(MLWF):
             print("Set shape to square for total system.")
             lattice_shape = "square"
         super().__init__(N, shape=lattice_shape, *args, **kwargs)
-
-        self.FIXED_V = kwargs.get("FIXED_V", 1)
 
         # set equalization label in file output
         self.eq_label = eqtarget
@@ -148,13 +146,14 @@ class HubbardEqualizer(MLWF):
 
         # Set init guess & bounds
         v0, bounds = self.initialize(random, nobounds)
-        init_simplex = None
 
-        try:
-            if isinstance(x0, np.ndarray):
-                v0, init_simplex = self._ext_init_guess(x0, v0)
-        except:  # x0 is None or other cases
-            print("Equalize: external initial guess is not passed.")
+        # temporary delete 9th element
+        bounds = bounds[0:8] + bounds[9:]
+        v0 = np.concatenate((v0[0:8], v0[9:]))
+        self.FIXED_V = kwargs.get("FIXED_V", 1)
+
+        v0, init_simplex = self._ext_init_guess(x0, v0)
+        print("Equalize: initial guess: ", v0)
 
         if equalize:
             eig_callback = kwargs.get("eig_callback", True)
@@ -177,6 +176,8 @@ class HubbardEqualizer(MLWF):
                 iofile=iofile,
             )
         else:
+            # Unfix v0[8] to be FIXED_V
+            v0 = np.insert(v0, 8, self.FIXED_V)
             # Set trap configuration for calculating Hubbard parameters only
             self.param_unfold(v0, "Initial")
 
@@ -215,7 +216,7 @@ class HubbardEqualizer(MLWF):
 
         # Create eqinfo log
         self.eqinfo.create_log(v0, target)
-
+        print(v0)
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
         # But since unitary optimize time cost is not large in larger systems
@@ -261,8 +262,8 @@ class HubbardEqualizer(MLWF):
                 f"Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf."
             )
 
-
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
+            # temporary fix value on v0[8] to be FIXED_V
             point = np.insert(point, 8, self.FIXED_V)
             return self.opt_func(
                 point,
@@ -276,8 +277,6 @@ class HubbardEqualizer(MLWF):
                 mode=mode,
                 report=iofile,
             )
-        
-        bounds = boundas[0:8] + bounds[9:]
 
         t0 = time()
         if mode == "res":
@@ -315,19 +314,26 @@ class HubbardEqualizer(MLWF):
         print(f"Equalization took {t1 - t0} seconds.")
 
         self.eqinfo.update_log_final(res, self.sf)
+        # Unfix v0[8] to be FIXED_V
+        res.x = np.insert(res.x, 8, self.FIXED_V)
         return self.param_unfold(res.x, "final")
 
     def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
-        if self.eqmethod == "Nelder-Mead" and x0.shape == (
-            len(v0) + 1,
-            len(v0),
-        ):
-            v0 = x0[0]
-            init_simplex = x0
-            print("Equalize: external initial simplex is passed to NM.")
-        elif len(x0) == len(v0):
-            v0 = x0  # Use passed initial guess
-            print("Equalize: external initial guess is passed.")
+        init_simplex = None
+        try:
+            if isinstance(x0, np.ndarray):
+                if self.eqmethod == "Nelder-Mead" and x0.shape == (
+                    len(v0) + 1,
+                    len(v0),
+                ):
+                    v0 = x0[0]
+                    init_simplex = x0
+                    print("Equalize: external initial simplex is passed to NM.")
+                elif len(x0) == len(v0):
+                    v0 = x0  # Use passed initial guess
+                    print("Equalize: external initial guess is passed.")
+        except:  # x0 is None or other cases
+            print("Equalize: external initial guess is not passed.")
         return v0, init_simplex
 
     def _min_cost_mode(self, v0, bounds, init_simplx, opt_target):

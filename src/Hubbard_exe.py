@@ -205,6 +205,7 @@ if meth == "Nelder-Mead":
     )
 else:
     x0 = rep.a(report, "Equalization_Result", "x", None)
+print("x0", x0)
 
 # ====== Verbosity & Plotting ======
 log = rep.b(report, "Verbosity", "write_log", False)
@@ -253,7 +254,8 @@ G = HubbardGraph(
 )
 
 # ====== Adjust Voff if just do Hubbard parameter calculation ======
-G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
+if not eq:
+    G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=True, eig_sol=eig_sol)

@@ -38,6 +38,8 @@ class EqulizeInfo(dict):
         # Keep revcord
         ctot = la.norm(cvec)
         self["Nfeval"] += 1
+        # temporary fix for the bug in scipy.optimize.minimize
+        point = np.concatenate((point[0:8], point[9:]))
         self["x"] = np.append(self["x"], point[None], axis=0)
         self.update_cost(cvec, fval, ctot)
         diff = self["fval"][len(self["fval"]) // 2] - fval
