@@ -161,9 +161,17 @@ s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
-lattice = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(int)
-lc = tuple(rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690])))
-penfunc = rep.s(report, "Lattice_Parameters", "shape", "square")
+shape = rep.s(report, "Lattice_Parameters", "shape", "square")
+if shape == "custom":
+    nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
+    links = rep.a(report, "Lattice_Parameters", "bond_links", None)
+else:
+    lattice = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
+        int
+    )
+    lc = tuple(
+        rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
+    )
 ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
 
 # ====== Physical trap parameters ======
@@ -177,9 +185,10 @@ avg = rep.f(report, "Trap_Parameters", "average", 1)
 
 # ====== Hubbard settings ======
 band = rep.i(report, "Hubbard_Settings", "band", 1)
-ut = rep.f(report, "Hubbard_Settings", "U_over_t", None)
 Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 200)
 offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
+
+ut = rep.f(report, "Equalization_Result", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Equalization_Parameters", "equalize", False)
@@ -219,23 +228,23 @@ fixV = rep.f(report, "temp", "fix_V", 1)
 G = HubbardGraph(
     N,
     R0=L0,
-    lattice=lattice,
-    lc=lc,
+    dim=dim,
+    shape=shape,  # lattice geometries
+    lattice_symmetry=ls,
+    lattice_params=(lattice, lc),
+    custom_lattice=(nodes, links),
     ascatt=a_s,
     band=band,
-    dim=dim,
     avg=avg,
     model="Gaussian",  # Tweezer potetnial
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
     zR=zR,  # Rayleigh range input by hand
-    shape=penfunc,  # lattice geometries
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
     equalize=eq,
     eqtarget=eqt,
-    lattice_symmetry=ls,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
     Nintgrl_grid=Nintgrl_grid,

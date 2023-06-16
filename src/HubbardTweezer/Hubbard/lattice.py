@@ -4,7 +4,14 @@ import numpy as np
 
 
 class Lattice:
-    def __init__(self, size: np.ndarray, shape: str = "square", symmetry: bool = True):
+    def __init__(
+        self,
+        size: np.ndarray,
+        shape: str = "square",
+        symmetry: bool = True,
+        nodes: np.ndarray = None,
+        links: np.ndarray = None,
+    ):
         # Abstract lattice graph class
         # No lattice constant is encoded
         # shape: 'ring' 'square' 'Lieb' 'triangle' 'honeycomb' 'kagome'
@@ -14,31 +21,38 @@ class Lattice:
         # links: each row in links is a pair of node indices s.t.
         #        graph[idx1], graph[idx2] are linked by bounds
 
-        self.N = np.prod(size)
         self.shape = shape
         self.symmetry = symmetry
 
-        # Convert [n] to [n, 1]
-        if self.N == 1:
-            self.size = np.ones(1)
-            self.dim = 1
+        if shape == "custom":
+            self.nodes = nodes
+            self.links = links
+            self.N = nodes.shape[0]
+            self.size = np.array([self.N, 1])
+            self.dim = 2
         else:
-            if size.size == 1:
-                self.size = np.resize(
-                    np.pad(size, pad_width=(0, 1), constant_values=1), 2
-                )
+            if isinstance(size, Iterable):
+                size = np.array(size)
+            self.N = np.prod(size)
+            # Convert [n] to [n, 1]
+            if self.N == 1:
+                self.size = np.ones(1)
                 self.dim = 1
             else:
-                self.size = size.copy()
-                eff_dim = size > 1  # * (np.array(lc) > 0)
-                self.dim = size[eff_dim].size
-            if self.shape == "ring":
-                self.dim = 2
+                if size.size == 1:
+                    self.size = np.resize(
+                        np.pad(size, pad_width=(0, 1), constant_values=1), 2
+                    )
+                    self.dim = 1
+                else:
+                    self.size = size.copy()
+                    eff_dim = size > 1  # * (np.array(lc) > 0)
+                    self.dim = size[eff_dim].size
+                if self.shape == "ring":
+                    self.dim = 2
 
-        if isinstance(size, Iterable):
-            size = np.array(size)
+            self.nodes, self.links = build_lattice(self.size, self.shape, self.symmetry)
 
-        self.nodes, self.links = build_lattice(self.size, self.shape, self.symmetry)
         self.reflect, self.inv_coords = build_reflection(self.nodes, self.symmetry)
         # Adjust site number after adjust lattice by symmetry
         self.N = self.nodes.shape[0]
@@ -47,40 +61,47 @@ class Lattice:
 
 
 def build_lattice(size, shape, symmetry):
+    err = ValueError(f"Lattice: Unknown shape {shape}.")
     if np.prod(size) == 1:
         nodes = np.array([[0, 0]])
         links = np.array([]).reshape(0, 2)
-    elif shape == "ring":
-        nodes, links = ring_lattice(size[0])
-    elif shape == "square":
-        nodes, links, __ = sqr_lattice(size)
-    elif shape == "Lieb":
-        nodes, links = Lieb_lattice(size)
-    elif shape == "triangular":
-        nodes, links, __ = tri_lattice(size, symmetry=symmetry)
-    elif shape == "zigzag":
-        # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
-        # TODO: delete horizontal links
-        symmetry = False
-        nodes, links, __ = tri_lattice(
-            np.array([size[0], 2], dtype=int), symmetry=symmetry
-        )
-        links = links[abs(links[:, 0] - links[:, 1]) != 1]
-    elif shape == "honeycomb":
-        nodes, links = hc_lattice(size)
-    elif shape == "defecthoneycomb":
-        # Stone-Wales defect
-        # inspired by 10.1103/PhysRevE.93.042132
-        # and 10.1109/ICONSET.2011.6167932
-        nodes, links = defect_hc_lattice(size)
-    elif shape == "kagome":
-        nodes, links = kagome_lattice(size)
-    elif shape == "Penrose":
-        # Not useful as the diagonal distance is smaller than the bond length
-        # Not yet finished
-        nodes, links = penrose_tiling(size[0])
+    elif isinstance(shape, str):
+        if shape == "ring":
+            nodes, links = ring_lattice(size[0])
+        elif shape == "square":
+            nodes, links, __ = sqr_lattice(size)
+        elif shape == "Lieb":
+            nodes, links = Lieb_lattice(size)
+        elif shape == "triangular":
+            nodes, links, __ = tri_lattice(size, symmetry=symmetry)
+        elif shape == "zigzag":
+            # Tune lcy != sqrt(3)/2 * lcx to get zigzag from triangular ladder
+            # TODO: delete horizontal links
+            symmetry = False
+            nodes, links, __ = tri_lattice(
+                np.array([size[0], 2], dtype=int), symmetry=symmetry
+            )
+            links = links[abs(links[:, 0] - links[:, 1]) != 1]
+        elif shape == "honeycomb":
+            nodes, links = hc_lattice(size)
+        elif shape == "defecthoneycomb":
+            # Stone-Wales defect
+            # inspired by 10.1103/PhysRevE.93.042132
+            # and 10.1109/ICONSET.2011.6167932
+            nodes, links = defect_hc_lattice(size)
+        elif shape == "kagome":
+            nodes, links = kagome_lattice(size)
+        elif shape == "Penrose":
+            # Not useful as the diagonal distance is smaller than the bond length
+            # Not yet finished
+            nodes, links = penrose_tiling(size[0])
+        else:
+            raise err
+    elif isinstance(shape, np.ndarray):
+        nodes = shape
+        links = np.array([]).reshape(0, 2)
     else:
-        raise ValueError(f"Lattice: Unknown shape {shape}.")
+        raise err
     return nodes, links
 
 
