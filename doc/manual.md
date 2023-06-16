@@ -380,7 +380,12 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
    * `Hubbard.ghost`: `GhostTrap` class to add ghost traps to the lattice
    <!-- * `Hubbard.plot`: `HubbardGraph` class to plot Hubbard parameters on lattice graphs -->
 
-3. `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
+3. `tools`: tools for data analysis
+   * `tools.integrate`: functions to calculate 3D numerical integrals
+   * `tools.point_match`: function to match and label MLWFs to the traps
+   * `tools.reportIO`: functions to read and write `ini` files
+
+4. `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
 
 <!-- ## `Hubbard.plot`
 
