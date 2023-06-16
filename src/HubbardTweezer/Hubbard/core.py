@@ -41,13 +41,15 @@ class MLWF(DVR):
 
     def create_lattice(
         self,
-        lattice: np.ndarray,
-        lc: tuple[float, float] = (1520, 1690),
         shape: str = "square",
+        lattice: np.ndarray = np.array([2], dtype=int),
+        lc: tuple[float, float] = (1520, 1690),
+        nodes: np.ndarray = None,
+        links: np.ndarray = None,
     ):
         # graph : each line represents coordinate (x, y) of one lattice site
 
-        self.lattice = Lattice(lattice, shape, self.ls)
+        self.lattice = Lattice(lattice, shape, self.ls, nodes, links)
 
         self.set_lc(lc, shape)  # Convert lc to (lc, lc) and in unit of wx
 
@@ -120,13 +122,18 @@ class MLWF(DVR):
     def __init__(
         self,
         N: int,
-        lattice: np.ndarray = np.array([2], dtype=int),  # Square lattice dimensions
-        lc=(1520, 1690),  # Lattice constant, in unit of nm
+        shape="square",  # Shape of the lattice
+        lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
+        # Square lattice dimensions & lattice constant, in unit of nm
+        lattice_params: tuple[np.ndarray, tuple] = (
+            np.array([2], dtype=int),
+            (1520, 1690),
+        ),
+        # Custom lattice site positions & lattice links
+        custom_lattice: tuple[np.ndarray] = (None, None),
         isotropic: bool = False,  # Check if the lattice is isotropic
         ascatt=1770,  # Scattering length, in unit of Bohr radius, default 1770
-        shape="square",  # Shape of the lattice
         band=1,  # Number of bands
-        lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
         equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
         *args,
@@ -157,7 +164,9 @@ class MLWF(DVR):
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
-        self.create_lattice(lattice, lc, shape)
+        tc, lc = lattice_params
+        nodes, links = custom_lattice
+        self.create_lattice(shape, tc, lc, nodes, links)
         self.Voff = np.ones(self.lattice.N)  # Set default trap offset
         # Set waist adjustment factor
         self.wxy0 = self.wxy.copy()
@@ -651,7 +660,7 @@ def integrate(x, dx, integrand, method):
 def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(dim)]
     V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
-    for i in range(p.shape[0]): # Loop over trap sites, p.shape[0] = Ntrap
+    for i in range(p.shape[0]):  # Loop over trap sites, p.shape[0] = Ntrap
         V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
     return V @ U
 
