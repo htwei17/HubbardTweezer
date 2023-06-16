@@ -5,6 +5,7 @@
 
 # Folders
 __pycache__
+analysis
 test
 cluster
 !src
