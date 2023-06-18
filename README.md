@@ -9,10 +9,25 @@ Hubbard parameter calculator for 1&2D optical tweezer array systems
 
 Documentation [here](doc/mannual.md).
 
-Please cite the [paper]() if you wish to publish research work based on HubbardTweezer:
+Please cite the [paper](https://arxiv.org/abs/2306.03019) if you wish to publish research work based on HubbardTweezer:
 
 ```bibtex
-@article{xxx}
+@ARTICLE{2023arXiv230603019W,
+       author = {{Wei}, Hao-Tian and {Ibarra-Garc{\'\i}a-Padilla}, Eduardo and {Wall}, Michael L. and {Hazzard}, Kaden R.~A.},
+        title = "{Hubbard parameters for programmable tweezer arrays}",
+      journal = {arXiv e-prints},
+     keywords = {Condensed Matter - Quantum Gases, Physics - Atomic Physics, Quantum Physics},
+         year = 2023,
+        month = jun,
+          eid = {arXiv:2306.03019},
+        pages = {arXiv:2306.03019},
+          doi = {10.48550/arXiv.2306.03019},
+archivePrefix = {arXiv},
+       eprint = {2306.03019},
+ primaryClass = {cond-mat.quant-gas},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv230603019W},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
 ```
 
 ## Features
@@ -23,11 +38,8 @@ Please cite the [paper]() if you wish to publish research work based on HubbardT
 
 ## Dependencies
 
-* [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
-* [`networkx`](https://github.com/networkx/networkx) which depends on `matplotlib`
-* [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
 * `scipy` along with `numpy`
-* `ortools`
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
+* [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
+* [`ortools`](https://github.com/google/or-tools)
 * `configobj`
-* `pympler`
-* `h5py`
