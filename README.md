@@ -41,5 +41,6 @@ archivePrefix = {arXiv},
 * `scipy` along with `numpy`
 * [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
+* [`nlopt`](https://github.com/stevengj/nlopt)
 * [`ortools`](https://github.com/google/or-tools)
 * `configobj`
