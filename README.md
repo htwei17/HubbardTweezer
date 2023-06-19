@@ -32,9 +32,8 @@ archivePrefix = {arXiv},
 
 ## Features
 
-1. Dynamics of on-off strobe potential
-2. Solve Hubbard parameters of 2d arbitrary geometry
-3. Equalize Hubbard parameters over all sites
+1. Solve Hubbard parameters of 2d arbitrary finite lattice geometry
+2. Equalize Hubbard parameters over all sites
 
 ## Dependencies
 
