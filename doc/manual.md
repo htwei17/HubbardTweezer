@@ -275,7 +275,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
             see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
-* `no_bounds`:  (optional) do not use bounds in optimization (default: False)
+<!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 * `random_initial_guess`:   (optional) use random initial guess (default: False)
 * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
                 None means $\min t$ calculated in initial guess  
