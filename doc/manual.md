@@ -275,7 +275,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 >
 > 1. lowercase `u`,`v`,`t`: to equalize Hubbard parameters without target values, meaning the program minimizes the variance of the Hubbard parameter
 > 2. uppercase `U`, `V`, `T`: to equalize Hubbard parameters to target values, meaning the program minimizes the difference between Hubbard parameters and target values
-> 3. Multiple letters can be used together, e.g. `uvT` means to equalize `u` to a uniform but not specific target value, `v` to zero, and `T` to target values
+> 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to a uniform but not specific target value and `T` to target values
 
 * `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
             see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
