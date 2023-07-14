@@ -263,8 +263,8 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `Nintgrl_grid`:   number of grid points in numerical integration of U (default: 200)
 * `band`:   number of bands to be calculated in Hubbard model (default: 1)
 * `offdiagonal_U`:   calculate multi-site interaction $U_{ijkl}$  
-                     this calculates and stores a tensor of $N_\text{site}^4$ elements
-            only supports `band=1` (default: False)
+                     if it is `True`, it calculates and stores a tensor of $N_\text{site}^4$ elements  
+                     only `band=1` is supported (default: False)
 
 #### `[Equalization_Parameters]`
 
