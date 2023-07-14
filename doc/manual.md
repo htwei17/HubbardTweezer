@@ -238,8 +238,6 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 #### `[Trap_Parameters]`
 
 * `scattering_length`:  scattering length in unit of Bohr radius $a_0$ (default: 1770)
-* `V0`:    trap depth scale in unit of kHz (default: 104.52)  
-           the trap depth factor for each individual trap is specified in below `V_offset` parameter
 * `waist`: ($w_x$, $w_y$) waist tuple in unit of nm. If only one is set it means the value is both $w_x=w_y$ (default: `1000, 1000`)
 * `atom_mass`:  atom mass in unit of amu (default: 6.015122)
 * `zR`:    (optional) ($z_{R,x}$, $z_{R,y}$) Rayleigh range tuple in unit of nm  
@@ -247,11 +245,17 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `laser_wavelength`:   laser wavelength in unit of nm (default: 780)
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
+> ##### Set trap depths for each trap
+> The trap depths of each trap is $\text{trap depth} = V_\text{offset} \times V_0$
+> where $V_0$ is a number specifying the frequency scale and $V_\text{offset}$ is an array of scale factors of each trap. They are the two next parameters listed.
+
+* `V0`:    trap depth frequency scale in unit of kHz (default: 104.52)
+
 #### input in `[Trap_Adjustment]`
 
-* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
+* `V_offset`:   trap depth factors for each trap  
                 if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, the rest trap depths input will be overwritten  
-                if `equalize` is `True`, `V_offset` information is included in `x` and `V_offset` will not be used, see details below  
+                if `equalize` is `True`, `V_offset` information is included in and overridden by `x`, see details in "input in `[Equalization_Result]`" section  
                 `None` means $V_\text{offset} = 1$ over the entire lattice (default: None)
   
 #### `[Hubbard_Settings]`
