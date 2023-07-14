@@ -301,7 +301,7 @@ Note: `shape=custom` is not supported.
 > ##### Explain ghost penalty
 >
 > ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
-> $\mathrm{penalty} = \mathrm{factor} \times \exp\{-6(q-\mathrm{threshold})\}$
+> $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\mathrm{threshold})]$
 
 #### `[Verbosity]`
 
