@@ -280,10 +280,10 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
                 available algorithms: `trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B`, `cobyla`, `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
-* `random_initial_guess`:   (optional) use random initial guess (default: False)
-* `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
+<!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
+<!-- * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
                 None means $\min t$ calculated in initial guess  
-                in unit of kHz (default: None)
+                in unit of kHz (default: None) -->
 
 ##### Equalization proposal: adjust waist
 
