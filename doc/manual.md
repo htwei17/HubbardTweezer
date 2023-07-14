@@ -278,7 +278,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to a uniform but not specific target value and `T` to target values
 
 * `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
-            see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
+                available algorithms: `trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B`, ' cobyla', `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 * `random_initial_guess`:   (optional) use random initial guess (default: False)
 * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
