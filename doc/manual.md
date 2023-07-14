@@ -240,9 +240,9 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `scattering_length`:  scattering length in unit of Bohr radius $a_0$ (default: 1770)
 * `waist`: ($w_x$, $w_y$) waist tuple in unit of nm. If only one is set it means the value is both $w_x=w_y$ (default: `1000, 1000`)
 * `atom_mass`:  atom mass in unit of amu (default: 6.015122)
-* `zR`:    (optional) ($z_{R,x}$, $z_{R,y}$) Rayleigh range tuple in unit of nm  
-        None means calculated from laser wavelength (default: None)  
 * `laser_wavelength`:   laser wavelength in unit of nm (default: 780)
+* `zR`:    (optional) ($z_{R,x}$, $z_{R,y}$) Rayleigh range tuple in unit of nm  
+        None means calculated from `waist` and `laser_wavelength` (default: None)  
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
 > ##### Set trap depths for each trap
