@@ -217,10 +217,10 @@ If `shape` is `custom`, the following two parameters are read:
 
 * `site_locations`:  (number of sites x 2 array) trap centers in unit of `lattice_constant` (default: None)  
                      the `i`-th row is the (x,y) coordinate for the i-th trap site (i=0,1,..., number of sites - 1)  
-* `bond_links`:      (number of bonds x 2 array) used in Hubbard parameter equalization to decide which pairs of sites' tunneling will be equalized (default: None)
+* `bond_links`:      (number of bonds x 2 array) used in Hubbard parameter equalization to decide which pairs of sites' tunneling will be equalized (default: None)  
                      each row is a bond, i.e. link between a pair of sites (i,j), with integers i and j trap site indices
 
-The below is to use lattice reflection symmetries in DVR calculation. Make sure the lattice shape (or the custom array of site locations) is symmetric in the $x$ and $y$ directions before enabling.
+The next parameter specifies whether to use lattice reflection symmetries in the DVR calculation. Make sure the lattice shape (or the custom array of site locations) is symmetric in the $x$ and $y$ directions before enabling.
 
 * `lattice_symmetry`:   use lattice $x$- and $y$-reflection symmetry (default: True)
 
