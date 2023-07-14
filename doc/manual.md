@@ -251,7 +251,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
                 if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, the rest trap depths input will be overwritten  
-                For `equalize` is `True`, `V_offset` information is included in `x` and this will not be used, see details below  
+                if `equalize` is `True`, `V_offset` information is included in `x` and `V_offset` will not be used, see details below  
                 `None` means $V_\text{offset} = 1$ over the entire lattice (default: None)
   
 #### `[Hubbard_Settings]`
