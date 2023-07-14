@@ -249,9 +249,9 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### input in `[Trap_Adjustment]`
 
-* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$
-                if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, the rest trap depths input will be overwritten
-                For `equalize` is `True`, `V_offset` information is included in `x` and this will not be used, see details below
+* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
+                if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, the rest trap depths input will be overwritten  
+                For `equalize` is `True`, `V_offset` information is included in `x` and this will not be used, see details below  
                 `None` means $V_\text{offset} = 1$ over the entire lattice (default: None)
   
 #### `[Hubbard_Settings]`
@@ -301,8 +301,8 @@ Note: `shape=custom` is not supported.
 
 #### `[Verbosity]`
 
-* `write_log`:  (optional) print parameters of every step to log file  (default: False).  
-            See `[Equalization_Log]` in output file
+* `write_log`:  (optional) print parameters of every step to log file  (default: False)  
+            see `[Equalization_Log]` in output file
 * `plot`:   plot Hubbard parameter graphs  (default: False)
 * `verbosity`:  (optional) 0~3, levels of how much information to print (default: 0)
 
