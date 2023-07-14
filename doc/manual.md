@@ -254,7 +254,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 #### input in `[Trap_Adjustment]`
 
 * `V_offset`:   trap depth factors for each trap  
-                if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, the rest of trap depths input will be overwritten  
+                if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, and the rest of trap depths input will be overwritten  
                 if `equalize` is `True`, `V_offset` information is included in and overridden by `x`, see details in "input in `[Equalization_Result]`" section  
                 `None` means $V_\text{offset} = 1$ over the entire lattice (default: None)
   
