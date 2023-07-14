@@ -220,7 +220,7 @@ If `shape` is `custom`, the following two parameters are read:
 * `bond_links`:      (number of bonds x 2 array) used in Hubbard parameter equalization to decide which pairs of sites' tunneling will be equalized (default: None)  
                      each row is a bond, i.e. link between a pair of sites (i,j), with integers i and j trap site indices
 
-The next parameter specifies whether to use lattice reflection symmetries in the DVR calculation. Make sure the lattice shape (or the custom array of site locations) is symmetric in the $x$ and $y$ directions before enabling.
+The next parameter specifies whether to use lattice reflection symmetries in the DVR calculation. By default, all the lattice shapes except the `custom` and `triangular` are reflection symmetric in the $x$ and $y$ directions.
 
 * `lattice_symmetry`:   use lattice $x$- and $y$-reflection symmetry (default: True)
 
