@@ -287,7 +287,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 ##### Equalization proposal: adjust waist
 
-* `waist_direction`:  (optional) direction of waist adjustment. `x`, `y`, `xy` are supported
+* `waist_direction`:  (optional) direction of waist adjustment. `x`, `y`, `xy` are supported  
                     None means no waist adjustment (default: None)
 
 ##### Equalization proposal: ghost trap
