@@ -201,16 +201,16 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 #### `[Lattice_Parameters]`
 
-* `shape`:  lattice shape.
+* `shape`:  lattice shape.  
                     Supported strings: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb`, `kagome` and `custom` (default: `square`)
-* `lattice_constant`:   the $x$ and $y$ directions lattice spatial scaling, in unit of nm
-                    if `shape` is `custom`, it is the unit of `site_locations`
-                    if `shape` is not `custom`, it is lattice spacing
+* `lattice_constant`:   the $x$ and $y$ directions lattice spatial scaling, in unit of nm  
+                    if `shape` is `custom`, it is the unit for `site_locations`  
+                    if `shape` is not `custom`, it is lattice spacing  
                     if only one number is given e.g. `1500`, this means $a_x=a_y$ (default: `1520, 1690`)
 
 If `shape` is not `custom`, the following parameter is read:
 
-* `lattice_size`:  (tuple or number) traps in each lattice dimension
+* `lattice_size`:  (tuple or number) traps in each lattice dimension  
                     if only one number is given, this means the lattice is a 1D chain (default: `4,`)
 
 Only if `shape` is `custom`, the following two parameters are read:
@@ -239,8 +239,8 @@ The below is to use lattice reflection symmetries in DVR calculation. Make sure 
 * `V0`:    trap depth in unit of kHz (default: 104.52)
 * `waist`: ($w_x$, $w_y$) waist tuple in unit of nm. If only one is set it means the value is both $w_x=w_y$ (default: `1000, 1000`)
 * `atom_mass`:  atom mass in unit of amu (default: 6.015122)
-* `zR`:    (optional) ($z_{R,x}$, $z_{R,y}$) Rayleigh range tuple in unit of nm
-        None means calculated from laser wavelength (default: None)
+* `zR`:    (optional) ($z_{R,x}$, $z_{R,y}$) Rayleigh range tuple in unit of nm  
+        None means calculated from laser wavelength (default: None)  
 * `laser_wavelength`:   laser wavelength in unit of nm (default: 780)
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
@@ -248,15 +248,15 @@ The below is to use lattice reflection symmetries in DVR calculation. Make sure 
 
 * `Nintgrl_grid`:   number of grid points in numerical integration of U (default: 200)
 * `band`:   number of bands to be calculated in Hubbard model (default: 1)
-* `offdiagonal_U`:   calculate multi-site interaction $U_{ijkl}$
+* `offdiagonal_U`:   calculate multi-site interaction $U_{ijkl}$  
                      this calculates and stores a tensor of $N_\text{site}^4$ elements
             only support `band=1` (default: False)
 
 #### input in `[Trap_Adjustment]`
 
-* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$
-                    Only used when `equalize` is `False`
-                    For `equalize` is `True`, use `x` as input, see details below
+* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
+                    Only used when `equalize` is `False`  
+                    For `equalize` is `True`, use `x` as input, see details below  
                     None means $V_\text{offset} = 1$ over the entire lattice (default: None)
 
 #### `[Equalization_Parameters]`
@@ -270,12 +270,12 @@ The below is to use lattice reflection symmetries in DVR calculation. Make sure 
 > 2. uppercase `U`, `V`, `T`: to equalize Hubbard parameters to target values, meaning the program minimizes the difference between Hubbard parameters and target values
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to zero average, and to equalize `T` to target values
 
-* `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
+* `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
             see `scipy.optimize.minimize`, `scipy.optimize.least_squares`, and `nlopt` documentations for more details
 * `no_bounds`:  (optional) do not use bounds in optimization (default: False)
 * `random_initial_guess`:   (optional) use random initial guess (default: False)
-* `scale_factor`:   (optional) energy scale factor to make cost function dimensionless
-                None means $\min t$ calculated in initial guess
+* `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
+                None means $\min t$ calculated in initial guess  
                 in unit of kHz (default: None)
 
 ##### Equalization proposal: adjust waist
@@ -288,7 +288,7 @@ The below is to use lattice reflection symmetries in DVR calculation. Make sure 
 Note: `shape=custom` is not supported.
 
 * `ghost_sites`:   (optional) add ghost sites to the lattice  (default: False)
-* `ghost_penalty`: (optional) 2-entry tuple (factor, threshold) to determine the ghost penalty added to the cost function
+* `ghost_penalty`: (optional) 2-entry tuple (factor, threshold) to determine the ghost penalty added to the cost function  
                  threshold is in unit of kHz (default: `1, 1`)
 
 > ##### Explain ghost penalty
@@ -298,16 +298,16 @@ Note: `shape=custom` is not supported.
 
 #### `[Verbosity]`
 
-* `write_log`:  (optional) print parameters of every step to log file  (default: False).
+* `write_log`:  (optional) print parameters of every step to log file  (default: False).  
             See `[Equalization_Log]` in output file
 * `plot`:   plot Hubbard parameter graphs  (default: False)
 * `verbosity`:  (optional) 0~3, levels of how much information to print (default: 0)
 
 #### input in `[Equalization_Result]`
 
-* `x`:  (optional) initial trap parameters for equalization as 1D array
+* `x`:  (optional) initial trap parameters for equalization as 1D array  
             Used as initial guess for equalization
-* `U_over_t`:   Hubbard $U/t$ ratio (default: None)
+* `U_over_t`:   Hubbard $U/t$ ratio (default: None)  
             None means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 
 ### Items output by the program
@@ -337,11 +337,11 @@ This section lists the equalization status and result.
 
 * `x`:  the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
 * `cost_func_by_terms`:  cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, t, and V
-* `cost_func_value`: cost function value feval to be minimized
+* `cost_func_value`: cost function value feval to be minimized  
                     $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
 * `total_cost_func`:    total cost function value $C = C_U + C_t + C_V$
 * `func_eval_number`:   number of cost function evaluations
-* `scale_factor`:   energy scale factor to make cost function dimensionless.
+* `scale_factor`:   energy scale factor to make cost function dimensionless.  
                 See scale_factor in `[Parameters]`
 * `success`:    minimization success
 * `equalize_status`:    minimization status given by scipy.optimize.minimize
