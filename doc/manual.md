@@ -246,6 +246,13 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `laser_wavelength`:   laser wavelength in unit of nm (default: 780)
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
+#### input in `[Trap_Adjustment]`
+
+* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
+                    Only used when `equalize` is `False`  
+                    For `equalize` is `True`, use `x` as input, see details below  
+                    None means $V_\text{offset} = 1$ over the entire lattice (default: None)
+  
 #### `[Hubbard_Settings]`
 
 * `Nintgrl_grid`:   number of grid points in numerical integration of U (default: 200)
@@ -253,13 +260,6 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `offdiagonal_U`:   calculate multi-site interaction $U_{ijkl}$  
                      this calculates and stores a tensor of $N_\text{site}^4$ elements
             only support `band=1` (default: False)
-
-#### input in `[Trap_Adjustment]`
-
-* `V_offset`:   factor to scale trap depth, true depth = $V_\text{offset} \times V_0$  
-                    Only used when `equalize` is `False`  
-                    For `equalize` is `True`, use `x` as input, see details below  
-                    None means $V_\text{offset} = 1$ over the entire lattice (default: None)
 
 #### `[Equalization_Parameters]`
 
