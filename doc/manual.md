@@ -224,7 +224,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `lattice_symmetry`:   use lattice $x$- and $y$-reflection symmetry (default: True)
 
-> ##### Reflection symmetry
+</--- > ##### Reflection symmetry
 >
 > The program generates a list of reflection symmetry sectors for DVR calculation to solve the Hamiltonian, labeled by $x$, $y$ and $z$-reflection parities `[px,py,pz]` with `px`, `py`, `pz` each to be `1`, `-1` or `0`. `1` mean even-parity, `-1` means odd-parity, `0` means no reflection symmetry is used in this direction. The list is generated based on the values of properties `lattice_symmetry` and `band` defined later.
 >
@@ -233,7 +233,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 > If `DVR_symmetry` is `True`:
 > `band` is `1`, then `pz` is fixed to `1`, meaning only even sector is calculated. If `band` is larger than `1`, then `pz=[1,-1]` are both calculated.
 >
-> If `DVR_symmetry` is `False`, then no matter `lattice_symmetry` is, no reflection symmetries are used in calculation. But if `DVR_symmetry` is `True`, then the reflection symmetry sectors are used based on `lattice_symmetry` and the bands to solve. In this case, if `lattice_symmetry` is `True`, then `px=[1,-1]` and `py=[1,-1]` are calculated.
+> If `DVR_symmetry` is `False`, then no matter `lattice_symmetry` is, no reflection symmetries are used in calculation. But if `DVR_symmetry` is `True`, then the reflection symmetry sectors are used based on `lattice_symmetry` and the bands to solve. In this case, if `lattice_symmetry` is `True`, then `px=[1,-1]` and `py=[1,-1]` are calculated. ---/>
 
 #### `[Trap_Parameters]`
 
