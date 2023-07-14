@@ -190,7 +190,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 #### `[DVR_Parameters]`
 
 * `N`:  number of DVR grid points from the outermost trap center to the box edges (default: 20)
-* `L0`: distance from the outermost trap center to the box edges in unit of $x$ direction waist $w_x$ (default: `3, 3, 7.2`)
+* `L0`: (default: `3, 3, 7.2`) distance from the outermost trap center to the box edges in unit of $x$ direction waist $w_x$ 
 * `DVR_dimension`:   DVR grid spatial dimension (default: 1)
 * `sparse`:   (optional) use sparse matrix  (default: True)
 <!-- * `DVR_symmetry`:   (optional) use reflection symmetries in DVR calculation (default: True) -->
@@ -210,7 +210,7 @@ wf_centers = "[[-2.3110489105373313, 0.0], [-0.7903690147813551, 0.0], [0.790369
 
 If `shape` is not `custom`, the following parameter is read:
 
-* `lattice_size`:  (tuple or number) traps in each lattice dimension  
+* `lattice_size`:  (tuple or number) the number of traps in each lattice dimension  
                     if only one number is given, this means the lattice is a 1D chain (default: `4,`)
 
 Only if `shape` is `custom`, the following two parameters are read:
