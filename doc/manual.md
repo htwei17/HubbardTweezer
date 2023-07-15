@@ -2,7 +2,7 @@
 
 ----------------------------------------
 
-Here is the introductory manual for the code in [paper]() TODO:fill in the link.
+Here is the introductory manual for the code in [paper](https://arxiv.org/abs/2306.03019).
 
 For scientific principles, please refer to the paper main text.
 
@@ -191,10 +191,10 @@ In this section, `Nsite` is the number of trap sites.
 
 #### `[DVR_Parameters]`
 
-* `N`:  number of DVR grid points from the outermost trap center to the box edges (default: `20`)
+* `N`:  (integer) number of DVR grid points from the outermost trap center to the box edges (default: `20`)
 * `L0`:  (3-entry array) $x$, $y$ and $z$ direction distances from the outermost trap center to the box edges in unit of $x$ direction waist $w_x$ (default: `3, 3, 7.2`)
-* `DVR_dimension`:   DVR grid spatial dimension (default: `1`)
-* `sparse`:   (optional) use sparse matrix (default: `True`)
+* `DVR_dimension`:   (integer) DVR grid spatial dimension (default: `1`)
+<!-- * `sparse`:   (optional, bool) use sparse matrix (default: `True`) -->
 <!-- * `DVR_symmetry`:   (optional) use reflection symmetries in DVR calculation (default: True) -->
 
 <!-- > ##### Reflection symmetry
@@ -203,16 +203,16 @@ In this section, `Nsite` is the number of trap sites.
 
 #### `[Lattice_Parameters]`
 
-* `shape`:  (str) lattice shape.  
+* `shape`:  (string) lattice shape.  
                     Supported strings: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb`, `kagome` and `custom` (default: `square`)
-* `lattice_constant`:   (tuple or number) the $x$ and $y$ directions lattice spatial scaling, in unit of nm  
+* `lattice_constant`:   (tuple or float) the $x$ and $y$ directions lattice spatial scaling, in unit of nm  
                     if `shape` is `custom`, it is the unit for `site_locations`  
                     if `shape` is not `custom`, it is lattice spacing  
                     if only one number is given e.g. `1500`, this means $a_x=a_y$ (default: `1520, 1690`)
 
 If `shape` is not `custom`, the following parameter is read:
 
-* `lattice_size`:  (tuple or number) the number of traps in each lattice dimension  
+* `lattice_size`:  (tuple or integer) the number of traps in each lattice dimension  
                     if only one number is given, this means the lattice is a 1D chain (default: `4,`)
 
 If `shape` is `custom`, the following two parameters are read:
@@ -222,9 +222,9 @@ If `shape` is `custom`, the following two parameters are read:
 * `bond_links`:      (number of bonds x 2 array) used in Hubbard parameter equalization to decide which pairs of sites' tunneling will be equalized (default: `None`)  
                      each row is a bond, i.e. link between a pair of sites `(i,j)`, with integers `i` and `j` trap site indices
 
-The next parameter specifies whether to use lattice reflection symmetries in the DVR calculation. By default, all the lattice shapes except the `custom` and `triangular` are reflection symmetric in the $x$ and $y$ directions.
+The next parameter specifies whether to use lattice reflection symmetries in the DVR calculation. If this is enabled, only the `(x<=0, y<=0)` quadrant tweezer array parameters, including the trap center locations and the trap depths are used in the calculation. The other quadrants are overwritten by the copy of the `(x<=0, y<=0)` quadrant. Therefore, if the system is not reflection symmetric, please don't set to `True`.
 
-* `lattice_symmetry`:   use lattice $x$- and $y$-reflection symmetry (default: `True`)
+* `lattice_symmetry`:   (bool) use lattice $x$- and $y$-reflection symmetry (default: `True`)
 
 <!-- > ##### Reflection symmetry
 >
@@ -239,41 +239,41 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Trap_Parameters]`
 
-* `scattering_length`:  (number) scattering length in unit of Bohr radius $a_0$ (default: `1770`)
-* `waist`:  (tuple or number) $x$ and $y$ direction waist ($w_x$, $w_y$) in unit of nm (default: `1000, 1000`)  
+* `scattering_length`:  (float) scattering length in unit of Bohr radius $a_0$ (default: `1770`)
+* `waist`:  (tuple or float) $x$ and $y$ direction waist ($w_x$, $w_y$) in unit of nm (default: `1000, 1000`)  
              if only one is set it means $w_x=w_y$
-* `atom_mass`:  (number) atom mass in unit of amu (default: `6.015122`)
-* `laser_wavelength`:   (number) laser wavelength in unit of nm (default: `780`)
-* `zR`:    (tuple or number, optional) $x$ and $y$ direction Rayleigh range ($z_{R,x}$, $z_{R,y}$) in unit of nm (default: `None`)  
+* `atom_mass`:  (float) atom mass in unit of amu (default: `6.015122`)
+* `laser_wavelength`:   (float) laser wavelength in unit of nm (default: `780`)
+* `zR`:    (tuple or float, optional) $x$ and $y$ direction Rayleigh range ($z_{R,x}$, $z_{R,y}$) in unit of nm (default: `None`)  
         `None` means calculated from `waist` and `laser_wavelength`
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
 > ##### Set trap depths for each trap
-> 
+>
 > The trap depths of each trap is $\text{trap depth} = V_\text{offset} \times V_0$
 > where $V_0$ is a number specifying the frequency scale and $V_\text{offset}$ is an array of scale factors of each trap. They are the two next parameters listed.
 
-* `V0`:    (number) trap depth frequency scale in unit of kHz (default: 104.52)
+* `V0`:    (float) trap depth frequency scale in unit of kHz (default: 104.52)
 
 #### input in `[Trap_Adjustment]`
 
 * `V_offset`:   (`Nsite`-entry array) trap depth factors for each trap (default: `None`)  
-                if `lattice_symmetry` is used, only the top left quadrant of the lattice will be used, and the rest of the trap depths input will be overwritten  
-                if `equalize` is `True`, `V_offset` information is included in and overridden by `x`, see details in "input in `[Equalization_Result]`" section  
+                if `lattice_symmetry` is `True`, only the `(x<=0,y<=0)` quadrant of the lattice will be used, and the rest of the trap depths input will be overwritten  
+                if `equalize` is `True`, `V_offset` information is overridden by `x`, see details in "input in `[Equalization_Result]`" section  
                 `None` means $V_\text{offset} = 1$ over the entire lattice
   
 #### `[Hubbard_Settings]`
 
-* `Nintgrl_grid`:   (number) number of grid points in numerical integration of U (default: `200`)
-* `band`:   number of bands to be calculated in Hubbard model (default: `1`)
-* `offdiagonal_U`:   (boolean) calculate multi-site interaction $U_{ijkl}$ (default: `False`)  
+* `Nintgrl_grid`:   (integer) number of grid points in trapezoidal numerical integration of $U$ (default: `200`)
+* `band`:   (integer) number of bands to be calculated in Hubbard model (default: `1`)
+* `offdiagonal_U`:   (bool) calculate multi-site interaction $U_{ijkl}$ (default: `False`)  
                      if it is `True`, it calculates and stores a tensor of $N_\text{site}^4$ elements  
                      only `band=1` is supported
 
 #### `[Equalization_Parameters]`
 
-* `equalize`:   equalize Hubbard parameters or not (default: `False`)
-* `equalize_target`:    target Hubbard parameters to be equalized (default: `vT`)
+* `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
+* `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
 
 > ##### Explain equalization target
 >
@@ -281,8 +281,8 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 > 2. uppercase `U`, `V`, `T`: to equalize Hubbard parameters to target values, meaning the program minimizes the difference between Hubbard parameters and target values
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to a uniform but not specific target value and `T` to target values
 
-* `method`:     optimization algorithm to equalize Hubbard parameters (default: `trf`)  
-                available algorithms: `trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B`, `cobyla`, `praxis` and `bobyqa`
+* `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
+               available algorithms: `trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B`, `cobyla`, `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 <!-- * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
@@ -291,14 +291,14 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 ##### Equalization proposal: adjust waist
 
-* `waist_direction`:  (optional) direction of waist adjustment. `x`, `y`, `xy` are supported  
+* `waist_direction`:  (optional, string) direction of waist adjustment. `x`, `y`, `xy` are supported  
                     `None` means no waist adjustment (default: `None`)
 
 ##### Equalization proposal: ghost trap
 
-`shape=custom` is not supported by ghost trap.
+`shape=custom` is not supported by ghost trap adjustment.
 
-* `ghost_sites`:   (optional) add ghost sites to the lattice  (default: `False`)
+* `ghost_sites`:   (optional, bool) add ghost sites to the lattice (default: `False`)
 * `ghost_penalty`: (optional, tuple) 2-entry tuple (factor, threshold) of the ghost penalty added to the cost function (default: `1, 1`)  
                  threshold is in unit of kHz
 
@@ -309,21 +309,21 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Verbosity]`
 
-* `write_log`:  (optional, boolean) print parameters of every step to log file  (default: `False`)  
+* `write_log`:  (optional, bool) print parameters of every step to log file  (default: `False`)  
             see `[Equalization_Log]` in output sections
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
-* `verbosity`:  (optional, integer 0~3) levels of how much information to print (default: `0`)
+* `verbosity`:  (optional, integer `0~3`) levels of how much information printed (default: `0`)
 
 #### input in `[Equalization_Result]`
 
-* `x`:  (optional) initial trap parameters for equalization as 1D array  
-            Used as initial guess for equalization
-* `U_over_t`:   Hubbard $U/t$ ratio (default: `None`)  
-            `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
+* `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
+        used as initial guess for equalization
+* `U_over_t`:   (float) Hubbard $U/t$ ratio (default: `None`)  
+                `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 
 ### Items output by the program
 
-Here `N` is the number of sites, and `k` is the number of bands.
+Here the integers `N` is the number of sites, and `k` is the number of bands.
 
 #### `[Singleband_Parameters]`
 
@@ -347,29 +347,28 @@ The factors to adjust traps to equalize Hubbard parameters.
 
 This section lists the equalization status and result.
 
-* `x`:  the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
-* `cost_func_by_terms`:  cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
-* `cost_func_value`: weighted cost function value `feval` to be minimized  
+* `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
+* `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
+* `cost_func_value`: (float) weighted cost function value `feval` to be minimized  
                     $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
-* `total_cost_func`:    equal-weighted total cost function value $C = C_U + C_t + C_V$
-* `func_eval_number`:   number of cost function evaluations
+* `total_cost_func`:    (float) equal-weighted total cost function value $C = C_U + C_t + C_V$
+* `func_eval_number`:   (integer) number of cost function evaluations
 <!-- * `scale_factor`:   energy scale factor to make cost function dimensionless.  
                 See `scale_factor` in `[Parameters]` section -->
-* `success`:    minimization success
-* `equalize_status`:    termination status of the optimization algorithm
-* `termination_reason`: termination message given by the optimization algorithm
-* `U_over_t`:   $U/t$ ratio, the same item as in the input section
+* `success`:    (bool) minimization success
+* `equalize_status`:    (integer) termination status of the optimization algorithm
+* `termination_reason`: (string) termination message given by the optimization algorithm
+* `U_over_t`:   (float) $U/t$ ratio, the same item as in the input section
 
 #### `[Equalization_Log]` (optional)
 
-Log of equalization process, turn on/off by `write_log`. Each item is an array of values introduced in `[Equalization_Result]`, which each row shows one step.
+Log of equalization process, turn on/off by `write_log`. Each item is an array of values introduced in `[Equalization_Result]` bearing the same key name, of which each row refers to one iteration step.
 
 #### `[Multiband_Parameters]` (optional)
 
-This part is optional. Only when `band > 1` it is printed.
+Multiband Hubbard parameters in unit of kHz, turn on if `band > 1`. Parameters have the same format as in `[Singleband_Parameters]`, labeled by band index.
 
-Multiband Hubbard parameters, in unit of kHz.
-Parameters are similar to `[Singleband_Parameters]`, labeled by band index.
+For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 1st band, and `U_12_i` is the on-site Hubbard interaction at site `i` between 1st and 2nd bands.
 
 ## Code structure
 
