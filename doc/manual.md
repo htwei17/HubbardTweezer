@@ -2,9 +2,7 @@
 
 ----------------------------------------
 
-Here is the introductory manual for the code in [paper](https://arxiv.org/abs/2306.03019).
-
-For scientific principles, please refer to the paper main text.
+This is an introductory manual for the code on [github](https://github.com/htwei17/HubbardTweezer) and used on the calculations in the [paper](https://arxiv.org/abs/2306.03019). For scientific principles, please refer to the paper main text.
 
 ## Dependencies
 

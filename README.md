@@ -7,9 +7,9 @@
 
 Hubbard parameter calculator for 1&2D optical tweezer array systems
 
-Documentation [here](doc/mannual.md).
+Documentation [here](doc/manual.md).
 
-Please cite the [paper](https://arxiv.org/abs/2306.03019) if you wish to publish research work based on HubbardTweezer:
+Please cite the [paper](https://arxiv.org/abs/2306.03019) if you wish to publish research work based on **HubbardTweezer**:
 
 ```bibtex
 @ARTICLE{2023arXiv230603019W,
@@ -32,7 +32,7 @@ archivePrefix = {arXiv},
 
 ## Features
 
-1. Solve Hubbard parameters of 2d arbitrary finite lattice geometry
+1. Solve Hubbard parameters of 2d arbitrary finite geometry, including a set of lattice shapes and custom geometries
 2. Equalize Hubbard parameters over all sites
 
 ## Dependencies
