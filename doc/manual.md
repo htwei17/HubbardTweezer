@@ -325,7 +325,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 ### Items output by the program
 
-Here the integers `N` is the number of sites, and `k` is the number of bands.
+Here the integer `N` is the number of sites, and the integer `k` is the number of bands.
 
 #### `[Singleband_Parameters]`
 
