@@ -334,6 +334,7 @@ The Hubbard parameters for the single-band Hubbard model, unit kHz.
 * `t_ij`:   (`N` x `N` array) tunneling matrix between sites `i` and `j`
 * `V_i`:    (`N` x 1 array) on-site potential at site `i`
 * `U_i`:    (`N` x 1 array) on-site Hubbard interaction at site `i`
+* `U_ijkl`:   (`N` x `N` x `N` x `N` array) Hubbard interaction $U_{ijkl}$ among site `i`, `j`, `k` and `l`
 * `wf_centers`:    (`N` x 2 array) calculated Wannier orbital center positions
 
 #### output in `[Trap_Adjustment]`
