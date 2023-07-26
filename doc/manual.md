@@ -43,13 +43,20 @@ key2 = value2
 
 What the program does is to read parameters set in `[Parameters]` section and write calculation results to the other sections, such as `[Singleband_Parameters]` for single-band Hubbard parameters, `[Equalization_Result]` for equalization solutions and `[Trap_Adjustments]` for how the traps need to be adjusted in experiment to realize the desired Hubbard parameters.
 
-### Data type: number vs array
+### Data type: number, tuple and array
 
-Specifically for the program to read a length=1 array, what needs to do is to add a comma after the number:
+Specifically for the program to read a length=1 tuple, what needs to do is to add a comma after the number:
 
 ```ini
 number = 2 # 2 read as number
 tuple = 2, # (2,) read as a tuple
+```
+
+And if we want to input a 1-D or n-D `numpy.array`, we use the following format:
+
+```ini
+1d_array = "[1, 2, 3]" # read as a 1-D array
+2d_array = "[[1, 2], [3, 4]]" # read as a 2-D array
 ```
 
 ## Example
