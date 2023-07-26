@@ -262,7 +262,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
   
 #### `[Hubbard_Settings]`
 
-* `Nintgrl_grid`:   (integer) number of grid points in trapezoidal numerical integration of $U$ (default: `200`)
+* `Nintgrl_grid`:   (integer) number of grid points in each dimension in trapezoidal numerical integration of $U$ (default: `200`)
 * `band`:   (integer) number of bands to be calculated in Hubbard model (default: `1`)
 * `offdiagonal_U`:   (bool) calculate multi-site interaction $U_{ijkl}$ (default: `False`)  
                      if it is `True`, it calculates and stores a tensor of $N_\text{site}^4$ elements  
