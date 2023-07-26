@@ -351,7 +351,7 @@ The factors to adjust traps to equalize Hubbard parameters.
 * `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the input section  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
 * `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
-* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist $w_{x,y} = \text{waist\_factors}_{x,y} \times w_{x,y}$
+* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist $w_{x,y} = waist\_factors_{x,y} \times w_{x,y}$ TODO: fix this on GitHub!
 
 #### output in `[Equalization_Result]`
 
