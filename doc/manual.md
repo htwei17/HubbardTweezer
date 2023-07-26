@@ -307,15 +307,16 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Verbosity]`
 
-* `write_log`:  (optional, bool) print parameters of every step to log file  (default: `False`)  
+* `write_log`:  (optional, bool) print parameters of every step to the `[Equalization_Log]` of the `ini` file  (default: `False`)  
             see `[Equalization_Log]` in output sections
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
-* `verbosity`:  (optional, integer `0~3`) levels of how much information printed (default: `0`)
+* `verbosity`:  (optional, integer `0~3`) levels of how much information printed, `3` is the most detailed level, `0` means no printed information (default: `0`)
 
 #### input in `[Equalization_Result]`
 
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
-        used as initial guess for equalization
+        used as the initial guess for equalization.
+        The structure is `[V_offset, trap_centers, waist_factors]`
 * `U_over_t`:   (float) Hubbard $U/t$ ratio (default: `None`)  
                 `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 
