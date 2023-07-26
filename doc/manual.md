@@ -277,11 +277,13 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 >
 > The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined.
 > 1. lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters
-> 2. uppercase `U`, `V`, `T`: the target values are fixed to the values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section.
+> 2. uppercase `U`, `V`, `T`: the target values are fixed to the average of values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section.
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values
 
 * `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
-               available algorithms: `trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B`, `cobyla`, `praxis` and `bobyqa`
+               available algorithms:
+               implemented by `scipy`:`trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B` and `cobyla`,
+               implemented by `nlopt`: `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 <!-- * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
@@ -318,7 +320,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
         used as the initial guess for equalization.
         The structure is `[V_offset, trap_centers, waist_factors]`
-* `U_over_t`:   (float) Hubbard $U/t$ ratio (default: `None`)  
+* `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
                 `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 
 ### Items output by the program
