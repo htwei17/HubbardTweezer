@@ -260,6 +260,8 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `V0`:    (float) trap depth frequency scale in unit of kHz (default: 104.52)
 
+<span id="input-in-trap_adjustment"></span>
+
 #### input in `[Trap_Adjustment]`
 
 * `V_offset`:   (`Nsite`-entry array) trap depth factors for each trap (default: `None`)  
@@ -274,6 +276,8 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 * `offdiagonal_U`:   (bool) calculate multi-site interaction $U_{ijkl}$ (default: `False`)  
                      if it is `True`, it calculates and stores a tensor of $N_\text{site}^4$ elements  
                      only `band=1` is supported
+
+<span id="equalization_parameters"></span>
 
 #### `[Equalization_Parameters]`
 
@@ -328,6 +332,8 @@ For the following sections about equalization process, please refer to the [pape
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
 * `verbosity`:  (optional, integer `0~3`) levels of how much information printed, `3` is the most detailed level, `0` means no printed information (default: `0`)
 
+<span id="input-in-equalization_result"></span>
+
 #### input in `[Equalization_Result]`
 
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
@@ -357,7 +363,7 @@ The factors to adjust traps to equalize Hubbard parameters.
 * `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the [input section](#input-in-trap_adjustment)  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
 * `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
-* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="wf.png" height="20" style="vertical-align: middle;">.
+* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/wf.png" height="20" style="vertical-align: middle;">.
 <!-- $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$ -->
 
 #### output in `[Equalization_Result]`
@@ -378,6 +384,8 @@ where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number 
 * `equalize_status`:    (integer) termination status of the optimization algorithm
 * `termination_reason`: (string) termination message given by the optimization algorithm
 * `U_over_t`:   (float) $U/t$ ratio, the same item as in the [input section](#input-in-equalization_result)
+
+<span id="equalization_log-optional"></span>
 
 #### `[Equalization_Log]` (optional)
 
