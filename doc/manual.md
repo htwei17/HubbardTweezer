@@ -363,8 +363,8 @@ The factors to adjust traps to equalize Hubbard parameters.
 #### output in `[Equalization_Result]`
 
 This section lists the equalization status and result. The definitions of $C_q$'s with $q=U$, $t$, or $V$ follow the Eq.(16) in the [paper](https://arxiv.org/abs/2007.02995) as below:
-$$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^N \left(q_i - \tilde{q}\right)^2 $$
-where $q_i$ is the Hubbard parameter at site $i$. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
+$$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^{N_q} \left(q_i - \tilde{q}\right)^2 $$
+where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
 * `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
