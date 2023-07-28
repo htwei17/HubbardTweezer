@@ -260,13 +260,13 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `V0`:    (float) trap depth frequency scale in unit of kHz (default: 104.52)
 
-<span id="input-in-trap_adjustment"></span>
+<!-- <span id="input-in-trap_adjustment"></span> -->
 
 #### input in `[Trap_Adjustment]`
 
 * `V_offset`:   (`Nsite`-entry array) trap depth factors for each trap (default: `None`)  
                 if `lattice_symmetry` is `True`, only the `(x<=0,y<=0)` quadrant of the lattice will be used, and the rest of the trap depths input will be overwritten  
-                if `equalize` is `True`, `V_offset` information is overridden by `x`, see details in [input in `[Equalization_Result]` section](#input-in-equalization_result)
+                if `equalize` is `True`, `V_offset` information is overridden by `x`, see details in input in `[Equalization_Result]` [section](#input-in-equalization_result)  
                 `None` means $V_\text{offset} = 1$ over the entire lattice
   
 #### `[Hubbard_Settings]`
@@ -277,7 +277,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
                      if it is `True`, it calculates and stores a tensor of $N_\text{site}^4$ elements  
                      only `band=1` is supported
 
-<span id="equalization_parameters"></span>
+<!-- <span id="equalization_parameters"></span> -->
 
 #### `[Equalization_Parameters]`
 
@@ -291,7 +291,7 @@ For the following sections about equalization process, please refer to the [pape
 > The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
 > 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
-> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the [input in `[Equalization_Result]` section](#input-in-equalization_result)  
+> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the input in `[Equalization_Result]` [section](#input-in-equalization_result)  
 >  i. For `U`, the target value is set to be the maximum value of the calculated Hubbard parameters by the initial physical trap parameters  
 >   ii. For `T`, the target value is set to be the minimum value of the calculated Hubbard parameters by the initial physical trap parameters  
 >   ii. Since the absolute value of `V` is not important, the case of `V` plays no effect  
@@ -328,11 +328,11 @@ For the following sections about equalization process, please refer to the [pape
 #### `[Verbosity]`
 
 * `write_log`:  (optional, bool) print parameters of every step to the `[Equalization_Log]` of the `ini` file  (default: `False`)  
-            see [`[Equalization_Log]` in output sections](#equalization_log-optional)
+            see `[Equalization_Log]` in [output sections](#equalization_log-optional)
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
 * `verbosity`:  (optional, integer `0~3`) levels of how much information printed, `3` is the most detailed level, `0` means no printed information (default: `0`)
 
-<span id="input-in-equalization_result"></span>
+<!-- <span id="input-in-equalization_result"></span> -->
 
 #### input in `[Equalization_Result]`
 
@@ -370,7 +370,7 @@ The factors to adjust traps to equalize Hubbard parameters.
 
 This section lists the equalization status and result. The definitions of $C_q$'s with $q=U$, $t$, or $V$ follow the Eq.(16) in the [paper](https://arxiv.org/abs/2007.02995) as below:
 $$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^{N_q} \left(q_i - \tilde{q}\right)^2 $$
-where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
+where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in `[Equalization_Parameters]` [section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
 * `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
@@ -379,13 +379,13 @@ where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number 
 * `total_cost_func`:    (float) equal-weighted total cost function value $C = C_U + C_t + C_V$
 * `func_eval_number`:   (integer) number of cost function evaluations
 * `scale_factor`:   (float) energy scale factor to make cost function dimensionless in unit of kHz.  
-                See `scale_factor` in [`[Equalization_Parameters]` section](#equalization_parameters) for the definition of energy scale factor.
+                See `scale_factor` in `[Equalization_Parameters]` [section](#equalization_parameters) for the definition of energy scale factor.
 * `success`:    (bool) minimization success
 * `equalize_status`:    (integer) termination status of the optimization algorithm
 * `termination_reason`: (string) termination message given by the optimization algorithm
 * `U_over_t`:   (float) $U/t$ ratio, the same item as in the [input section](#input-in-equalization_result)
 
-<span id="equalization_log-optional"></span>
+<!-- <span id="equalization_log-optional"></span> -->
 
 #### `[Equalization_Log]` (optional)
 
