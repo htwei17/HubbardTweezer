@@ -3,7 +3,7 @@ import sys
 from os.path import exists
 
 from HubbardTweezer.Hubbard.io import *
-from HubbardTweezer.Hubbard.plot import HubbardGraph
+# from HubbardTweezer.Hubbard.plot import HubbardGraph
 from HubbardTweezer.Hubbard.equalizer import *
 import HubbardTweezer.tools.reportIO as rep
 
@@ -219,13 +219,13 @@ print("x0", x0)
 # ====== Verbosity & Plotting ======
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
-plot = rep.b(report, "Verbosity", "plot", False)
+# plot = rep.b(report, "Verbosity", "plot", False)
 
 # temp: FIX V
 fixV = rep.f(report, "temp", "fix_V", 1)
 
 # ====== Equalize ======
-G = HubbardGraph(
+G = HubbardEqualizer(
     N,
     R0=L0,
     dim=dim,
@@ -281,9 +281,9 @@ if G.verbosity > 1:
     print(f"V = {np.diag(G.A)}")
     print(f"t = {abs(G.nn_tunneling(G.A))}")
     print(f"U = {G.U}")
-if plot:
-    G.draw_graph("adjust", A=G.A, U=G.U)
-    G.draw_graph(A=G.A, U=G.U)
+# if plot:
+#     G.draw_graph("adjust", A=G.A, U=G.U)
+#     G.draw_graph(A=G.A, U=G.U)
 
 # ====== Write output ======
 write_singleband(report, G)
