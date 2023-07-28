@@ -372,7 +372,7 @@ where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number 
                     $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
 * `total_cost_func`:    (float) equal-weighted total cost function value $C = C_U + C_t + C_V$
 * `func_eval_number`:   (integer) number of cost function evaluations
-* `scale_factor`:   energy scale factor to make cost function dimensionless.  
+* `scale_factor`:   (float) energy scale factor to make cost function dimensionless in unit of kHz.  
                 See `scale_factor` in [`[Equalization_Parameters]` section](#equalization_parameters) for the definition of energy scale factor.
 * `success`:    (bool) minimization success
 * `equalize_status`:    (integer) termination status of the optimization algorithm
