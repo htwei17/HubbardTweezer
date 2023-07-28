@@ -357,13 +357,16 @@ The factors to adjust traps to equalize Hubbard parameters.
 * `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the [input section](#input-in-trap_adjustment)  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
 * `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
-* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="wf.png" height="20" style="vertical-align: middle;">.
+* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/wf.png" height="20" style="vertical-align: middle;">.
 <!-- $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$ -->
 
 #### output in `[Equalization_Result]`
 
-This section lists the equalization status and result. The definitions of $C_q$'s with $q=U$, $t$, or $V$ follow the Eq.(16) in the [paper](https://arxiv.org/abs/2007.02995) as below:
-$$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^{N_q} \left(q_i - \tilde{q}\right)^2 $$
+This section lists the equalization status and result. The definitions of $C_q$'s with $q=U$, $t$, or $V$ follow the Eq.(16) in the [paper](https://arxiv.org/abs/2007.02995) as below:  
+<!-- $$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^{N_q} \left(q_i - \tilde{q}\right)^2 $$ -->
+
+<img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/cost.png" height="60">
+
 where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
