@@ -405,7 +405,7 @@ For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 
 The code consists of two modules `DVR` and `Hubbard`. Their main modules are explained below.
 
 1. `DVR`: DVR spectra calculations
-   * `DVR.core`: `DVR` base class to calculate DVR spectra
+   * `DVR.core`: `DVR` base class and helper functions to calculate DVR spectra
    * `DVR.const`: constants used in DVR calculations
    * `DVR.wavefunc`: wavefunction calculations
    <!-- * `DVR.dynamics`: define `dynamics` class and `DVR_exe` function -->
@@ -413,8 +413,8 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
    <!-- * `DVR_exe.py`: execute script of DVR dynamics on command line -->
 
 2. `Hubbard`: Hubbard parameter calculations
-   * `Hubbard.core` : `MLWF` class to construct maximally localized Wannier functions (MLWFs) and Hubbard parameters
-   * `Hubbard.equalizer` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
+   * `Hubbard.core` : `MLWF` class and helper functions to construct maximally localized Wannier functions (MLWFs) and Hubbard parameters
+   * `Hubbard.equalizer` : `HubbardParamEqualizer` inherits `MLWF` class, the class to equalize Hubbard parameters over all lattice sites
    * `Hubbard.riemann`: functions for Riemannian manifold optimization in constructing MLWFs
    * `Hubbard.eqinit`: functions to initialize trap parameters for equalization
    * `Hubbard.io`: logger and functions to read and write Hubbard parameters in equalization
