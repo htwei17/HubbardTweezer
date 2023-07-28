@@ -413,7 +413,7 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
    <!-- * `DVR_exe.py`: execute script of DVR dynamics on command line -->
 
 2. `Hubbard`: Hubbard parameter calculations
-   * `Hubbard.core` : `MLWF` class to construct maximally localized Wannier functions (MLWFs)
+   * `Hubbard.core` : `MLWF` class to construct maximally localized Wannier functions (MLWFs) and Hubbard parameters
    * `Hubbard.equalizer` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
    * `Hubbard.riemann`: functions for Riemannian manifold optimization in constructing MLWFs
    * `Hubbard.eqinit`: functions to initialize trap parameters for equalization
