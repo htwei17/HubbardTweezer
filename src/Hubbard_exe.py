@@ -224,7 +224,7 @@ verb = rep.i(report, "Verbosity", "verbosity", 0)
 # temp: FIX V
 fixV = rep.f(report, "temp", "fix_V", 1)
 
-# ====== Equalize ======
+# ====== Calculate or equalize ======
 G = HubbardEqualizer(
     N,
     R0=L0,
@@ -236,7 +236,7 @@ G = HubbardEqualizer(
     ascatt=a_s,
     band=band,
     avg=avg,
-    model="Gaussian",  # Tweezer potetnial
+    model="Gaussian",  # Tweezer potential
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
