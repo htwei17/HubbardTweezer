@@ -373,7 +373,7 @@ This section lists the equalization status and result. The definitions of $C_q$'
 
 <img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/cost.png" height="60">
 
-where $q_i$ is the Hubbard parameter at $i$-th site/bondand $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
+where $q_i$ is the Hubbard parameter at $i$-th site/bond and $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in `[Equalization_Parameters]` [section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
 * `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
