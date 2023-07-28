@@ -286,11 +286,11 @@ For more details of the equalization process, including the cost functions, plea
 >
 > The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
-> 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters
-> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section.
->   a. For `U`, the target value is set to be the maximum value of the calculated Hubbard parameters by the initial physical trap parameters
->   b. For `T`, the target value is set to be the minimum value of the calculated Hubbard parameters by the initial physical trap parameters
->   c. Since the absolute value of `V` is not important, the case of `V` plays no effect
+> 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
+> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section  
+>  i. For `U`, the target value is set to be the maximum value of the calculated Hubbard parameters by the initial physical trap parameters  
+>   ii. For `T`, the target value is set to be the minimum value of the calculated Hubbard parameters by the initial physical trap parameters  
+>   ii. Since the absolute value of `V` is not important, the case of `V` plays no effect  
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values determined by the initial physical trap parameters, while the uniformity of `V` is not considered
 
 * `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
