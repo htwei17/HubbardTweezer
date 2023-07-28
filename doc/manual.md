@@ -41,7 +41,7 @@ key2 = value2
 ...
 ```
 
-What the program does is to read parameters set in `[Parameters]` section and write calculation results to the other sections, such as `[Singleband_Parameters]` for single-band Hubbard parameters, `[Equalization_Result]` for equalization solutions and `[Trap_Adjustments]` for how the traps need to be adjusted in experiment to realize the desired Hubbard parameters.
+What the program does is to read parameters set in sections given at input e.g. `[DVR_Parameters]` for parameters of DVR calculation, and write calculation results to the output sections, such as `[Singleband_Parameters]` for single-band Hubbard parameters, `[Equalization_Result]` for equalization solutions and `[Trap_Adjustments]` for how the traps need to be adjusted in experiment to realize the desired Hubbard parameters.
 
 ### Data type: number, tuple and array
 
@@ -253,7 +253,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
         `None` means calculated from `waist` and `laser_wavelength`
 <!-- * `average`:    coefficient in front of trap depth, meaning the actual trap depth = `average * V0` (default: 1) -->
 
-> ##### Set trap depths for each trap
+##### Set trap depths for each trap
 >
 > The trap depths of each trap is $\text{trap depth} = V_\text{offset} \times V_0$
 > where $V_0$ is a number specifying the frequency scale and $V_\text{offset}$ is an array of scale factors of each trap. They are the two next parameters listed.
@@ -264,7 +264,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 * `V_offset`:   (`Nsite`-entry array) trap depth factors for each trap (default: `None`)  
                 if `lattice_symmetry` is `True`, only the `(x<=0,y<=0)` quadrant of the lattice will be used, and the rest of the trap depths input will be overwritten  
-                if `equalize` is `True`, `V_offset` information is overridden by `x`, see details in "input in `[Equalization_Result]`" section  
+                if `equalize` is `True`, `V_offset` information is overridden by `x`, see details in [input in `[Equalization_Result]` section](#input-in-equalization_result)
                 `None` means $V_\text{offset} = 1$ over the entire lattice
   
 #### `[Hubbard_Settings]`
@@ -277,17 +277,17 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Equalization_Parameters]`
 
-For more details of the equalization process, including the cost functions, please refer to the [paper](https://arxiv.org/abs/2306.03019).
+For the following sections about equalization process, please refer to the [paper](https://arxiv.org/abs/2306.03019) for more details.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
 * `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
 
-> ##### Explain equalization target
+##### Explain equalization target
 >
 > The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
 > 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
-> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section  
+> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the [input in `[Equalization_Result]` section](#input-in-equalization_result)  
 >  i. For `U`, the target value is set to be the maximum value of the calculated Hubbard parameters by the initial physical trap parameters  
 >   ii. For `T`, the target value is set to be the minimum value of the calculated Hubbard parameters by the initial physical trap parameters  
 >   ii. Since the absolute value of `V` is not important, the case of `V` plays no effect  
@@ -299,9 +299,9 @@ For more details of the equalization process, including the cost functions, plea
                implemented by `nlopt`: `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
-<!-- * `scale_factor`:   (optional) energy scale factor to make cost function dimensionless  
-                None means $\min t$ calculated in initial guess  
-                in unit of kHz (default: None) -->
+* `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
+                None means the smallest target value (see [explanation](#explain-equalization-target) above) calculated in initial guess  
+                in unit of kHz (default: None)
 
 ##### Equalization proposal: adjust waist
 
@@ -316,7 +316,7 @@ For more details of the equalization process, including the cost functions, plea
 * `ghost_penalty`: (optional, tuple) 2-entry tuple (factor, threshold) of the ghost penalty added to the cost function (default: `1, 1`)  
                  threshold is in unit of kHz
 
-> ##### Explain ghost penalty
+##### Explain ghost penalty
 >
 > ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
 > $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\mathrm{threshold})]$
@@ -324,7 +324,7 @@ For more details of the equalization process, including the cost functions, plea
 #### `[Verbosity]`
 
 * `write_log`:  (optional, bool) print parameters of every step to the `[Equalization_Log]` of the `ini` file  (default: `False`)  
-            see `[Equalization_Log]` in output sections
+            see [`[Equalization_Log]` in output sections](#equalization_log-optional)
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
 * `verbosity`:  (optional, integer `0~3`) levels of how much information printed, `3` is the most detailed level, `0` means no printed information (default: `0`)
 
@@ -332,7 +332,7 @@ For more details of the equalization process, including the cost functions, plea
 
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
         used as the initial guess for equalization.
-        The structure is `[V_offset, trap_centers, waist_factors]`
+        The structure is `concatenate([V_offset, trap_centers, waist_factors])`
 * `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
                 `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 
@@ -354,14 +354,17 @@ The Hubbard parameters for the single-band Hubbard model, unit kHz.
 
 The factors to adjust traps to equalize Hubbard parameters.
 
-* `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the input section  
+* `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the [input section](#input-in-trap_adjustment)  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
 * `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
-* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$
+* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="wf.png" height="20" style="vertical-align: middle;">.
+<!-- $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$ -->
 
 #### output in `[Equalization_Result]`
 
-This section lists the equalization status and result.
+This section lists the equalization status and result. The definitions of $C_q$'s with $q=U$, $t$, or $V$ follow the Eq.(16) in the [paper](https://arxiv.org/abs/2007.02995) as below:
+$$ C_q = \frac{1}{N_q \times \text{scale\_factor}}\sum_{i=1}^N \left(q_i - \tilde{q}\right)^2 $$
+where $q_i$ is the Hubbard parameter at site $i$. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in [`[Equalization_Parameters]` section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
 * `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
@@ -369,12 +372,12 @@ This section lists the equalization status and result.
                     $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
 * `total_cost_func`:    (float) equal-weighted total cost function value $C = C_U + C_t + C_V$
 * `func_eval_number`:   (integer) number of cost function evaluations
-<!-- * `scale_factor`:   energy scale factor to make cost function dimensionless.  
-                See `scale_factor` in `[Parameters]` section -->
+* `scale_factor`:   energy scale factor to make cost function dimensionless.  
+                See `scale_factor` in [`[Equalization_Parameters]` section](#equalization_parameters) for the definition of energy scale factor.
 * `success`:    (bool) minimization success
 * `equalize_status`:    (integer) termination status of the optimization algorithm
 * `termination_reason`: (string) termination message given by the optimization algorithm
-* `U_over_t`:   (float) $U/t$ ratio, the same item as in the input section
+* `U_over_t`:   (float) $U/t$ ratio, the same item as in the [input section](#input-in-equalization_result)
 
 #### `[Equalization_Log]` (optional)
 
