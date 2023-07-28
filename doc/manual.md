@@ -48,8 +48,8 @@ What the program does is to read parameters set in `[Parameters]` section and wr
 Specifically for the program to read a length=1 tuple, what needs to do is to add a comma after the number:
 
 ```ini
-number = 2 # 2 read as number
-tuple = 2, # (2,) read as a tuple
+number = 2 # read as number 2
+tuple = 2, # read as a tuple (2,)
 ```
 
 And if we want to input a 1-D or n-D `numpy.array`, we use the following format:
@@ -277,19 +277,25 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Equalization_Parameters]`
 
+For more details of the equalization process, including the cost functions, please refer to the [paper](https://arxiv.org/abs/2306.03019).
+
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
 * `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
 
 > ##### Explain equalization target
 >
-> The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined.
-> 1. lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters
-> 2. uppercase `U`, `V`, `T`: the target values are fixed to the average of values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section.
-> 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values
+> The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
+>
+> 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters
+> 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the "input in `[Equalization_Result]`" section.
+>   a. For `U`, the target value is set to be the maximum value of the calculated Hubbard parameters by the initial physical trap parameters
+>   b. For `T`, the target value is set to be the minimum value of the calculated Hubbard parameters by the initial physical trap parameters
+>   c. Since the absolute value of `V` is not important, the case of `V` plays no effect
+> 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values determined by the initial physical trap parameters, while the uniformity of `V` is not considered
 
 * `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
                available algorithms:
-               implemented by `scipy`:`trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B` and `cobyla`,
+               implemented by `scipy.optimize`:`trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B` and `cobyla`,
                implemented by `nlopt`: `praxis` and `bobyqa`
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
@@ -351,7 +357,7 @@ The factors to adjust traps to equalize Hubbard parameters.
 * `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the input section  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
 * `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
-* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist $w_{x,y} = waist\_factors_{x,y} \times w_{x,y}$ TODO: fix this on GitHub!
+* `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$
 
 #### output in `[Equalization_Result]`
 
