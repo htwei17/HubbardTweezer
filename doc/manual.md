@@ -376,7 +376,7 @@ This section lists the equalization status and result. The definitions of $C_q$'
 where $q_i$ is the Hubbard parameter at $i$-th site/bond and $N_q$ is the number of the parameters in one kind. $\tilde{q}$ is the target value of $q_i$'s, explained [here](#explain-equalization-target), and `scale_factor` is the smallest $\tilde{q}$ among all Hubbard parameters as explained in `[Equalization_Parameters]` [section](#equalization_parameters).
 
 * `x`:  (1-D array) the optimal trap parameters to equalize Hubbard parameters, the same item as in the input part
-* `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ by terms of $U$, $t$, and $V$
+* `cost_func_by_terms`:  (3-entry array) cost function values $C_U$, $C_t$, $C_V$ for $U$, $t$, and $V$
 * `cost_func_value`: (float) weighted cost function value `feval` to be minimized  
                     $\mathrm{feval} = w_1\times C_U + w_2\times C_t + w_3\times C_V$
 * `total_cost_func`:    (float) equal-weighted total cost function value $C = C_U + C_t + C_V$
@@ -413,7 +413,7 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
    <!-- * `DVR_exe.py`: execute script of DVR dynamics on command line -->
 
 2. `Hubbard`: Hubbard parameter calculations
-   * `Hubbard.core` : `MLWF` class to construct maximally localized Wannier funcitons (MLWFs)
+   * `Hubbard.core` : `MLWF` class to construct maximally localized Wannier functions (MLWFs)
    * `Hubbard.equalizer` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
    * `Hubbard.riemann`: functions for Riemannian manifold optimization in constructing MLWFs
    * `Hubbard.eqinit`: functions to initialize trap parameters for equalization
