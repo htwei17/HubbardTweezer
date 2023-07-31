@@ -2,47 +2,41 @@
 
 ![release](https://img.shields.io/github/v/release/Kvanti17/HubbardTweezer?color=green&include_prereleases)
 
-Repo for DVR full/sparse diagonalizaiton using 3d `x,y,z`-reflection symmetry
+Hubbard parameter calculator for 1&2D optical tweezer array systems
+
+Documentation [here](doc/manual.md).
+
+Please cite the [paper](https://arxiv.org/abs/2306.03019) if you wish to publish research work based on **HubbardTweezer**:
+
+```bibtex
+@ARTICLE{2023arXiv230603019W,
+       author = {{Wei}, Hao-Tian and {Ibarra-Garc{\'\i}a-Padilla}, Eduardo and {Wall}, Michael L. and {Hazzard}, Kaden R.~A.},
+        title = "{Hubbard parameters for programmable tweezer arrays}",
+      journal = {arXiv e-prints},
+     keywords = {Condensed Matter - Quantum Gases, Physics - Atomic Physics, Quantum Physics},
+         year = 2023,
+        month = jun,
+          eid = {arXiv:2306.03019},
+        pages = {arXiv:2306.03019},
+          doi = {10.48550/arXiv.2306.03019},
+archivePrefix = {arXiv},
+       eprint = {2306.03019},
+ primaryClass = {cond-mat.quant-gas},
+       adsurl = {https://ui.adsabs.harvard.edu/abs/2023arXiv230603019W},
+      adsnote = {Provided by the SAO/NASA Astrophysics Data System}
+}
+```
 
 ## Features
 
-1. Dynamics of on-off strobe potential
-2. Solve Hubbard parameters of 2d arbitrary geometry
-3. Equalize Hubbard parameters over all sites
+1. Solve Hubbard parameters of 2d arbitrary finite geometry, including a set of lattice shapes and custom geometries
+2. Equalize Hubbard parameters over all sites
 
 ## Dependencies
 
-* [`pymanopt`](https://github.com/pymanopt/pymanopt) which dependes on [`torch`](https://github.com/pytorch/pytorch) (or [`autograd`](https://github.com/HIPS/autograd) by your preference)
+* `scipy` along with `numpy`
+* [`pymanopt`](https://github.com/pymanopt/pymanopt) which depends on [`torch`](https://github.com/pytorch/pytorch)
 * [`opt_einsum`](https://github.com/dgasmith/opt_einsum)
-* [`graphviz`](https://github.com/xflr6/graphviz) and [`networkx`](https://github.com/networkx/networkx)
-* `numpy`
-* `scipy`
-* `matplotlib`
-* `pympler`
-* `h5py`
+* [`nlopt`](https://github.com/stevengj/nlopt)
+* [`ortools`](https://github.com/google/or-tools)
 * `configobj`
-
-## Modules
-
-### DYR dynamics
-
-* `DVR/core.py`: `DVR` base class to calculate DVR spectra
-* `DVR/dynamics.py`: define `dynamics` class and `DVR_exe` function
-* `DVR/output.py`: output storage `.h5` file interal structure definitions
-* `DVR_exe.py`: execute script of DVR dynamics on command line
-
-### Hubbard parameters
-
-* The code now supports square/rectangular, Lieb, triangular, honeycomb and kagome lattices
-* `Hubbard/core.py` : `MLWF` class to construct maximally localized Wannier funcitons
-* `Hubbard/equalizer.py` : `HubbardParamEqualizer` class to equalize Hubbard parameters over all lattice sites
-* `Hubbard/plot.py` and `Hubbard/graph.py` : `HubbardGraph` class to plot Hubbard parameters on lattice graphs, their difference is choice of graph plot packages
-* `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
-
-### Test and executables
-
-* `*.ipynb` are for test use. Most are self-explained by their title cells.
-
-## TODO
-
-* Test Hubbard parameter calculations for all lattice geometries
