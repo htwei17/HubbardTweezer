@@ -312,12 +312,12 @@ class MLWF(DVR):
                 p_tuple.append(p)
             else:
                 p_tuple.append([1])
-            # For a general omega_z << omega_x,y case,
-            # the lowest several bands are in
-            # z=1, z=-1, z=1 sector, etc... alternatively
-            # A simplest way to build bands is to simply collect
-            # Nband * Nsite lowest energy states
-            # z direction
+        # For a general omega_z << omega_x,y case,
+        # the lowest several bands are in
+        # z=1, z=-1, z=1 sector, etc... alternatively
+        # A simplest way to build bands is to simply collect
+        # Nband * Nsite lowest energy states
+        # z direction
         if self.bands > 1 and self.dim == 3:
             # Only for 3D case there are z=-1 bands
             p_tuple.append([1, -1])
@@ -328,7 +328,7 @@ class MLWF(DVR):
         return p_list
 
     def eigen_basis(
-        self, W0: list = None, standard: str = "symmetry"
+        self, W0: list = None, band_std: str = "symmetry"
     ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
@@ -350,13 +350,13 @@ class MLWF(DVR):
                 if W0 is not None:
                     W0[pidx] = W_sb[-k - 1]  # Inplace update x,y,z-folded W0
 
-            if standard == "energy":
+            if band_std == "energy":
                 # Sort everything by energy, only keetp lowest k states
                 idx = np.argsort(E_sb)[: k + 1]
                 E_sb = E_sb[idx]
                 W_sb = [W_sb[i] for i in idx[:k]]
                 p_sb = p_sb[idx, :]
-            elif standard == "symmetry":
+            elif band_std == "symmetry":
                 idx = np.argsort(E_sb)
                 E_sb = E_sb[idx]
                 W_sb = [W_sb[i] for i in idx]
@@ -373,10 +373,11 @@ class MLWF(DVR):
         # elif self.verbosity > 1 and E_sb[k - 1] - E_sb[0] > E_sb[k] - E_sb[k - 1]:
         #     print("Wannier warning: band gap is smaller than band width.")
 
-        if standard == "symmetry" and self.bands == 1:
-            standard = "energy"
+        if band_std == "symmetry" and self.bands == 1:
+            # Sector already be limited to z=1
+            band_std = "energy"
 
-        if standard == "energy":
+        if band_std == "energy":
             E_sb = E_sb[:k]
             p_sb = p_sb[:k]
             E = [
@@ -391,7 +392,7 @@ class MLWF(DVR):
                 p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
                 for b in range(self.bands)
             ]
-        elif standard == "symmetry" and self.bands == 2:
+        elif band_std == "symmetry" and self.bands == 2:
             # Hand coded pz-even and pz-odd bands
             E_even = np.array([])
             E_odd = np.array([])
