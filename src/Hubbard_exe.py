@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import h5py
 from os.path import exists
 
 from HubbardTweezer.Hubbard.io import *
@@ -220,6 +221,7 @@ print("x0", x0)
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 plot = rep.b(report, "Verbosity", "plot", False)
+savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
 # temp: FIX V
 fixV = rep.f(report, "temp", "fix_V", 1)
@@ -285,7 +287,7 @@ if plot:
     G.draw_graph("adjust", A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
 
-# ====== Write output ======
+# ====== Write singleband and trap parameters ======
 write_singleband(report, G)
 # Off-diagonal elements of U
 if G.bands == 1 and offdiag_U:
@@ -296,6 +298,7 @@ if G.bands == 1 and offdiag_U:
     rep.create_report(report, "Singleband_Parameters", **values)
 write_trap_params(report, G)
 
+# ====== Calculate Hubbard parameter variances ======
 eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
@@ -325,6 +328,26 @@ else:
     G.eqinfo["termination_reason"] = "Not equalized"
 G.eqinfo.write_equalization(report, write_log=log)
 
+if savefmt == "h5":
+    outFile = inFile[:-4] + ".h5"  # remove .ini and add .h5
+    tij = abs(G.A)
+    # remove diagonal elements, replace with V
+    tij += np.diag(np.diag(G.A) - np.diag(tij))
+    dat = {
+        "t_ij": tij,
+        "U_i": G.U,
+        "V_offset": G.Voff,
+        "trap_centers": G.trap_centers,
+        "wf_centers": G.wf_centers,
+        "total_cost_func": ctot,
+    }
+    with h5py.File(outFile, "w") as f:
+        print(f"Writing to h5 file {outFile} ...")
+        for k in dat.keys():
+            f[k] = np.asarray(dat[k])
+        print("Done!")
+
+# ====== Write multiband output ======
 if G.bands > 1:
     maskedA, W, wf_centers = multiband_WF(G, *eig_sol)
     values = {}
@@ -342,4 +365,4 @@ if G.bands > 1:
 
     rep.create_report(report, "Multiband_Parameters", **values)
 
-sys.exit(0)
+sys.exit(0)  # Exit with no error
