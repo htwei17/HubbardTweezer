@@ -281,7 +281,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Equalization_Parameters]`
 
-For the following sections about equalization process, please refer to the [paper](https://arxiv.org/abs/2306.03019) for more details.
+For the following sections about equalization process, please refer to the [paper](https://arxiv.org/abs/2306.03019) for more details. So far the equalization program only supports the lowest band Hubbard parameters.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
 * `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
@@ -306,6 +306,8 @@ For the following sections about equalization process, please refer to the [pape
 * `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
                 None means the smallest target value (see [explanation](#explain-equalization-target) above) calculated in initial guess  
                 in unit of kHz (default: None)
+
+Below 2 proposals are elaborated in the [paper](https://arxiv.org/abs/2306.03019).
 
 ##### Equalization proposal: adjust waist
 
@@ -398,7 +400,7 @@ Log of equalization process, turn on/off by `write_log`. Each item is an array o
 
 Multiband Hubbard parameters in unit of kHz, turn on if `band > 1`. Parameters have the same format as in `[Singleband_Parameters]`, labeled by band index.
 
-For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 1st band, and `U_12_i` is the on-site Hubbard interaction at site `i` between 1st and 2nd bands.
+For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 1st band, and `U_12_i` is the on-site Hubbard density-density interaction at site `i` between 1st and 2nd bands.
 
 ## Code structure
 
