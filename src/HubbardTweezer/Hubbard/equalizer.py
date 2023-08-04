@@ -13,8 +13,8 @@ from .io import *
 from .eqinit import *
 from .ghost import GhostTrap
 
- # If we want our target to be from our random initial guess, then set this to be True
- # Otherwise, the target values are from the uniform physical configuration
+# If we want our target to be from our random initial guess, then set this to be True
+# Otherwise, the target values are from the uniform physical configuration
 set_target_from_random = False
 
 
@@ -195,7 +195,7 @@ class HubbardEqualizer(MLWF):
         init_simplex: np.ndarray = None,
         target: str = "UvT",
         Ut: float = None,  # Target onsite interaction in unit of tx
-        weight: np.ndarray = np.ones(3), # Weight for U, v, T terms in cost function
+        weight: np.ndarray = np.ones(3),  # Weight for U, v, T terms in cost function
         eig_callback: bool = False,
         unitary_callback: bool = False,
         iofile: ConfigObj = None,
@@ -395,7 +395,7 @@ class HubbardEqualizer(MLWF):
         return res
 
     def _set_targets(self, Ut, fix_u, fix_t, links, A, U):
-        nnt = self.nn_tunneling(A)
+        nnt = self.nn_tunneling(A, self.ghost.links)
         # Set tx, ty target to be small s.t.
         # lattice spacing is not too close and WF collapses
         txTarget, tyTarget = self.txy_target(nnt, links, np.min)
@@ -445,17 +445,6 @@ class HubbardEqualizer(MLWF):
         ylinks = np.logical_not(xlinks)
         return xlinks, ylinks
 
-    def nn_tunneling(self, A: np.ndarray):
-        # Pick up nearest neighbor tunnelings
-        # Not limited to specific geometry
-        if self.lattice.N == 1:
-            nnt = np.zeros(1)
-        elif self.lattice.dim == 1:
-            nnt = np.diag(A, k=1)
-        else:
-            nnt = A[self.ghost.links[:, 0], self.ghost.links[:, 1]]
-        return nnt
-
     def eff_dof(self):
         # Record all free DoFs in the function
         self.Voff_dof = np.ones(self.lattice.Nindep).astype(bool)
@@ -480,7 +469,9 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def init_v0_and_bound(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
+    def init_v0_and_bound(
+        self, random=False, nobounds=False
+    ) -> tuple[np.ndarray, tuple]:
         # Initialize the optimization starting point and bounds
         # Mark effective DoFs
         self.eff_dof()
@@ -550,7 +541,7 @@ class HubbardEqualizer(MLWF):
     def _set_t(self, A, links, target):
         # Set tunneling target tx, ty and lsits of xlinks, ylinks to be used in the cost function
         links = self.xy_links() if links is None else links
-        nnt = self.nn_tunneling(A)
+        nnt = self.nn_tunneling(A, self.ghost.links)
         # Mostly not usable if not directly call this function
         if target is None:
             txTarget, tyTarget = self.txy_target(nnt, links)
@@ -597,7 +588,7 @@ class HubbardEqualizer(MLWF):
         if self.verbosity > 1:
             print(f"scale_factor = {scale_factor}")
             print(f"V = {np.diag(A)}")
-            print(f"t = {abs(self.nn_tunneling(A))}")
+            print(f"t = {abs(self.nn_tunneling(A, self.ghost.links))}")
             print(f"U = {U}")
 
         if not isinstance(target, Iterable):

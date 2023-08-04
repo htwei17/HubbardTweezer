@@ -167,7 +167,7 @@ if shape == "custom":
     nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
     links = rep.a(report, "Lattice_Parameters", "bond_links", None)
 else:
-    lattice = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
+    lsize = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
         int
     )
     lc = tuple(
@@ -229,7 +229,7 @@ G = HubbardEqualizer(
     dim=dim,
     shape=shape,  # lattice geometries
     lattice_symmetry=ls,
-    lattice_params=(lattice, lc),
+    lattice_params=(lsize, lc),
     custom_lattice=(nodes, links),
     ascatt=a_s,
     band=band,
@@ -287,7 +287,7 @@ write_singleband(report, G)
 # Off-diagonal elements of U
 if G.bands == 1 and offdiag_U:
     print("Singleband off-diagonal U calculation.")
-    __, W, __ = multiband_WF(G, *eig_sol)
+    __, W, __ = G.multiband_WF(*eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
     values = {"U_ijkl": U}
     rep.create_report(report, "Singleband_Parameters", **values)
@@ -323,7 +323,7 @@ else:
 G.eqinfo.write_equalization(report, write_log=log)
 
 if G.bands > 1:
-    maskedA, W, wf_centers = multiband_WF(G, *eig_sol)
+    maskedA, W, wf_centers = G.multiband_WF(*eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(maskedA[i]))

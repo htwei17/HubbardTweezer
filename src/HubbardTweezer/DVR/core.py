@@ -108,7 +108,7 @@ class DVR:
         n: np.ndarray,
         R0: np.ndarray,
         avg: float = 1,
-        model: str = "Gaussian",
+        model: str = "Gaussian", # Trap potential
         # 2nd entry in array is (wx, wy) in unit of nm
         # if given in single number w it is (w, w)
         trap: tuple[float, Union[float, tuple[float, float]]] = (104.52, 1000),
