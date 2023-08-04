@@ -3,6 +3,7 @@ import sys
 from os.path import exists
 
 from HubbardTweezer.Hubbard.io import *
+
 # from HubbardTweezer.Hubbard.plot import HubbardGraph
 from HubbardTweezer.Hubbard.equalizer import *
 import HubbardTweezer.tools.reportIO as rep
@@ -221,9 +222,6 @@ log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 # plot = rep.b(report, "Verbosity", "plot", False)
 
-# temp: FIX V
-fixV = rep.f(report, "temp", "fix_V", 1)
-
 # ====== Calculate or equalize ======
 G = HubbardEqualizer(
     N,
@@ -259,7 +257,6 @@ G = HubbardEqualizer(
     iofile=report,
     write_log=log,
     verbosity=verb,
-    FIXED_V=fixV,
 )
 
 # ====== Adjust Voff if just do Hubbard parameter calculation ======
@@ -317,7 +314,7 @@ G.eqinfo["Ut"] = Utarget / ttarget[0]
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
 else:
-    v0, __ = G.initialize(random=False)
+    v0, __ = G.init_v0_and_bound(random=False)
     G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
     G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False

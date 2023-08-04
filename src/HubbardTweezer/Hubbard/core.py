@@ -34,9 +34,9 @@ class MLWF(DVR):
 
     """
 
-    Nintgrl_grid: int = 257
-    ghost: GhostTrap
-    lattice: Lattice
+    Nintgrl_grid: int = 257 # Number of grid points for numerical integration in each dimension
+    ghost: GhostTrap # GhostTrap property object
+    lattice: Lattice # Lattice property object
     # Rintgrl: np.ndarray
 
     def create_lattice(

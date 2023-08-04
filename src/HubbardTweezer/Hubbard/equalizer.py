@@ -13,7 +13,9 @@ from .io import *
 from .eqinit import *
 from .ghost import GhostTrap
 
-set_target_from_random = False  # If we want our target to be from our (random) initial guess, then set this to be True
+ # If we want our target to be from our random initial guess, then set this to be True
+ # Otherwise, the target values are from the uniform physical configuration
+set_target_from_random = False
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
@@ -36,6 +38,7 @@ def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
 
 
 def _set_uv(uv, target, factor):
+    # Set U and V target values and factors
     if target is None:
         target = np.mean(uv)
     if factor is None:
@@ -47,6 +50,7 @@ def _set_uv(uv, target, factor):
 
 
 def _nlopt_min(eqinfo, v0, bounds, opt: nlopt.opt, opt_target):
+    # minimize function by nlopt
     ba = np.array(bounds)
     lb, ub = ba[:, 0], ba[:, 1]
     tol = 1e-8
@@ -60,6 +64,7 @@ def _nlopt_min(eqinfo, v0, bounds, opt: nlopt.opt, opt_target):
 
 
 def _nlopt_ressult(opt: nlopt.opt, xopt):
+    # Wrap OptimizeResult object by results of running nlopt
     opt_val = opt.last_optimum_value()
     result = opt.last_optimize_result()
     message = opt.get_stopval()
@@ -135,6 +140,7 @@ class HubbardEqualizer(MLWF):
                 "Equalize: only one site in the system, equalization is not valid."
             )
 
+        # Format str parameter on which waist directions to be varied
         if self.waist_dir not in ["x", "y", "xy", "yx", None]:
             self.waist_dir = None
         elif self.waist_dir == "yx":
@@ -145,24 +151,26 @@ class HubbardEqualizer(MLWF):
             x0 = None
 
         # Set init guess & bounds
-        v0, bounds = self.initialize(random, nobounds)
+        v0, bounds = self.init_v0_and_bound(random, nobounds)
 
         # temporary delete 9th element
         bounds = bounds[0:8] + bounds[9:]
         v0 = np.concatenate((v0[0:8], v0[9:]))
-        self.FIXED_V = kwargs.get("FIXED_V", 1)
 
+        # Read in initial guess, for NM read initial simplex
         v0, init_simplex = self._ext_init_guess(x0, v0)
         print("Equalize: initial guess: ", v0)
 
         if equalize:
-            eig_callback = kwargs.get("eig_callback", True)
-            if eig_callback:
-                print("Equalize: eig_callback is True.")
+            # ED callback: True means to read Krylov vectors from last ED calculation as the new initial guess
+            ed_callback = kwargs.get("eig_callback", True)
+            print(f"Equalize: ED calculation callback is {ed_callback}.")
+            # Unitary callback: True means to read SU(N) matrix from last Wannierization as the new initial guess
             unitary_callback = kwargs.get("unitary_callback", False)
 
             if set_target_from_random:
                 # Set trap config thus target from initial guess
+                # Otherwise use target from Voff = [1,1,...], trap_center unchanged and waist_factor = [[1,1],[1,1],...]
                 self.param_unfold(v0, "Initial")
 
             self.equalize(
@@ -171,13 +179,12 @@ class HubbardEqualizer(MLWF):
                 init_simplex=init_simplex,
                 target=eqtarget,
                 Ut=Ut,
-                eig_callback=eig_callback,
+                eig_callback=ed_callback,
                 unitary_callback=unitary_callback,
                 iofile=iofile,
             )
         else:
-            # Unfix v0[8] to be FIXED_V
-            v0 = np.insert(v0, 8, self.FIXED_V)
+            # Do not equalize, just set trap configuration by initial guess
             # Set trap configuration for calculating Hubbard parameters only
             self.param_unfold(v0, "Initial")
 
@@ -188,7 +195,7 @@ class HubbardEqualizer(MLWF):
         init_simplex: np.ndarray = None,
         target: str = "UvT",
         Ut: float = None,  # Target onsite interaction in unit of tx
-        weight: np.ndarray = np.ones(3),
+        weight: np.ndarray = np.ones(3), # Weight for U, v, T terms in cost function
         eig_callback: bool = False,
         unitary_callback: bool = False,
         iofile: ConfigObj = None,
@@ -197,8 +204,9 @@ class HubbardEqualizer(MLWF):
         print(f"Equalize: method = {self.eqmethod}")
         print(f"Equalize: quantities = {target}\n")
 
+        # fix_v is unused as it plays no effect
         u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
-        # Force corresponding factor to be 0 if flags u,t,v are false
+        # Impose flags u,t,v on input weight
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
 
         # Set ED callback
@@ -207,7 +215,7 @@ class HubbardEqualizer(MLWF):
         else:
             W0 = None
 
-        # Set target
+        # Set U, t, V targets
         A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
@@ -224,6 +232,7 @@ class HubbardEqualizer(MLWF):
         # Pack U0 to be mutable, thus can be updated in each iteration of minimize
         U0 = [V] if unitary_callback else None
 
+        # Set modes and flags for different optimization methods
         if self.eqmethod in ["trf", "dogbox"]:
             mode = "res"
         elif self.eqmethod in [
@@ -235,8 +244,6 @@ class HubbardEqualizer(MLWF):
             "SLSQP",
         ]:
             mode = "cost"
-        elif self.eqmethod in ["hybr"]:
-            mode = "func"
         elif self.eqmethod in ["bobyqa", "praxis", "subplex", "direct", "crs2"]:
             mode = "nlopt"
             goptim = False
@@ -262,9 +269,8 @@ class HubbardEqualizer(MLWF):
                 f"Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf."
             )
 
+        # Define objective function
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
-            # temporary fix value on v0[8] to be FIXED_V
-            point = np.insert(point, 8, self.FIXED_V)
             return self.opt_func(
                 point,
                 info,
@@ -283,10 +289,6 @@ class HubbardEqualizer(MLWF):
             res = self._min_res_mode(v0, bounds, opt_target)
         elif mode == "cost":
             res = self._min_cost_mode(v0, bounds, init_simplex, opt_target)
-        elif mode == "func":
-            # FIXME: not working if variable number of unknowns
-            # are smaller than number of equations
-            res = root(opt_target, v0, args=self.eqinfo, method=self.eqmethod, tol=1e-7)
         elif mode == "nlopt":
             xopt = _nlopt_min(self.eqinfo, v0, bounds, opt, opt_target)
             if goptim:
@@ -314,8 +316,6 @@ class HubbardEqualizer(MLWF):
         print(f"Equalization took {t1 - t0} seconds.")
 
         self.eqinfo.update_log_final(res, self.sf)
-        # Unfix v0[8] to be FIXED_V
-        res.x = np.insert(res.x, 8, self.FIXED_V)
         return self.param_unfold(res.x, "final")
 
     def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
@@ -480,7 +480,8 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def initialize(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
+    def init_v0_and_bound(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
+        # Initialize the optimization starting point and bounds
         # Mark effective DoFs
         self.eff_dof()
 
@@ -539,6 +540,7 @@ class HubbardEqualizer(MLWF):
         return trap_depth, trap_waist, trap_center
 
     def txy_target(self, nnt, links, func: Callable = np.min):
+        # Separate x and y direction links
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan
@@ -546,6 +548,7 @@ class HubbardEqualizer(MLWF):
         return nntx, nnty
 
     def _set_t(self, A, links, target):
+        # Set tunneling target tx, ty and lsits of xlinks, ylinks to be used in the cost function
         links = self.xy_links() if links is None else links
         nnt = self.nn_tunneling(A)
         # Mostly not usable if not directly call this function
@@ -559,6 +562,7 @@ class HubbardEqualizer(MLWF):
         return nnt, txTarget, tyTarget, xlinks, ylinks
 
     def param_unfold(self, point: np.ndarray, status: str = "current"):
+        # Unfold minimization parameter vector to trap parameters
         td, tw, tc = self.set_trap_params(point, self.verbosity, status)
         self.symm_unfold(self.Voff, td)
         if self.waist_dir != None:
@@ -612,7 +616,7 @@ class HubbardEqualizer(MLWF):
                 target,
                 weight,
             )
-        elif mode in ["res", "func"]:
+        elif mode in ["res"]:
             return self._res_func(
                 point,
                 info,
@@ -674,7 +678,7 @@ class HubbardEqualizer(MLWF):
             print(f"Onsite interaction cost cu^2 = {cu}")
         return cu
 
-    # ==================== LEAST SQUARES & ROOT FINDING ====================
+    # ==================== LEAST SQUARES ====================
 
     def _res_func(
         self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
