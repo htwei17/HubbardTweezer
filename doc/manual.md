@@ -298,9 +298,9 @@ For the following sections about equalization process, please refer to the [pape
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values determined by the initial physical trap parameters, while the uniformity of `V` is not considered
 
 * `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
-               available algorithms:
-               implemented by `scipy.optimize`:`trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B` and `cobyla`,
-               implemented by `nlopt`: `praxis` and `bobyqa`
+               available algorithms:  
+               implemented by `scipy.optimize`:`trf`, `Nelder-Mead` (`NM` is accepted), `SLSQP`, `L-BFGS-B` and `cobyla`,  
+               implemented by `nlopt`: `praxis` and `bobyqa`  
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 * `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
@@ -339,8 +339,10 @@ Below 2 proposals are elaborated in the [paper](https://arxiv.org/abs/2306.03019
 #### input in `[Equalization_Result]`
 
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
-        used as the initial guess for equalization.
-        The structure is `concatenate([V_offset, trap_centers, waist_factors])`
+        used as the initial guess for equalization.  
+        The structure is `concatenate([V_offset, trap_centers, waist_factors])`.  
+        Note that this only contains free parameters e.g. if `waist_direction=None` then `waist_factors` is not included.
+        If `lattice_symmetry=True` then it only contains free parameters of the $(x\le 0, y\le 0)$ quadrant.
 * `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
                 `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
 

@@ -283,7 +283,7 @@ class MLWF(DVR):
         return nnt
 
     def symm_unfold(self, target: Iterable, info, graph=False):
-        # Unfold information to all symmetry sectors
+        # Unfold information to all symmetric sites
         # No need to output as target is Iterable
         if self.ls:
             parity = np.array([[1, 1], [-1, 1], [1, -1], [-1, -1]])
