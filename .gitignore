@@ -20,10 +20,10 @@ __pycache__
 # Folders
 .vscode
 
-# Outputs
-*.csv
-*.h5
-*.ini
+# # Outputs
+# *.csv
+# *.h5
+# *.ini
 
 # Executables
 *.exe
