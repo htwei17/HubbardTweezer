@@ -274,7 +274,7 @@ links = G.xy_links(G.ghost.links)
 
 nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
-    G.sf, __ = G.txy_target(nnt, links, np.min)
+    G.sf, __ = G.txy_target(nnt, links, np.mean)
 # Print out Hubbard parameters
 if G.verbosity > 1:
     print(f"scale_factor = {G.sf}")

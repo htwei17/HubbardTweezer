@@ -5,7 +5,7 @@ from typing import Iterable
 from .core import symm_fold
 from .lattice import Lattice
 
-dmin = 1.45 # Minimum trap center spacing in unit of wx
+dmin = 1.4 # Minimum trap center spacing in unit of wx
 # 1.4 wx is roughtly -0.75V0 barrier height
 dv = 0.05 # 5% fluctuation
 
