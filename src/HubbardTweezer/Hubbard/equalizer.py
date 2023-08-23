@@ -147,11 +147,6 @@ class HubbardEqualizer(MLWF):
         # Set init guess & bounds
         v0, bounds = self.initialize(random, nobounds)
 
-        # temporary delete 9th element
-        bounds = bounds[0:8] + bounds[9:]
-        v0 = np.concatenate((v0[0:8], v0[9:]))
-        self.FIXED_V = kwargs.get("FIXED_V", 1)
-
         v0, init_simplex = self._ext_init_guess(x0, v0)
         print("Equalize: initial guess: ", v0)
 
@@ -176,8 +171,6 @@ class HubbardEqualizer(MLWF):
                 iofile=iofile,
             )
         else:
-            # Unfix v0[8] to be FIXED_V
-            v0 = np.insert(v0, 8, self.FIXED_V)
             # Set trap configuration for calculating Hubbard parameters only
             self.param_unfold(v0, "Initial")
 
@@ -263,8 +256,6 @@ class HubbardEqualizer(MLWF):
             )
 
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
-            # temporary fix value on v0[8] to be FIXED_V
-            point = np.insert(point, 8, self.FIXED_V)
             return self.opt_func(
                 point,
                 info,
@@ -314,8 +305,6 @@ class HubbardEqualizer(MLWF):
         print(f"Equalization took {t1 - t0} seconds.")
 
         self.eqinfo.update_log_final(res, self.sf)
-        # Unfix v0[8] to be FIXED_V
-        res.x = np.insert(res.x, 8, self.FIXED_V)
         return self.param_unfold(res.x, "final")
 
     def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
