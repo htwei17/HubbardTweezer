@@ -133,7 +133,7 @@ def write_singleband(report, G):
     # FIXME: If not final result, G.U might be None.
     Vi = np.real(np.diag(G.A))
     tij = abs(np.real(G.A - np.diag(Vi)))
-    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U, "wf_centers": G.wf_centers}
+    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U, "wf_centers": G.wf_centers,     "wf_cost": G.wf_cost}
     rep.create_report(report, "Singleband_Parameters", **values)
 
 

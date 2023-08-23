@@ -1,1 +1,1 @@
-sh job.sh -l 4 -ly 4 -w None -e neq -r True -a 1-1000
+bash cluster/job.sh -l 4 -ly 4 -w None -e neq -r True -sy False -a 1-1000

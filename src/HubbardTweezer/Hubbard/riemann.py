@@ -9,8 +9,12 @@ eps = np.finfo(float).eps
 def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
     # Cost function to Wannier optimize
     o = 0
+    if not isinstance(U, torch.Tensor):
+        U = torch.from_numpy(U)
     for Ri in R:
         # R is real-symmetric if no absorber
+        if not isinstance(Ri, torch.Tensor):
+            Ri = torch.from_numpy(Ri)
         X = U.conj().T @ Ri @ U
         Xp = X - torch.diag(torch.diag(X))
         o += torch.trace(torch.matrix_power(Xp, 2))
