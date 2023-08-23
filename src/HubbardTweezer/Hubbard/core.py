@@ -12,7 +12,7 @@ from ..DVR.const import *
 from ..DVR.wavefunc import psi
 from ..tools.integrate import romb3d, trapz3dnp
 from ..tools.point_match import nearest_match
-from .riemann import riemann_minimize
+from .riemann import *
 from .lattice import Lattice
 from .ghost import GhostTrap
 
@@ -38,6 +38,9 @@ class MLWF(DVR):
     ghost: GhostTrap
     lattice: Lattice
     # Rintgrl: np.ndarray
+
+    wf_centers: np.ndarray
+    wf_cost: float
 
     def create_lattice(
         self,
@@ -430,9 +433,9 @@ class MLWF(DVR):
         R = []
         # For 2D lattice keeps single p_z = 1 or -1 sector,
         for i in range(dim):
-            if self.nd[i]:
+            if self.nd[i]:  # DVR dimension
                 Rx = self.Xmat_1d(W, parity, i)
-                if Rx is not None:
+                if Rx is not None:  # If Rx is zero matrix it's not added
                     R.append(Rx)
         return R
 
@@ -507,11 +510,14 @@ def singleband_WF(
             wf_centers = np.array(
                 [np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]
             ).T
+        cost = cost_func(U, R).item()  # Convert to float
     else:
         U = np.ones((1, 1))
         wf_centers = np.zeros((1, 2))
+        cost = 0
 
     dvr.wf_centers = wf_centers
+    dvr.wf_cost = cost
     A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
     # TB parameter matrix, in unit of kHz
     t1 = time()
@@ -525,6 +531,7 @@ def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
     A = []
     w = []
     wf_centers = []
+    wf_costs = []
     for b in range(dvr.bands):
         t_ij, w_mu = singleband_WF(dvr, E[b], W[b], parity[b])
         if b == 0:
@@ -537,7 +544,8 @@ def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
         A.append(t_ij - zero * np.eye(t_ij.shape[0]))
         w.append(w_mu)
         wf_centers.append(dvr.wf_centers)
-    return A, w, wf_centers
+        wf_costs.append(dvr.wf_cost)
+    return A, w, wf_centers, wf_costs
 
 
 # =============================================================================

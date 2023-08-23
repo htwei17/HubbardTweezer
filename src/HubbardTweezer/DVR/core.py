@@ -137,7 +137,7 @@ class DVR:
 
         self.absorber = absorber
         self.dvr_symm = symmetry
-        self.nd: np.ndarray = n != 0  # Nonzero dimensions
+        self.nd: np.ndarray = n != 0  # Which dimension DVR grid is nonzero
         self.sparse = sparse
         self.verbosity = verbosity if verbosity >= 0 else 0
 

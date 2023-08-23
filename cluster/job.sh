@@ -24,6 +24,7 @@ d=3
 N=20
 R=3
 Rz=7.2
+V0=52.26
 SYMMETRY=True
 GHOST=False
 GHOST_PARAM=""
@@ -151,34 +152,30 @@ fi
 
 if [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'triangular' ]; then
     # 2D triangular
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550,
-V0 = 73.0219"
+    LATTICE_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550,"
+    V0=73.0219
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE = 'zigzag' ]; then
     # 2D triangular
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 2400, 1000
-V0 = 52.26"
+    LATTICE_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 2400, 1000"
     SYMMETRY=False
 elif [ $LATTICE_DIM -ge 2 ] && [ $SHAPE != 'ring' ]; then
     # 2D other lattice
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550, 1600
-V0 = 52.26"
+    LATTICE_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550, 1600"
 elif [ $SHAPE = 'ring' ]; then
     # Ring
     # Build a perfect ring s.t. no equalization needed
     Ly=1
-    DIM_PARAM="lattice_size = $Lx, $Ly
-lattice_const = 1550,
-V0 = 52.26"
+    LATTICE_PARAM="lattice_size = $Lx, $Ly
+lattice_const = 1550,"
 else
     # 1D chain
     Ly=1
     TIME="00:40:00"
-    DIM_PARAM="lattice_size = $Lx,
-lattice_const = 1550,
-V0 = 52.26"
+    LATTICE_PARAM="lattice_size = $Lx,
+lattice_const = 1550,"
 fi
 
 # ========= Non-equalization =========
@@ -278,16 +275,20 @@ if [ -s \$FN ]; then
     echo \"\$FN is not empty. Nothing writen. Try to resume from interrupted result.\"
 else
     echo \"\$FN is empty. Start writing parameters.\"
-    echo \"[Parameters]
+    echo \"[DVR_Parameters]
 N = \$N
 L0 = \$R, \$R, \$Rz
-$DIM_PARAM
+DVR_dimension = $d
+[Trap_Parameters]
+V0 = $V0
 waist = 1000,
 laser_wavelength = 780
-shape = $SHAPE
 scattering_length = 1770
-DVR_dimension = $d
+[Lattice_Parameters]
+$LATTICE_PARAM
+shape = $SHAPE
 lattice_symmetry = $SYMMETRY
+[Equalization_Parameters]
 equalize = $EQ_FLAG
 equalize_target = $STATUS
 U_over_t = $Ut
@@ -295,8 +296,9 @@ method = $METHOD
 random_initial_guess = $RAND
 ghost_sites = $GHOST$GHOST_PARAM
 waist_direction = $WAIST
-write_log = $LOG
 no_bounds = False
+[Verbosity]
+write_log = $LOG
 verbosity = 3
 job_id = \$SLURM_JOB_ID\" >>\$FN
 fi

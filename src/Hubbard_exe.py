@@ -292,7 +292,7 @@ write_singleband(report, G)
 # Off-diagonal elements of U
 if G.bands == 1 and offdiag_U:
     print("Singleband off-diagonal U calculation.")
-    __, W, __ = multiband_WF(G, *eig_sol)
+    __, W, __, __ = multiband_WF(G, *eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
     values = {"U_ijkl": U}
     rep.create_report(report, "Singleband_Parameters", **values)
@@ -339,6 +339,7 @@ if savefmt == "h5":
         "V_offset": G.Voff,
         "trap_centers": G.trap_centers,
         "wf_centers": G.wf_centers,
+        "wf_cost": G.wf_cost,
         "total_cost_func": ctot,
     }
     with h5py.File(outFile, "w") as f:
@@ -349,7 +350,7 @@ if savefmt == "h5":
 
 # ====== Write multiband output ======
 if G.bands > 1:
-    maskedA, W, wf_centers = multiband_WF(G, *eig_sol)
+    maskedA, W, wf_centers, wf_costs = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(maskedA[i]))
@@ -357,6 +358,7 @@ if G.bands > 1:
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
         values[f"wf_{i+1}_centers"] = wf_centers[i]
+        values[f"wf_{i+1}_cost"] = wf_costs[i]
 
     U = interaction(G, W, *eig_sol[1:])
     for i in range(band):

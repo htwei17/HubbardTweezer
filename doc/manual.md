@@ -148,7 +148,6 @@ equalize_target = UvT
 waist_direction = None
 U_over_t = None
 method = trf
-no_bounds = False
 [Verbosity]
 write_log = False
 verbosity = 3
