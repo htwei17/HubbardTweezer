@@ -325,7 +325,8 @@ Below 2 proposals are elaborated in the [paper](https://arxiv.org/abs/2306.03019
 ##### Explain ghost penalty
 >
 > ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
-> $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\mathrm{threshold})]$
+> $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\tilde{q}-\mathrm{threshold})]$
+> ehere $\tilde{q}$ is the target value of Hubbard parameter $q$.
 
 #### `[Verbosity]`
 

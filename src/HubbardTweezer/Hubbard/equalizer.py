@@ -705,7 +705,10 @@ class HubbardEqualizer(MLWF):
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         Vdist = V - Vtarget
+        self.ghost.weight *= Vfactor * np.sqrt(len(maskedV))
+        # Cancel the factor in the cost function
         self.ghost.penalty(Vdist)
+        self.ghost.weight /= Vfactor * np.sqrt(len(maskedV))
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
