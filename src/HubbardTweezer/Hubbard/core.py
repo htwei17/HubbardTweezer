@@ -229,8 +229,8 @@ class MLWF(DVR):
         p = p[band - 1]  # Sector index
         self.A, V = self.singleband_WF(E, W, p, x0)  # Single band WF & tij matrix
         if offset is True:
-            # Shift onsite potential to zero average
-            self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
+            # Shift onsite physical potential to zero average
+            self.zero = np.mean(self.ghost.mask_quantity(np.real(np.diag(self.A))))
         elif isinstance(offset, Number):
             self.zero = offset
         else:

@@ -167,6 +167,8 @@ if shape == "custom":
     nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
     links = rep.a(report, "Lattice_Parameters", "bond_links", None)
 else:
+    nodes = None
+    links = None
     lsize = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
         int
     )

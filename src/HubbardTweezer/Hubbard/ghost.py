@@ -99,8 +99,9 @@ class GhostTrap:
     def penalty(self, Vdist):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
+
+        # If Vdist match number of masked sites, skip
         if len(Vdist) != self.Nsite:
-            # Iif Vdist not match length of mask, skip
             if self.is_masked and self.weight != 0:
                 Vdist_unmasked = Vdist[~self.mask] - self.threshold
                 # Criteria: make func value 0 at and beyond desired value,

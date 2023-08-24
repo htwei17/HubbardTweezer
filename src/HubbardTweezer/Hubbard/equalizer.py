@@ -704,6 +704,7 @@ class HubbardEqualizer(MLWF):
             maskedV = self.ghost.mask_quantity(V)
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
+        # NOTE: V is unmasked, only maskedV is masked
         Vdist = V - Vtarget
         self.ghost.weight *= Vfactor * np.sqrt(len(maskedV))
         # Cancel the factor in the cost function
