@@ -217,7 +217,7 @@ class MLWF(DVR):
     ):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
-        if band == 1:
+        if band == 1: # If only 1st band is needed, set bands to 1
             self.bands = 1
         if eig_sol != None:  # Unpack pre-calculated eigen solution
             E, W, p = eig_sol
@@ -341,7 +341,7 @@ class MLWF(DVR):
         return p_list
 
     def eigen_basis(
-        self, W0: list = None, standard: str = "symmetry"
+        self, W0: list = None, standard: str = "energy"
     ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
@@ -405,7 +405,7 @@ class MLWF(DVR):
                 for b in range(self.bands)
             ]
         elif standard == "symmetry" and self.bands == 2:
-            # Hand coded pz-even and pz-odd bands
+            # Hard coded pz-even and pz-odd bands
             E_even = np.array([])
             E_odd = np.array([])
             W_even = []
