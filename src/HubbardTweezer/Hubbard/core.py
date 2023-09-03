@@ -622,6 +622,7 @@ def singleband_interaction(
     x = []
     dx = []
     for i in range(dim):
+        # Construct integration spatial grid
         if dvr.nd[i]:  # Think of a way to make numerical integration converge
             x.append(np.linspace(-1.2 * dvr.R0[i], 1.2 * dvr.R0[i], dvr.Nintgrl_grid))
             dx.append(x[i][1] - x[i][0])
@@ -633,11 +634,11 @@ def singleband_interaction(
     if onsite:
         integrand = abs(Vi) ** 2 * abs(Vj) ** 2
         Uint = integrate(x, dx, integrand, method)
-        if dvr.model == "sho":
-            print(
-                f"Test with analytic calculation on {i + 1}-th site",
-                np.real(Uint) * (np.sqrt(2 * np.pi)) ** dvr.dim * np.prod(dvr.hl),
-            )
+        # if dvr.model == "sho":
+        #     print(
+        #         f"Test with analytic calculation on {i + 1}-th site",
+        #         np.real(Uint) * (np.sqrt(2 * np.pi)) ** dvr.dim * np.prod(dvr.hl),
+        #     )
         t1 = time()
         if dvr.verbosity:
             print(f"Single band interaction time: {t1 - t0}s.")

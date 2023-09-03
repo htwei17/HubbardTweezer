@@ -301,12 +301,12 @@ class DVR:
 
         # Off-diagonal part
         T0 = np.arange(init, n + 1, dtype=float)[None]
-        T = _kinetic_offdiag(T0 - T0.T)
+        T = _kinetic_offdiag(T0 - T0.T) # n - n' term
 
         # Diagonal part
         T[np.diag_indices(n + 1 - init)] = np.pi**2 / 3
         if p != 0:
-            T += p * _kinetic_offdiag(T0 + T0.T)
+            T += p * _kinetic_offdiag(T0 + T0.T) # n + n' term
             if p == 1:
                 T[:, 0] /= np.sqrt(2)
                 T[0, :] /= np.sqrt(2)
