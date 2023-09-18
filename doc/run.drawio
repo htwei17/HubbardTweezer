@@ -1,13 +1,13 @@
 <mxfile host="65bd71144e">
     <diagram id="IjS8FuJxX2mvH53jyDNn" name="Page-1">
-        <mxGraphModel dx="3545" dy="2429" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+        <mxGraphModel dx="5030" dy="3940" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="89" value="&lt;p style=&quot;line-height: 0%;&quot;&gt;&lt;/p&gt;&lt;h2&gt;&amp;nbsp; DVR/&lt;/h2&gt;&lt;p&gt;&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;strokeWidth=2;dashed=1;align=left;verticalAlign=bottom;" vertex="1" parent="1">
+                <mxCell id="89" value="&lt;p style=&quot;line-height: 0%;&quot;&gt;&lt;/p&gt;&lt;h2&gt;&amp;nbsp; DVR/&lt;/h2&gt;&lt;p&gt;&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;strokeWidth=2;dashed=1;align=left;verticalAlign=bottom;" parent="1" vertex="1">
                     <mxGeometry x="670" y="70" width="530" height="1090" as="geometry"/>
                 </mxCell>
-                <mxCell id="31" value="&lt;p style=&quot;line-height: 0%;&quot;&gt;&lt;/p&gt;&lt;h2&gt;&amp;nbsp; Hubbard/&lt;/h2&gt;&lt;p&gt;&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;strokeWidth=2;dashed=1;align=left;verticalAlign=bottom;" vertex="1" parent="1">
+                <mxCell id="31" value="&lt;p style=&quot;line-height: 0%;&quot;&gt;&lt;/p&gt;&lt;h2&gt;&amp;nbsp; Hubbard/&lt;/h2&gt;&lt;p&gt;&lt;/p&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;strokeWidth=2;dashed=1;align=left;verticalAlign=bottom;" parent="1" vertex="1">
                     <mxGeometry x="-990" y="-100" width="1540" height="1262.5" as="geometry"/>
                 </mxCell>
                 <mxCell id="2" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;input.ini&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
@@ -22,10 +22,10 @@
                 <mxCell id="11" value="inherit from" style="edgeStyle=none;html=1;fontSize=15;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="6" target="48" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="62" value="initialize bounds" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="6" target="60">
+                <mxCell id="62" value="initialize bounds" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="6" target="60" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="6" value="&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;font color=&quot;#f8f8f2&quot;&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;Hubbard/equalizer.py&lt;/span&gt;&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(249, 36, 114);&quot;&gt;=&lt;/span&gt;&lt;font color=&quot;#f7f1ff&quot;&gt;&amp;nbsp;&lt;/font&gt;&lt;span style=&quot;text-decoration-line: underline; color: rgb(166, 226, 44);&quot;&gt;HubbardEqualizer&lt;/span&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                <mxCell id="6" value="&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;font-size: 15px;&quot;&gt;Hubbard/equalizer.py&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&amp;nbsp;&lt;span style=&quot;color: rgb(249, 36, 114);&quot;&gt;=&lt;/span&gt;&lt;font style=&quot;&quot; color=&quot;#f7f1ff&quot;&gt;&amp;nbsp;&lt;/font&gt;&lt;span style=&quot;text-decoration-line: underline; color: rgb(166, 226, 44);&quot;&gt;HubbardEqualizer&lt;/span&gt;&lt;/span&gt;&lt;br&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="287" y="-40" width="230" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="13" value="Yes" style="edgeStyle=none;html=1;fontSize=15;" parent="1" source="10" target="12" edge="1">
@@ -40,7 +40,7 @@
                 <mxCell id="10" value="&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #fd9621;font-style: italic;&quot;&gt;equalize&lt;/span&gt;&lt;span style=&quot;color: #f92472;&quot;&gt;=&lt;/span&gt;&lt;span style=&quot;color: #ac80ff;&quot;&gt;True?&lt;/span&gt;&lt;/div&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="318.13" y="225" width="170.75" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="12" value="&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;Hubbard/equalizer.py&lt;br&gt;G&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; background-color: rgb(22, 22, 22);&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;equalize&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;()&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; background-color: rgb(22, 22, 22);&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
+                <mxCell id="12" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/equalizer.py&lt;br&gt;&lt;font style=&quot;color: rgb(248, 248, 242); background-color: rgb(22, 22, 22);&quot; face=&quot;Consolas, Courier New, monospace&quot;&gt;G&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;equalize&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;()&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; background-color: rgb(22, 22, 22);&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-240" y="230" width="210" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="18" value="call to get t_ij, U_i" style="edgeStyle=none;html=1;fontSize=15;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="12" target="61" edge="1">
@@ -59,10 +59,10 @@
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="76" value="call to solve eigenstates" style="edgeStyle=none;html=1;fontSize=16;" edge="1" parent="1" source="17" target="75">
+                <mxCell id="76" value="call to solve eigenstates" style="edgeStyle=none;html=1;fontSize=16;" parent="1" source="17" target="75" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="17" value="&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;final run of&lt;br&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
+                <mxCell id="17" value="&lt;p style=&quot;line-height: 140%;&quot;&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;final run of&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;/p&gt;&lt;p style=&quot;line-height: 140%;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;&lt;/p&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="279" y="340" width="249" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="23" value="" style="edgeStyle=none;html=1;fontSize=15;" parent="1" source="20" target="22" edge="1">
@@ -77,13 +77,13 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="145" value="Text" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=18;" vertex="1" connectable="0" parent="28">
+                <mxCell id="145" value="Text" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=18;" parent="28" vertex="1" connectable="0">
                     <mxGeometry x="-0.9033" y="-2" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="20" value="&lt;span style=&quot;font-size: 15px;&quot;&gt;Hubbard_exe.py&lt;/span&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;write_singleband&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color: #f8f8f2;&quot;&gt;report&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot;color: #f8f8f2;&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;)&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;write_trap_params&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;color: #f8f8f2;&quot;&gt;report&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;, &lt;/span&gt;&lt;span style=&quot;color: #f8f8f2;&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;color: #67d8ef;&quot;&gt;)&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
-                    <mxGeometry x="257" y="1180" width="290" height="80" as="geometry"/>
+                    <mxGeometry x="252.01" y="1175" width="303" height="90" as="geometry"/>
                 </mxCell>
                 <mxCell id="25" value="" style="edgeStyle=none;html=1;fontSize=16;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="22" target="36" edge="1">
                     <mxGeometry relative="1" as="geometry">
@@ -112,22 +112,22 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="26" value="&lt;span style=&quot;font-size: 15px;&quot;&gt;Hubbard_exe.py&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;write_multiband&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;)&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
+                <mxCell id="26" value="&lt;span style=&quot;font-size: 15px;&quot;&gt;run loop and&lt;br&gt;Hubbard_exe.py&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;write_multiband&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;(&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;)&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="303.25" y="1560" width="194.5" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="37" value="Yes" style="edgeStyle=none;html=1;" edge="1" parent="1" source="36" target="26">
+                <mxCell id="37" value="Yes" style="edgeStyle=none;html=1;" parent="1" source="36" target="26" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="36" value="&lt;span style=&quot;color: rgb(253, 150, 33); font-style: italic; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;band&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(249, 36, 114);&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(172, 128, 255);&quot;&gt;1?&lt;/span&gt;" style="rhombus;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="36" value="&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;color: rgb(253, 150, 33); font-style: italic; font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;band&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(249, 36, 114);&quot;&gt;&amp;gt;&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(172, 128, 255);&quot;&gt;1?&lt;/span&gt;&lt;/span&gt;" style="rhombus;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="333.75" y="1450" width="133.5" height="70" as="geometry"/>
                 </mxCell>
-                <mxCell id="43" value="call" style="edgeStyle=none;html=1;" edge="1" parent="1" source="40" target="42">
+                <mxCell id="43" value="call" style="edgeStyle=none;html=1;" parent="1" source="40" target="42" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="40" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;Hubbard/&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;equalizer&lt;/span&gt;&lt;/font&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242); font-size: 18px;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;.py&lt;br&gt;&lt;/font&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;G&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; background-color: rgb(22, 22, 22);&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;opt_target&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;()&lt;/span&gt;&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="40" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;Hubbard/equalizer&lt;/font&gt;&lt;span style=&quot;font-size: 18px;&quot;&gt;&lt;font style=&quot;font-size: 18px;&quot;&gt;.py&lt;br&gt;&lt;/font&gt;&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; background-color: rgb(22, 22, 22);&quot;&gt;G&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;opt_target&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;()&lt;/span&gt;&lt;/span&gt;&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-674" y="420" width="249" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="44" value="No" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="45" target="40">
+                <mxCell id="44" value="No" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="45" target="40" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="-165" y="450"/>
@@ -135,7 +135,7 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="46" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;update by algorithm&lt;/font&gt;" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="68" target="45">
+                <mxCell id="46" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;update by algorithm&lt;/font&gt;" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="68" target="45" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="-544" y="650" as="sourcePoint"/>
                         <Array as="points">
@@ -143,13 +143,13 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="70" value="&lt;span style=&quot;color: rgb(240, 240, 240); font-family: Helvetica; font-size: 15px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(24, 20, 29); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;call to get t_ij, U_i&lt;/span&gt;" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="42" target="68">
+                <mxCell id="70" value="&lt;span style=&quot;color: rgb(240, 240, 240); font-family: Helvetica; font-size: 15px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(24, 20, 29); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;call to get t_ij, U_i&lt;/span&gt;" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="42" target="68" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="42" value="&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(42, 37, 47); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(42, 37, 47); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="42" value="&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(42, 37, 47); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(42, 37, 47); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;border-color: rgb(0, 0, 0); font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-654.5" y="520" width="210" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="47" value="Yes" style="edgeStyle=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;fontSize=18;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="45" target="17">
+                <mxCell id="47" value="Yes" style="edgeStyle=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;fontSize=18;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="45" target="17" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="270" y="360" as="targetPoint"/>
                         <Array as="points">
@@ -157,77 +157,77 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="45" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;converge?&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="45" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;converge?&lt;/font&gt;" style="rhombus;whiteSpace=wrap;html=1;rounded=0;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="-347.25" y="410" width="184.5" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="74" value="inherit from" style="edgeStyle=none;html=1;fontSize=16;" edge="1" parent="1" source="48" target="73">
+                <mxCell id="74" value="inherit from" style="edgeStyle=none;html=1;fontSize=16;" parent="1" source="48" target="73" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="48" value="Hubbard/core.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;MLWF&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" vertex="1" parent="1">
+                <mxCell id="48" value="Hubbard/core.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline; background-color: rgb(22, 22, 22);&quot;&gt;MLWF&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" parent="1" vertex="1">
                     <mxGeometry x="327" y="90" width="150" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="53" value="ghost info" style="edgeStyle=none;html=1;fontSize=16;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" target="6" source="55">
+                <mxCell id="53" value="ghost info" style="edgeStyle=none;html=1;fontSize=16;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="55" target="6" edge="1">
                     <mxGeometry x="-0.1753" relative="1" as="geometry">
                         <mxPoint x="-40" y="49.23076923076928" as="sourcePoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="54" value="equalize&lt;br&gt;logger" style="edgeStyle=none;html=1;fontSize=16;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" target="56" source="40">
+                <mxCell id="54" value="equalize&lt;br&gt;logger" style="edgeStyle=none;html=1;fontSize=16;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="40" target="56" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="-420" y="190.38461538461536" as="sourcePoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="55" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/ghost.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;GhostTrap&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="55" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/ghost.py&lt;br&gt;&lt;div style=&quot;font-size: 18px; line-height: 24px;&quot;&gt;&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline; background-color: rgb(22, 22, 22);&quot;&gt;GhostTrap&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=middle;align=center;" parent="1" vertex="1">
                     <mxGeometry x="-73.25" y="-120" width="180" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="56" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/io.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;EqulizeInfo&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="56" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/io.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;div style=&quot;line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;EqulizeInfo&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-960" y="430" width="180" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="57" value="lattice info" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=16;" edge="1" parent="1" target="48" source="58">
+                <mxCell id="57" value="lattice info" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=16;" parent="1" source="58" target="48" edge="1">
                     <mxGeometry x="0.0504" y="1" relative="1" as="geometry">
                         <mxPoint x="-170" y="100" as="sourcePoint"/>
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="81" value="modify" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="58" target="82">
+                <mxCell id="81" value="modify" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" parent="1" source="58" target="82" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="17" y="210"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="58" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/lattice.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;Lattice&lt;/span&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="58" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/lattice.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;Lattice&lt;/span&gt;&lt;/div&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-73.25" y="90" width="180" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="63" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="60" target="12">
+                <mxCell id="63" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="60" target="12" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="-135" y="10"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="60" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/eqinit.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;init_w0&amp;nbsp;&lt;/span&gt;functions&lt;br&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                <mxCell id="60" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Hubbard/eqinit.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;init_w0&amp;nbsp;&lt;/span&gt;functions&lt;br&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
                     <mxGeometry x="-73.25" y="-20" width="180" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="65" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="61" target="64">
+                <mxCell id="65" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="61" target="64" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="61" value="&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="61" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;singleband_Hubbard&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-674" y="230" width="249" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="66" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="64" target="40">
+                <mxCell id="66" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="64" target="40" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="67" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="64" target="40">
+                <mxCell id="67" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="64" target="40" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="64" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;set target values&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="64" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;set target values&lt;/font&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="-609.5" y="320" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="68" value="compare with target values and calculate cost" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="68" value="compare with target values and calculate cost" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="-654" y="620" width="209.5" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="80" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="73" target="10">
+                <mxCell id="80" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" parent="1" source="73" target="10" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="870" y="120"/>
@@ -235,154 +235,163 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="83" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="73" target="82">
+                <mxCell id="83" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="73" target="82" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="73" value="DVR/core.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;DVR&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=16;rounded=0;" vertex="1" parent="1">
+                <mxCell id="73" value="DVR/core.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: rgb(166, 226, 44); text-decoration-line: underline;&quot;&gt;DVR&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=16;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="710" y="90" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="96" value="to solve each sector" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="75" target="95">
+                <mxCell id="96" value="to solve each sector" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="75" target="95" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="75" value="&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;eigen_basis&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="154" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;selected eigenstates&lt;/font&gt;" style="edgeStyle=none;html=1;labelBackgroundColor=none;fontFamily=Helvetica;fontSize=18;fontColor=#F0F0F0;" edge="1" parent="1" source="75" target="107">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="133" y="515" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="40" y="515"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="75" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;eigen_basis&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="277.5" y="470" width="249" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="79" value="construct" style="edgeStyle=none;html=1;fontSize=16;" edge="1" parent="1" source="78" target="6">
+                <mxCell id="79" value="construct" style="edgeStyle=none;html=1;fontSize=16;" parent="1" source="78" target="6" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="78" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;color: rgb(240, 240, 240); font-family: Helvetica; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(42, 37, 47); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Hubbard_exe.py&lt;/span&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" vertex="1" parent="1">
+                <mxCell id="78" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;font-family: Helvetica; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;Hubbard_exe.py&lt;/span&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=16;" parent="1" vertex="1">
                     <mxGeometry x="322.13" y="-180" width="154.87" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="104" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="82" target="102">
+                <mxCell id="104" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="82" target="102" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="82" value="DVR/core.py&lt;br&gt;&lt;div style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;Vfun&lt;/font&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=16;rounded=0;" vertex="1" parent="1">
+                <mxCell id="82" value="DVR/core.py&lt;br&gt;&lt;div style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; line-height: 24px;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;Vfun&lt;/font&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=16;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="710" y="180" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="94" value="&#10;&lt;span style=&quot;color: rgb(240, 240, 240); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(24, 20, 29); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;get list of sectors&lt;/span&gt;&lt;br style=&quot;border-color: rgb(0, 0, 0); color: rgb(240, 240, 240); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;&quot;&gt;&lt;span style=&quot;color: rgb(240, 240, 240); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(24, 20, 29); text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;to calculate&lt;/span&gt;&#10;&#10;" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="92" target="95">
+                <mxCell id="94" value="&lt;span style=&quot;font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;get list of sectors&lt;/span&gt;&lt;br style=&quot;border-color: rgb(0, 0, 0); font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial;&quot;&gt;&lt;span style=&quot;font-family: Helvetica; font-size: 18px; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; orphans: 2; text-align: center; text-indent: 0px; text-transform: none; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-thickness: initial; text-decoration-style: initial; text-decoration-color: initial; float: none; display: inline !important;&quot;&gt;to calculate&lt;/span&gt;" style="edgeStyle=none;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=18;" parent="1" source="92" target="95" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="92" value="&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;build_sectors&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-130" y="640" width="249" height="90" as="geometry"/>
+                <mxCell id="92" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(247, 241, 255);&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;build_sectors&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="275.07" y="810" width="249" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="99" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="95" target="98">
+                <mxCell id="99" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=18;" parent="1" source="95" target="98" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="109" value="select eigen states for one band" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="95" target="107">
-                    <mxGeometry relative="1" as="geometry"/>
+                <mxCell id="149" value="&lt;font style=&quot;font-size: 18px;&quot;&gt;eigenstatess&lt;/font&gt;" style="edgeStyle=none;html=1;entryX=-0.001;entryY=0.617;entryDx=0;entryDy=0;entryPerimeter=0;labelBackgroundColor=none;fontFamily=Helvetica;fontColor=#F0F0F0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="95" target="75">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="240" y="685"/>
+                            <mxPoint x="240" y="526"/>
+                        </Array>
+                    </mxGeometry>
                 </mxCell>
-                <mxCell id="95" value="&lt;span style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;color: rgb(248, 248, 242); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;solver_sector&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" vertex="1" parent="1">
+                <mxCell id="95" value="&lt;span style=&quot;font-size: 18px;&quot;&gt;Hubbard/core.py&lt;/span&gt;&lt;br style=&quot;font-size: 18px;&quot;&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22);&quot;&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(166, 226, 44);&quot;&gt;solver_sector&lt;/span&gt;&lt;span style=&quot;font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; font-size: 18px; color: rgb(103, 216, 239);&quot;&gt;()&lt;/span&gt;&lt;/span&gt;" style="whiteSpace=wrap;html=1;rounded=0;" parent="1" vertex="1">
                     <mxGeometry x="277.5" y="640" width="249" height="90" as="geometry"/>
                 </mxCell>
-                <mxCell id="101" value="call" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="98" target="100">
+                <mxCell id="101" value="call" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="98" target="100" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="141" value="eigenstate vector" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="98" target="138">
+                <mxCell id="141" value="eigenstate vector" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="98" target="138" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="98" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;H_solver&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="98" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;H_solver&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="710" y="655" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="100" value="DVR/core.py&lt;span style=&quot;background-color: rgb(42, 37, 47);&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;H_mat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="100" value="DVR/core.py&lt;span style=&quot;background-color: rgb(42, 37, 47);&quot;&gt;&lt;br&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;H_mat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="710" y="530" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="105" value="V matrix" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="102" target="100">
+                <mxCell id="105" value="V matrix" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="102" target="100" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="102" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;Vmat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="102" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;Vmat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="710" y="320" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="106" value="T matrix" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="103" target="100">
+                <mxCell id="106" value="T matrix" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="103" target="100" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="103" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;Tmat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="103" value="DVR/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;Tmat&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="950" y="530" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="111" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="107" target="110">
+                <mxCell id="111" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="107" target="119" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="100.5" y="810" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="107" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;singleband_WF()&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="-65" y="655" width="212" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="115" value="Yes" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="112" target="114" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="107" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;singleband_WF()&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="296" y="780" width="212" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="121" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="110" target="119">
+                <mxCell id="117" value="No" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="112" target="116" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="110" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;singleband_WF()&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="-111.5" y="780" width="212" height="60" as="geometry"/>
+                <mxCell id="112" value="1D lattice?" style="rhombus;whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-358.5" y="770" width="264.5" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="115" value="Yes" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="112" target="114">
+                <mxCell id="133" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="114" target="131" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="117" value="No" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="112" target="116">
+                <mxCell id="114" value="&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;scipy.linalg.eigh()&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-345.13" y="910" width="237.75" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="124" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="116" target="123" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="112" value="1D lattice?" style="rhombus;whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-654.5" y="770" width="264.5" height="80" as="geometry"/>
+                <mxCell id="116" value="Hubbard/riemann.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;riemann_minimize()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-674" y="780" width="203.25" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="133" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="114" target="131">
+                <mxCell id="122" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="119" target="112" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="114" value="&lt;span style=&quot;color: rgb(166, 226, 44); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; background-color: rgb(22, 22, 22);&quot;&gt;scipy.linalg.eigh()&lt;/span&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-641.13" y="910" width="237.75" height="60" as="geometry"/>
+                <mxCell id="119" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;Xmat()&lt;br&gt;&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;for localization matrix&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="-34.5" y="750" width="151" height="120" as="geometry"/>
                 </mxCell>
-                <mxCell id="124" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="116" target="123">
+                <mxCell id="132" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="123" target="131" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="116" value="Hubbard/riemann.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;riemann_minimize()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-970" y="780" width="203.25" height="60" as="geometry"/>
+                <mxCell id="123" value="Hubbard/riemann.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;site_sort()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-674" y="910" width="203.25" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="122" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="119" target="112">
+                <mxCell id="126" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="125" target="123" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="119" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; color: rgb(248, 248, 242);&quot;&gt;G&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;.&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;Xmat()&lt;br&gt;&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;for localization matrix&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="-330.5" y="750" width="151" height="120" as="geometry"/>
+                <mxCell id="125" value="tools/point_match.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;nearest_match()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-674" y="1190" width="203.25" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="132" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="123" target="131">
+                <mxCell id="130" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;singleband_interaction&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="-73.75999999999999" y="1020" width="299.51" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="134" value="" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="131" target="130" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="123" value="Hubbard/riemann.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;site_sort()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-970" y="910" width="203.25" height="60" as="geometry"/>
+                <mxCell id="131" value="Transform matrix &amp;amp; t_ij" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" parent="1" vertex="1">
+                    <mxGeometry x="-286.245" y="1020" width="120" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="126" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="125" target="123">
+                <mxCell id="137" value="Wannier function of x" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="135" target="130" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="125" value="tools/point_match.py&lt;br&gt;&lt;div style=&quot;color: rgb(247, 241, 255); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace; line-height: 24px;&quot;&gt;&lt;span style=&quot;color: #a6e22c;&quot;&gt;nearest_match()&lt;/span&gt;&lt;/div&gt;" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-1240" y="910" width="203.25" height="60" as="geometry"/>
+                <mxCell id="135" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;wannier_func&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="-73.75999999999999" y="910" width="299.51" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="130" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;singleband_interaction&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="-369.76" y="1020" width="299.51" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="134" value="" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="131" target="130">
+                <mxCell id="142" value="eigenstate as function of x" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="138" target="135" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="131" value="Transform matrix &amp;amp; t_ij" style="whiteSpace=wrap;html=1;fontSize=18;rounded=0;" vertex="1" parent="1">
-                    <mxGeometry x="-582.245" y="1020" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="137" value="Wannier function of x" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="135" target="130">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="135" value="Hubbard/core.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;wannier_func&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="-369.76" y="910" width="299.51" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="142" value="eigenstate as function of x" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="138" target="135">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="138" value="DVR/wavefunc.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;psi&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="138" value="DVR/wavefunc.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;psi&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="685" y="900" width="170" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="140" value="DVR basis&lt;br&gt;function of x" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="139" target="138">
+                <mxCell id="140" value="DVR basis&lt;br&gt;function of x" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="139" target="138" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="139" value="DVR/wavefunc.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;delta&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="139" value="DVR/wavefunc.py&lt;br&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;font color=&quot;#a6e22c&quot;&gt;delta&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;background-color: rgb(22, 22, 22); color: rgb(247, 241, 255); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;&lt;br&gt;&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="1010" y="900" width="170" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="144" value="numerical&lt;br&gt;integration" style="edgeStyle=none;html=1;fontSize=18;" edge="1" parent="1" source="143" target="130">
+                <mxCell id="144" value="numerical&lt;br&gt;integration" style="edgeStyle=none;html=1;fontSize=18;" parent="1" source="143" target="130" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="143" value="tools/integrate.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;trapz3dnp&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
-                    <mxGeometry x="-369.75" y="1190" width="299.51" height="60" as="geometry"/>
+                <mxCell id="143" value="tools/integrate.py&lt;br&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;trapz3dnp&lt;/span&gt;&lt;span style=&quot;color: rgb(166, 226, 44); background-color: rgb(22, 22, 22); font-family: Consolas, &amp;quot;Courier New&amp;quot;, monospace;&quot;&gt;()&lt;/span&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
+                    <mxGeometry x="-73.75" y="1190" width="299.51" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="147" value="write" style="edgeStyle=none;html=1;fontSize=18;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="146" target="2">
+                <mxCell id="147" value="write" style="edgeStyle=none;html=1;fontSize=18;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="146" target="2" edge="1">
                     <mxGeometry relative="1" as="geometry">
                         <Array as="points">
                             <mxPoint x="200" y="-250"/>
@@ -390,10 +399,10 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="148" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=18;" edge="1" parent="1" source="146" target="78">
+                <mxCell id="148" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=18;" parent="1" source="146" target="78" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="146" value="tools/reportIO.py&lt;br&gt;the module" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" vertex="1" parent="1">
+                <mxCell id="146" value="tools/reportIO.py&lt;br&gt;the module" style="rounded=0;whiteSpace=wrap;html=1;fontSize=18;" parent="1" vertex="1">
                     <mxGeometry x="250.48999999999998" y="-280" width="299.51" height="60" as="geometry"/>
                 </mxCell>
             </root>

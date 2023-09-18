@@ -420,7 +420,7 @@ class DVR:
             def applyH(psi) -> np.ndarray:
                 return self.H_op(T, V, no, psi)
 
-            N = np.product(no)
+            N = np.prod(no)
             H = LinearOperator((N, N), matvec=applyH)
 
             if v0 is not None:  # Flatten v0

@@ -370,6 +370,8 @@ class MLWF(DVR):
                 W_sb = [W_sb[i] for i in idx[:k]]
                 p_sb = p_sb[idx, :]
             elif standard == "symmetry":
+                # Don't select state right now,
+                # keep all k+1 states in each sector
                 idx = np.argsort(E_sb)
                 E_sb = E_sb[idx]
                 W_sb = [W_sb[i] for i in idx]
@@ -614,7 +616,7 @@ def singleband_interaction(
     method: str = "trapz",
     onsite=True,
 ) -> np.ndarray:
-    # Interactions between single band i and j
+    # Density-density interactions between single band i and j
     t0 = time()
     u = (
         4 * np.pi * dvr.hb * dvr.scatt_len / (dvr.m * dvr.kHz_2p * dvr.w**dim)
