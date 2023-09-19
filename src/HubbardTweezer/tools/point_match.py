@@ -1,4 +1,3 @@
-# from ortools.linear_solver import pywraplp
 from ortools.graph.python import linear_sum_assignment
 from scipy.spatial.distance import cdist
 import numpy as np
@@ -36,8 +35,8 @@ def nearest_match(site: np.ndarray, wf: np.ndarray) -> np.ndarray:
     if status == assignment.OPTIMAL:
         # print(f"Total cost = {assignment.optimal_cost()}\n")
         for i in range(0, assignment.num_nodes()):
-            print(f'Site {i} assigned to WF {assignment.right_mate(i)}.' +
-                          f' Dist: {assignment.assignment_cost(i)}')
+            # print(f'Site {i} assigned to WF {assignment.right_mate(i)}.' +
+            #               f' Dist: {assignment.assignment_cost(i)}')
             order[i] = assignment.right_mate(i)
     elif status == assignment.INFEASIBLE:
         print("WARNING: No assignment is possible. Order is not changed.")
