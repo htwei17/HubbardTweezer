@@ -419,11 +419,13 @@ class MLWF(DVR):
             for pidx in range(len(p_sb)):
                 p = p_sb[pidx]
                 if p[2] == 1 and count_even < self.lattice.N:
+                    # Even parity
                     E_even = np.append(E_even, E_sb[pidx])
                     W_even.append(W_sb[pidx])
                     parity_even = np.append(parity_even, p[None], axis=0)
                     count_even += 1
                 elif p[2] == -1 and count_odd < self.lattice.N:
+                    # Odd parity
                     E_odd = np.append(E_odd, E_sb[pidx])
                     W_odd.append(W_sb[pidx])
                     parity_odd = np.append(parity_odd, p[None], axis=0)

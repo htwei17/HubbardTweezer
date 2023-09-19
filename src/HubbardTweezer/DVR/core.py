@@ -57,7 +57,7 @@ class DVR:
     """
 
     def update_n(self, n: np.ndarray, R0: np.ndarray):
-        # Change n by fixed R0
+        # Change n with R0 fixed
         self.n = n.copy()
         self.init[self.nd] = get_init(self.n[self.nd], self.p[self.nd])
         self.R0 = R0.copy()
@@ -67,7 +67,7 @@ class DVR:
         self.update_ab()
 
     def update_R0(self, R0: np.ndarray, dx: np.ndarray):
-        # Update R0 by fixed dx
+        # Update R0 with dx fixed
         self.R0 = R0.copy()
         self.dx = dx.copy()
         self.nd = R0 != 0
