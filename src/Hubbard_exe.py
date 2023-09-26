@@ -268,7 +268,7 @@ if not eq:
     G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
-G.singleband_Hubbard(u=U, eig_sol=eig_sol)
+G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
 maskedA = G.ghost.mask_quantity(G.A)
 if calculate_U:
     maskedU = G.ghost.mask_quantity(G.U)
