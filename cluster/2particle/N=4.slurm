@@ -1,10 +1,10 @@
 #!/bin/bash
 #SBATCH --partition=scavenge
-#SBATCH --time=4:00:00
+#SBATCH --time=0:01:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=24
-#SBATCH --mem=128GB
+#SBATCH --cpus-per-task=2
+#SBATCH --mem=1GB
 #SBATCH --mail-user=hw50@rice.edu
 #SBATCH --mail-type=ALL
 #
@@ -26,7 +26,7 @@ unset __conda_setup
 
 conda activate $HOME/env
 
-JOB_NAME="N=400_test"
+JOB_NAME="N=4_test"
 fn=$JOB_NAME.ini
 WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME
 

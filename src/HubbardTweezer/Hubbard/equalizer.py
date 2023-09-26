@@ -130,11 +130,6 @@ class HubbardEqualizer(MLWF):
         if ghost:
             self.ghost.set_mask(self.lattice)
 
-        if self.ghost.Nsite == 1:
-            raise ValueError(
-                "Equalize: only one site in the system, equalization is not valid."
-            )
-
         if self.waist_dir not in ["x", "y", "xy", "yx", None]:
             self.waist_dir = None
         elif self.waist_dir == "yx":
@@ -151,6 +146,11 @@ class HubbardEqualizer(MLWF):
         print("Equalize: initial guess: ", v0)
 
         if equalize:
+            if self.ghost.Nsite == 1:
+                raise ValueError(
+                    "Equalize: only one site in the system, equalization is not valid."
+                )
+
             eig_callback = kwargs.get("eig_callback", True)
             if eig_callback:
                 print("Equalize: eig_callback is True.")
