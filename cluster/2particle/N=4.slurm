@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=scavenge
+#SBATCH --partition=interactive
 #SBATCH --time=0:01:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

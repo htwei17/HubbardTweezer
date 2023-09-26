@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=128GB
+#SBATCH --mem=32GB
 #SBATCH --mail-user=hw50@rice.edu
 #SBATCH --mail-type=ALL
 #
