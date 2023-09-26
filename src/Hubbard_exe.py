@@ -188,6 +188,7 @@ avg = rep.f(report, "Trap_Parameters", "average", 1)
 
 # ====== Hubbard settings ======
 band = rep.i(report, "Hubbard_Settings", "band", 1)
+calculate_U = rep.b(report, "Hubbard_Settings", "calculate_U", True)
 Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 200)
 offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
 
@@ -267,9 +268,10 @@ if not eq:
     G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
-G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+G.singleband_Hubbard(u=U, eig_sol=eig_sol)
 maskedA = G.ghost.mask_quantity(G.A)
-maskedU = G.ghost.mask_quantity(G.U)
+if calculate_U:
+    maskedU = G.ghost.mask_quantity(G.U)
 links = G.xy_links(G.ghost.links)
 
 nnt = G.nn_tunneling(maskedA)
@@ -288,7 +290,7 @@ if plot:
 # ====== Write singleband and trap parameters ======
 write_singleband(report, G)
 # Off-diagonal elements of U
-if G.bands == 1 and offdiag_U:
+if G.bands == 1 and calculate_U and offdiag_U:
     print("Singleband off-diagonal U calculation.")
     __, W, __, __ = multiband_WF(G, *eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
@@ -302,8 +304,12 @@ u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 Vtarget = np.mean(np.real(np.diag(maskedA)))
 ttarget = G.txy_target(nnt, links, np.mean)
-Utarget = np.mean(maskedU)
-cu = G.u_cost_func(maskedU, Utarget, G.sf)
+if calculate_U:
+    Utarget = np.mean(maskedU)
+    cu = G.u_cost_func(maskedU, Utarget, G.sf)
+else:
+    cu = 0
+    Utarget = 0
 ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
 cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 cvec = np.array((cu, ct, cv))
@@ -358,10 +364,11 @@ if G.bands > 1:
         values[f"wf_{i+1}_centers"] = wf_centers[i]
         values[f"wf_{i+1}_cost"] = wf_costs[i]
 
-    U = interaction(G, W, *eig_sol[1:])
-    for i in range(band):
-        for j in range(band):
-            values[f"U_{i+1}{j+1}_i"] = U[i, j]
+    if calculate_U:
+        U = interaction(G, W, *eig_sol[1:])
+        for i in range(band):
+            for j in range(band):
+                values[f"U_{i+1}{j+1}_i"] = U[i, j]
 
     rep.create_report(report, "Multiband_Parameters", **values)
 
