@@ -13,10 +13,12 @@ keys = [
     "wf_centers",
     "wf_cost",
     "total_cost_func",
+    "dir",
 ]
 dat = {k: [] for k in keys}
 
-for filename in glob.glob(path + "*.ini"):
+for idx in range(3001):
+    filename = path + f"3D_4x4_square_None_neq_{idx}.ini"
     print(filename)
     report = rep.get_report(filename)
 
@@ -31,10 +33,10 @@ for filename in glob.glob(path + "*.ini"):
     dat["total_cost_func"].append(
         rep.f(report, "Equalization_Result", "total_cost_func")
     )
+    dat["dir"].append(idx)
 
 output = "LinearRegression/Learning_TB_Haotian/alldata_new.hdf5"
 with h5py.File(output, "w") as f:
     print(f"Writing to file {output}...")
     for k in keys:
         f[k] = np.asarray(dat[k])
-    print("Done!")
