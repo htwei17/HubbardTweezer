@@ -1,2 +1,0 @@
-include bilayer_letb/parameters/fit_intralayer.hdf5
-include bilayer_letb/parameters/fit_interlayer.hdf5
