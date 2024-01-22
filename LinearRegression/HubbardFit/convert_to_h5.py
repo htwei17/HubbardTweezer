@@ -8,7 +8,7 @@ keys = [
     "V_offset",
     "trap_centers",
     "t_ij",
-    "V_i",
+    # "V_i", # STORED IN t_ij DIAGONALS
     "U_i",
     "wf_centers",
     "wf_cost",
@@ -35,7 +35,7 @@ for idx in range(3001):
     )
     dat["dir"].append(idx)
 
-output = "LinearRegression/Learning_TB_Haotian/alldata_new.hdf5"
+output = "LinearRegression/Learning_TB_Haotian/alldata.hdf5"
 with h5py.File(output, "w") as f:
     print(f"Writing to file {output}...")
     for k in keys:
