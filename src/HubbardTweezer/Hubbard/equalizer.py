@@ -201,7 +201,7 @@ class HubbardEqualizer(MLWF):
             W0 = None
 
         # Set target
-        A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
+        A, U, V = self.singleband_Hubbard(u=u, W0=W0)
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
         links = self.xy_links(self.ghost.links)
@@ -575,7 +575,7 @@ class HubbardEqualizer(MLWF):
         x0 = unitary[0] if unitary != None and self.lattice.dim > 1 else None
         u = weight[0] != 0
 
-        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, W0=eig_vec, offset=True)
+        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, W0=eig_vec)
         # x0 is used to update unitary[0] in the next iteration
 
         # Print out Hubbard parameters

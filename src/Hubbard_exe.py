@@ -188,6 +188,7 @@ avg = rep.f(report, "Trap_Parameters", "average", 1)
 
 # ====== Hubbard settings ======
 band = rep.i(report, "Hubbard_Settings", "band", 1)
+zero_avgV = rep.b(report, "Hubbard_Settings", "zero_average_V", True)
 calculate_U = rep.b(report, "Hubbard_Settings", "calculate_U", True)
 Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 200)
 offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
@@ -245,6 +246,7 @@ G = HubbardGraph(
     zR=zR,  # Rayleigh range input by hand
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
+    zero_avgV=zero_avgV, # Shift V to zero average
     equalize=eq,
     eqtarget=eqt,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation

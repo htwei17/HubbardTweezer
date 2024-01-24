@@ -41,6 +41,8 @@ class MLWF(DVR):
 
     wf_centers: np.ndarray
     wf_cost: float
+    
+    zero_avgV: bool = True
 
     def create_lattice(
         self,
@@ -158,6 +160,8 @@ class MLWF(DVR):
             raise TypeError(
                 "Absorber is not supported for Wannier Function construction!"
             )
+            
+        self.zero_avgV = kwargs.pop("zero_avgV", True)
 
         self.Nintgrl_grid = kwargs.get(
             "Nintgrl_grid", 257
@@ -207,9 +211,7 @@ class MLWF(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def singleband_Hubbard(
-        self, u=False, x0=None, W0=None, offset=True, band=1, eig_sol=None
-    ):
+    def singleband_Hubbard(self, u=False, x0=None, W0=None, band=1, eig_sol=None):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         if band == 1:
@@ -222,11 +224,11 @@ class MLWF(DVR):
         W = W[band - 1]
         p = p[band - 1]
         self.A, V = singleband_WF(self, E, W, p, x0)
-        if offset is True:
+        if self.zero_avgV is True:
             # Shift onsite potential to zero average
             self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
-        elif isinstance(offset, Number):
-            self.zero = offset
+        elif isinstance(self.zero_avgV, Number):
+            self.zero = self.zero_avgV
         else:
             self.zero = 0
         self.A -= self.zero * np.eye(self.A.shape[0])
