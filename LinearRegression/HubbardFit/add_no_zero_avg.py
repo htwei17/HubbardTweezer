@@ -7,7 +7,10 @@ import glob
 import os
 import configparser
 
-path = "/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples_new_test/"
+# path = "/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples_new_test/"
+path = os.path.abspath(
+    "../../OneDrive - Rice University/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples_new/"
+)
 
 
 def insert_hubbard_settings(folder_path):
@@ -21,9 +24,14 @@ def insert_hubbard_settings(folder_path):
 
             # Check if file has at least 15 lines
             if len(lines) >= 15:
-                # Insert the required section and line
-                lines.insert(14, "[Hubbard_Settings]\n")
-                lines.insert(15, "zero_average_V = False\n")
+                if lines[14] != "[Hubbard_Settings]\n":
+                    # Insert the required section and line
+                    lines.insert(14, "[Hubbard_Settings]\n")
+                    lines.insert(15, "zero_average_V = False\n")
+                if lines[16] == "[Hubbard_Settings]\n":
+                    # Remove the repeated section and line
+                    lines.pop(16)
+                    lines.pop(16)
 
                 # Write the modified content back to the file
                 with open(file_path, "w") as file:
