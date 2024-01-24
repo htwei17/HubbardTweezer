@@ -269,6 +269,7 @@ WORK_DIR=$SHARED_SCRATCH/$USER/HubbardTweezer$SUB_PATH/$JOB_NAME$ARRAY_SUFFIX
 
 mkdir -p \$WORK_DIR
 cp -r \$SLURM_SUBMIT_DIR/src \$WORK_DIR
+cp \$SLURM_SUBMIT_DIR/ini/\$FN \$WORK_DIR
 cd \$WORK_DIR
 
 if [ -s \$FN ]; then
@@ -288,6 +289,8 @@ scattering_length = 1770
 $LATTICE_PARAM
 shape = $SHAPE
 lattice_symmetry = $SYMMETRY
+[Hubbard_Settings]
+zero_average_V = False
 [Equalization_Parameters]
 equalize = $EQ_FLAG
 equalize_target = $STATUS

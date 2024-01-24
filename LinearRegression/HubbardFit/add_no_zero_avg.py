@@ -7,15 +7,16 @@ import glob
 import os
 import configparser
 
-# path = "/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples_new_test/"
-path = os.path.abspath(
-    "../../OneDrive - Rice University/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples_new/"
-)
+path = "/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples/"
+# path = os.path.abspath(
+#     "../../OneDrive - Rice University/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/samples/"
+# )
 
 
 def insert_hubbard_settings(folder_path):
     for file_name in os.listdir(folder_path):
         if file_name.endswith(".ini"):
+            print(f"Processing {file_name}...")
             file_path = os.path.join(folder_path, file_name)
 
             # Read the file content
