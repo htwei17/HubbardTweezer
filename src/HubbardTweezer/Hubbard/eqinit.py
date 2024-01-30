@@ -7,7 +7,7 @@ from .lattice import Lattice
 
 dmin = 1.4 # Minimum trap center spacing in unit of wx
 # 1.4 wx is roughtly -0.75V0 barrier height
-dv = 0.02 # 2% fluctuation
+dv = 0.02 # 2% fluctuation, small enough to avoid failed Wannierization
 
 def init_V0(Voff: np.ndarray, lattice: Lattice, nobounds: bool = False):
     v01 = symm_fold(lattice.reflect, Voff)
