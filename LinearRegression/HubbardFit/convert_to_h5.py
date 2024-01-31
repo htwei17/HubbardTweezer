@@ -3,7 +3,9 @@ import numpy as np
 import h5py
 import glob
 
-path = "/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/sample_finished/"
+L = 4
+
+path = f"/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/sample/{L}x{L}/"
 keys = [
     "V_offset",
     "V_tot",
@@ -67,7 +69,7 @@ def tot_trap_depth(V0, trap_centers):
 dat["V_tot"] = np.array(list(map(tot_trap_depth, dat["V_offset"], dat["trap_centers"])))
 # vtot_rel = vtot - np.mean(vtot, axis=1)[:, None]
 
-output = "LinearRegression/HubbardFit/alldata.hdf5"
+output = f"LinearRegression/HubbardFit/{L}x{L}_alldata.hdf5"
 with h5py.File(output, "w") as f:
     print(f"Writing to file {output}...")
     for k in keys:
@@ -75,7 +77,7 @@ with h5py.File(output, "w") as f:
 
 # Mask the data
 mask = np.min(np.asarray(dat["U_i"]), axis=1) > 0.8
-output = "LinearRegression/HubbardFit/alldata_masked.hdf5"
+output = f"LinearRegression/HubbardFit/{L}x{L}_alldata_masked.hdf5"
 with h5py.File(output, "w") as f:
     print(f"Writing to file {output}...")
     for k in dat.keys():
