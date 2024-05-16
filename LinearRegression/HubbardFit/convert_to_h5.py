@@ -3,7 +3,7 @@ import numpy as np
 import h5py
 import glob
 
-L = 4
+L = 5
 
 path = f"/Users/nottforestfc/Library/CloudStorage/OneDrive-RiceUniversity/Documents/Research/Hubbard Tweezer Parameters/output/LinearRegression/sample/{L}x{L}/"
 keys = [
@@ -20,28 +20,32 @@ keys = [
 ]
 dat = {k: [] for k in keys}
 
-for idx in range(3003):
-    filename = path + f"3D_4x4_square_None_neq_{idx}.ini"
-    print(filename)
-    report = rep.get_report(filename)
+for idx in range(1, 1001):
+    try:
+        filename = path + f"3D_{L}x{L}_square_None_neq_{idx}.ini"
+        print(filename)
+        report = rep.get_report(filename)
 
-    dat["V_offset"].append(rep.a(report, "Trap_Adjustments", "V_offset"))
-    dat["trap_centers"].append(rep.a(report, "Trap_Adjustments", "trap_centers"))
-    tij = rep.a(report, "Singleband_Parameters", "t_ij")
-    # tij += np.diag(rep.a(report, "Singleband_Parameters", "V_i"))
-    dat["t_ij"].append(tij)
-    dat["V_i"].append(rep.a(report, "Singleband_Parameters", "V_i"))
-    dat["U_i"].append(rep.a(report, "Singleband_Parameters", "U_i"))
-    dat["wf_centers"].append(rep.a(report, "Singleband_Parameters", "wf_centers"))
-    dat["wf_cost"].append(rep.a(report, "Singleband_Parameters", "wf_cost"))
-    dat["total_cost_func"].append(
-        rep.f(report, "Equalization_Result", "total_cost_func")
-    )
-    dat["dir"].append(idx)
+        dat["V_offset"].append(rep.a(report, "Trap_Adjustments", "V_offset"))
+        dat["trap_centers"].append(rep.a(report, "Trap_Adjustments", "trap_centers"))
+        tij = rep.a(report, "Singleband_Parameters", "t_ij")
+        # tij += np.diag(rep.a(report, "Singleband_Parameters", "V_i"))
+        dat["t_ij"].append(tij)
+        dat["V_i"].append(rep.a(report, "Singleband_Parameters", "V_i"))
+        dat["U_i"].append(rep.a(report, "Singleband_Parameters", "U_i"))
+        dat["wf_centers"].append(rep.a(report, "Singleband_Parameters", "wf_centers"))
+        dat["wf_cost"].append(rep.a(report, "Singleband_Parameters", "wf_cost"))
+        dat["total_cost_func"].append(
+            rep.f(report, "Equalization_Result", "total_cost_func")
+        )
+        dat["dir"].append(idx)
+    except:
+        print(f"Error at {idx}")
 
 wxy = np.ones(2)
-width = 4
-height = 4
+width = L
+height = L
+
 N = width * height
 dim = 3
 
@@ -65,6 +69,10 @@ def tot_trap_depth(V0, trap_centers):
     vtot = vij @ V0
     return vtot
 
+
+# for k in keys:
+#     print(k, len(dat[k]))
+#     print(dat["trap_centers"])
 
 dat["V_tot"] = np.array(list(map(tot_trap_depth, dat["V_offset"], dat["trap_centers"])))
 # vtot_rel = vtot - np.mean(vtot, axis=1)[:, None]
