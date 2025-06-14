@@ -1,5 +1,6 @@
 import numpy as np
-
+import scipy.spatial
+import h5py
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, Subset
@@ -7,9 +8,11 @@ from torch.utils.data import Dataset, Subset
 from sklearn.model_selection import KFold
 from sklearn.linear_model import LassoCV
 
+from HubbardTweezer.Hubbard.lattice import sqr_lattice
 
 from .loss import mse_criterion, R2_eval_metric
 from .train import train_fold_lbfgs
+from ..utils.funcs import get_neighbors
 
 
 class PaddedDictDataset(Dataset):
@@ -34,13 +37,17 @@ class PaddedDictDataset(Dataset):
             original_len = tensor.shape[0]  # Assume shape is (n_pairs, ...)
             padding_size = self.max_pairs - original_len
             # Pad the first dimension (n_pairs)
-            padded_x_dict[key] = nn.functional.pad(
-                tensor, (0, 0, 0, padding_size), "constant", 0
-            )
+            if tensor.ndim == 1:
+                # If it's a 1D tensor, pad it to the max_pairs length
+                pid = (0, padding_size)  # Pad only the first dimension
+            elif tensor.ndim == 2:
+                # If it's a 2D tensor, pad it to the max_pairs length
+                pid = (0, 0, 0, padding_size)
+            padded_x_dict[key] = nn.functional.pad(tensor, pid, "constant", 0)
 
         # Also pad the Y tensor
         padding_size_y = self.max_pairs - y_item.shape[0]
-        padded_y = nn.functional.pad(y_item, (0, 0, 0, padding_size_y), "constant", 0)
+        padded_y = nn.functional.pad(y_item, pid, "constant", 0)
 
         # --- Mask Creation ---
         mask = torch.zeros(self.max_pairs, dtype=torch.bool)
@@ -52,7 +59,7 @@ class PaddedDictDataset(Dataset):
         return padded_x_dict, padded_y
 
 
-def cross_validate_with_padded_dataset(
+def cross_validate_mixed(
     model_class,
     # Pass the unified dataset instance
     full_dataset,

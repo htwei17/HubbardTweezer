@@ -53,7 +53,7 @@ def train_fold_lbfgs(
     return model_instance
 
 
-def train_final_model_with_padded_dataset(
+def train_final_model_mixed(
     model_class,
     full_dataset,  # <-- The PaddedDictDataset instance containing ALL data
     best_l1_lambda,
