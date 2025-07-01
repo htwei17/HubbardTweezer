@@ -171,9 +171,9 @@ class MLWF(DVR):
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
-        tc, lc = lattice_params
-        nodes, links = custom_lattice
-        self.create_lattice(shape, tc, lc, nodes, links)
+        lsize, lc = lattice_params  # Lattice size & lattice constant
+        nodes, links = custom_lattice  # Custom lattice site positions & lattice links
+        self.create_lattice(shape, lsize, lc, nodes, links)
         self.Voff = np.ones(self.lattice.N)  # Set default trap offset
         # Set waist adjustment factor
         self.wxy0 = self.wxy.copy()
@@ -220,9 +220,9 @@ class MLWF(DVR):
             E, W, p = eig_sol
         else:
             E, W, p = self.eigen_basis(W0=W0)
-        E = E[band - 1]
-        W = W[band - 1]
-        p = p[band - 1]
+        E = E[band - 1]  # Eigen energy
+        W = W[band - 1]  # Eigen vector
+        p = p[band - 1]  # Sector index
         self.A, V = singleband_WF(self, E, W, p, x0)
         if self.zero_avgV is True:
             # Shift onsite potential to zero average

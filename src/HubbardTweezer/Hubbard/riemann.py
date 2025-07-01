@@ -31,9 +31,9 @@ def cost_func(U: torch.Tensor, R: list) -> torch.Tensor:
 
 
 def riemann_minimize(R: list[np.ndarray], x0=None, verbosity: int = 0) -> np.ndarray:
-    # It's proven above that U can be purely real
-    # TODO: DOUBLE CHECK is all real condition still valid for the subspace?
-    verbosity = int(np.clip(verbosity, 0, 1))
+    # It can be proven that U can be purely real
+    # See details in the paper & notes
+    verbosity = int(np.clip(verbosity, 0, 3))
     N: int = R[0].shape[0]  # matrix dimension
     # Convert list of ndarray to list of Tensor
     R = [torch.from_numpy(Ri) for Ri in R]

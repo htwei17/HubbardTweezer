@@ -140,7 +140,7 @@ class HubbardEqualizer(MLWF):
             x0 = None
 
         # Set init guess & bounds
-        v0, bounds = self.initialize(random, nobounds)
+        v0, bounds = self.init_v0_and_bound(random, nobounds)
 
         v0, init_simplex = self._ext_init_guess(x0, v0)
         print("Equalize: initial guess: ", v0)
@@ -150,10 +150,12 @@ class HubbardEqualizer(MLWF):
                 raise ValueError(
                     "Equalize: only one site in the system, equalization is not valid."
                 )
+            # ED callback: True means to read Krylov vectors from last ED calculation as the new initial guess
 
             eig_callback = kwargs.get("eig_callback", True)
             if eig_callback:
                 print("Equalize: eig_callback is True.")
+            # Unitary callback: True means to read SU(N) matrix from last Wannierization as the new initial guess
             unitary_callback = kwargs.get("unitary_callback", False)
 
             if set_target_from_random:
@@ -200,7 +202,7 @@ class HubbardEqualizer(MLWF):
         else:
             W0 = None
 
-        # Set target
+        # Set U, t, V targets
         A, U, V = self.singleband_Hubbard(u=u, W0=W0)
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
@@ -469,7 +471,7 @@ class HubbardEqualizer(MLWF):
 
         return self.Voff_dof, self.w_dof, self.tc_dof
 
-    def initialize(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
+    def init_v0_and_bound(self, random=False, nobounds=False) -> tuple[np.ndarray, tuple]:
         # Mark effective DoFs
         self.eff_dof()
 
