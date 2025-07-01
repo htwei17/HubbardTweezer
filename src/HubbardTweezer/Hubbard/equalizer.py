@@ -154,13 +154,16 @@ class HubbardEqualizer(MLWF):
         v0, bounds = self.init_v0_and_bound(random, nobounds)
 
         # Read in initial guess, for NM read initial simplex given x0.shape
-        v0, init_simplex = self._ext_init_guess(x0, v0)
-        print("Equalize: initial guess: ", v0)
-
         if equalize:
+            if self.ghost.Nsite == 1:
+                raise ValueError(
+                    "Equalize: only one site in the system, equalization is not valid."
+                )
             # ED callback: True means to read Krylov vectors from last ED calculation as the new initial guess
-            ed_callback = kwargs.get("eig_callback", True)
-            print(f"Equalize: ED calculation callback is {ed_callback}.")
+
+            eig_callback = kwargs.get("eig_callback", True)
+            if eig_callback:
+                print("Equalize: eig_callback is True.")
             # Unitary callback: True means to read SU(N) matrix from last Wannierization as the new initial guess
             unitary_callback = kwargs.get("unitary_callback", False)
 
@@ -211,8 +214,8 @@ class HubbardEqualizer(MLWF):
         else:
             W0 = None
 
-        # Set U, t, V targets
-        A, U, V = self.singleband_Hubbard(u=u, W0=W0, offset=True)
+        # Set target
+        A, U, V = self.singleband_Hubbard(u=u, W0=W0)
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
         links = self.xy_links(self.ghost.links)  # Classify x, y links
@@ -583,7 +586,7 @@ class HubbardEqualizer(MLWF):
         x0 = unitary[0] if unitary != None and self.lattice.dim > 1 else None
         u = weight[0] != 0
 
-        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, W0=eig_vec, offset=True)
+        A, U, __ = self.singleband_Hubbard(u=u, x0=x0, W0=eig_vec)
         # x0 is used to update unitary[0] in the next iteration
 
         # Print out Hubbard parameters

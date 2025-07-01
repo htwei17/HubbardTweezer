@@ -12,7 +12,7 @@ from ..DVR.const import *
 from ..DVR.wavefunc import psi
 from ..tools.integrate import romb3d, trapz3dnp
 from ..tools.point_match import nearest_match
-from .riemann import riemann_minimize
+from .riemann import *
 from .lattice import Lattice
 from .ghost import GhostTrap
 
@@ -39,6 +39,11 @@ class MLWF(DVR):
     Nintgrl_grid: int = 257
     ghost: GhostTrap  # GhostTrap property object
     lattice: Lattice  # Lattice property object
+
+    wf_centers: np.ndarray
+    wf_cost: float
+    
+    zero_avgV: bool = True
 
     def create_lattice(
         self,
@@ -130,7 +135,7 @@ class MLWF(DVR):
         N: int,
         shape="square",  # Shape of the lattice
         lattice_symmetry: bool = True,  # Whether the lattice has reflection symmetry
-        # Lattice dimensions & lattice constant, in unit of nm
+        # Square lattice dimensions & lattice constant, in unit of nm
         lattice_params: tuple[np.ndarray, tuple] = (
             np.array([2], dtype=int),
             (1520, 1690),
@@ -140,7 +145,7 @@ class MLWF(DVR):
         isotropic: bool = False,  # Check if the lattice is isotropic
         ascatt=1770,  # Scattering length, in unit of Bohr radius, default 1770
         band=1,  # Number of bands
-        balance_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
+        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
         *args,
         **kwargs,
@@ -162,6 +167,8 @@ class MLWF(DVR):
             raise TypeError(
                 "Absorber is not supported for Wannier Function construction!"
             )
+            
+        self.zero_avgV = kwargs.pop("zero_avgV", True)
 
         # Numerical integration grid point number
         self.Nintgrl_grid = kwargs.get("Nintgrl_grid", 257)
@@ -212,9 +219,7 @@ class MLWF(DVR):
                 V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
         return V
 
-    def singleband_Hubbard(
-        self, u=False, x0=None, W0=None, offset=True, band=1, eig_sol=None
-    ):
+    def singleband_Hubbard(self, u=False, x0=None, W0=None, band=1, eig_sol=None):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
         if band == 1: # If only 1st band is needed, set bands to 1
@@ -227,12 +232,12 @@ class MLWF(DVR):
         E = E[band - 1]  # Eigen energy
         W = W[band - 1]  # Eigen vector
         p = p[band - 1]  # Sector index
-        self.A, V = self.singleband_WF(E, W, p, x0)  # Single band WF & tij matrix
-        if offset is True:
-            # Shift onsite physical potential to zero average
-            self.zero = np.mean(self.ghost.mask_quantity(np.real(np.diag(self.A))))
-        elif isinstance(offset, Number):
-            self.zero = offset
+        self.A, V = singleband_WF(self, E, W, p, x0)
+        if self.zero_avgV is True:
+            # Shift onsite potential to zero average
+            self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
+        elif isinstance(self.zero_avgV, Number):
+            self.zero = self.zero_avgV
         else:
             self.zero = 0
         self.A -= self.zero * np.eye(self.A.shape[0])
@@ -325,12 +330,12 @@ class MLWF(DVR):
                 p_tuple.append(p)
             else:
                 p_tuple.append([1])
-            # For a general omega_z << omega_x,y case,
-            # the lowest several bands are in
-            # z=1, z=-1, z=1 sector, etc... alternatively
-            # A simplest way to build bands is to simply collect
-            # Nband * Nsite lowest energy states
-            # z direction
+        # For a general omega_z << omega_x,y case,
+        # the lowest several bands are in
+        # z=1, z=-1, z=1 sector, etc... alternatively
+        # A simplest way to build bands is to simply collect
+        # Nband * Nsite lowest energy states
+        # z direction
         if self.bands > 1 and self.dim == 3:
             # Only for 3D case there are z=-1 bands
             p_tuple.append([1, -1])
@@ -341,7 +346,7 @@ class MLWF(DVR):
         return p_list
 
     def eigen_basis(
-        self, W0: list = None, standard: str = "energy"
+        self, W0: list = None, band_std: str = "symmetry"
     ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
         k = self.lattice.N * self.bands
@@ -363,15 +368,13 @@ class MLWF(DVR):
                 if W0 is not None:
                     W0[pidx] = W_sb[-k - 1]  # Inplace update x,y,z-folded W0
 
-            if standard == "energy":
+            if band_std == "energy":
                 # Sort everything by energy, only keetp lowest k states
                 idx = np.argsort(E_sb)[: k + 1]
                 E_sb = E_sb[idx]
                 W_sb = [W_sb[i] for i in idx[:k]]
                 p_sb = p_sb[idx, :]
-            elif standard == "symmetry":
-                # Don't select state right now,
-                # keep all k+1 states in each sector
+            elif band_std == "symmetry":
                 idx = np.argsort(E_sb)
                 E_sb = E_sb[idx]
                 W_sb = [W_sb[i] for i in idx]
@@ -388,10 +391,11 @@ class MLWF(DVR):
         # elif self.verbosity > 1 and E_sb[k - 1] - E_sb[0] > E_sb[k] - E_sb[k - 1]:
         #     print("Wannier warning: band gap is smaller than band width.")
 
-        if standard == "symmetry" and self.bands == 1:
-            standard = "energy"
+        if band_std == "symmetry" and self.bands == 1:
+            # Sector already be limited to z=1
+            band_std = "energy"
 
-        if standard == "energy":
+        if band_std == "energy":
             E_sb = E_sb[:k]
             p_sb = p_sb[:k]
             E = [
@@ -406,8 +410,8 @@ class MLWF(DVR):
                 p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
                 for b in range(self.bands)
             ]
-        elif standard == "symmetry" and self.bands == 2:
-            # Hard coded pz-even and pz-odd bands
+        elif band_std == "symmetry" and self.bands == 2:
+            # Hand coded pz-even and pz-odd bands
             E_even = np.array([])
             E_odd = np.array([])
             W_even = []
@@ -446,9 +450,9 @@ class MLWF(DVR):
         R = []
         # For 2D lattice keeps single p_z = 1 or -1 sector,
         for i in range(dim):
-            if self.nd[i]:
+            if self.nd[i]:  # DVR dimension
                 Rx = self.Xmat_1d(W, parity, i)
-                if Rx is not None:
+                if Rx is not None:  # If Rx is zero matrix it's not added
                     R.append(Rx)
         return R
 
@@ -504,54 +508,66 @@ class MLWF(DVR):
         # Singleband Wannier function optimization
         # x0 is the initial guess
 
-        t0 = time()
-        if self.lattice.N > 1:
-            R = self.Xmat(W, parity)
-            if len(R) == 1 and eig1d:
-                # If only one R given, the problem is simply diagonalization
-                # solution is eigenstates of operator X
-                X, solution = la.eigh(R[0])
-                # Auto sort eigenvectors by X eigenvalues
-                order = np.argsort(X)
-                U = solution[:, order]
-                wf_centers = np.array([X[order], np.zeros_like(X)]).T
-            else:
-                # In high dimension, X, Y, Z don't commute
-                solution = riemann_minimize(R, x0, self.verbosity)
-                U = site_sort(self, solution, R)
-                wf_centers = np.array(
-                    [np.diag(U.conj().T @ R[i] @ U) for i in range(self.lattice.dim)]
-                ).T
+def singleband_WF(
+    dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True
+) -> tuple[np.ndarray, np.ndarray]:
+    # Singleband Wannier function optimization
+    # x0 is the initial guess
+
+    t0 = time()
+    if dvr.lattice.N > 1:
+        R = dvr.Xmat(W, parity)
+        if len(R) == 1 and eig1d:
+            # If only one R given, the problem is simply diagonalization
+            # solution is eigenstates of operator X
+            X, solution = la.eigh(R[0])
+            # Auto sort eigenvectors by X eigenvalues
+            order = np.argsort(X)
+            U = solution[:, order]
+            wf_centers = np.array([X[order], np.zeros_like(X)]).T
         else:
-            U = np.ones((1, 1))
-            wf_centers = np.zeros((1, 2))
+            # In high dimension, X, Y, Z don't commute
+            solution = riemann_minimize(R, x0, dvr.verbosity)
+            U = site_sort(dvr, solution, R)
+            wf_centers = np.array(
+                [np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]
+            ).T
+        cost = cost_func(U, R).item()  # Convert to float
+    else:
+        U = np.ones((1, 1))
+        wf_centers = np.zeros((1, 2))
+        cost = 0
 
-        self.wf_centers = wf_centers
-        A = U.conj().T @ (E[:, None] * U) * self.V0 / self.kHz_2p
-        # TB parameter matrix, in unit of kHz
-        t1 = time()
-        if self.verbosity:
-            print(f"Single band optimization time: {t1 - t0}s.")
-        return A, U
+    dvr.wf_centers = wf_centers
+    dvr.wf_cost = cost
+    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
+    # TB parameter matrix, in unit of kHz
+    t1 = time()
+    if dvr.verbosity:
+        print(f"Single band optimization time: {t1 - t0}s.")
+    return A, U
 
-    def multiband_WF(self, E, W, parity, offset=True):
-        # Multiband optimization
-        A = []
-        w = []
-        wf_centers = []
-        for b in range(self.bands):
-            t_ij, w_mu = self.singleband_WF(E[b], W[b], parity[b])
-            if b == 0:
-                # Shift onsite potential to zero average
-                # Multi-band can only be shifted globally by 1st band
-                if offset:
-                    zero = np.mean(np.real(np.diag(t_ij)))
-                else:
-                    zero = 0
-            A.append(t_ij - zero * np.eye(t_ij.shape[0]))
-            w.append(w_mu)
-            wf_centers.append(self.wf_centers)
-        return A, w, wf_centers
+
+def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
+    # Multiband optimization
+    A = []
+    w = []
+    wf_centers = []
+    wf_costs = []
+    for b in range(dvr.bands):
+        t_ij, w_mu = singleband_WF(dvr, E[b], W[b], parity[b])
+        if b == 0:
+            # Shift onsite potential to zero average
+            # Multi-band can only be shifted globally by 1st band
+            if offset:
+                zero = np.mean(np.real(np.diag(t_ij)))
+            else:
+                zero = 0
+        A.append(t_ij - zero * np.eye(t_ij.shape[0]))
+        w.append(w_mu)
+        wf_centers.append(dvr.wf_centers)
+        wf_costs.append(dvr.wf_cost)
+    return A, w, wf_centers, wf_costs
 
 
 # =============================================================================

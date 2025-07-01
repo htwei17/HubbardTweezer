@@ -2,7 +2,7 @@
 
 ----------------------------------------
 
-This is an introductory manual for the code on [github](https://github.com/htwei17/HubbardTweezer) and used on the calculations in the [paper](https://arxiv.org/abs/2306.03019). For scientific principles, please refer to the paper main text.
+This is an introductory manual for the code on [github](https://github.com/htwei17/HubbardTweezer) and used on the calculations in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318). For scientific principles, please refer to the paper main text.
 
 ## Dependencies
 
@@ -281,14 +281,14 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Equalization_Parameters]`
 
-For the following sections about equalization process, please refer to the [paper](https://arxiv.org/abs/2306.03019) for more details. So far the equalization program only supports the lowest band Hubbard parameters.
+For the following sections about equalization process, please refer to the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318) for more details. So far the equalization program only supports the lowest band Hubbard parameters.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
 * `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
 
 ##### Explain equalization target
 >
-> The expression of the equalization cost function is the Eq.(16) in the [paper](https://arxiv.org/abs/2306.03019), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
+> The expression of the equalization cost function is the Eq.(16) in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
 > 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
 > 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the input in `[Equalization_Result]` [section](#input-in-equalization_result)  
@@ -307,7 +307,7 @@ For the following sections about equalization process, please refer to the [pape
                 None means the smallest target value (see [explanation](#explain-equalization-target) above) calculated in initial guess  
                 in unit of kHz (default: None)
 
-Below 2 proposals are elaborated in the [paper](https://arxiv.org/abs/2306.03019).
+Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318).
 
 ##### Equalization proposal: adjust waist
 

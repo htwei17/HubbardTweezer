@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+# import h5py
 from os.path import exists
 
 from HubbardTweezer.Hubbard.io import *
@@ -188,6 +189,8 @@ avg = rep.f(report, "Trap_Parameters", "average", 1)
 
 # ====== Hubbard settings ======
 band = rep.i(report, "Hubbard_Settings", "band", 1)
+zero_avgV = rep.b(report, "Hubbard_Settings", "zero_average_V", True)
+calculate_U = rep.b(report, "Hubbard_Settings", "calculate_U", True)
 Nintgrl_grid = rep.i(report, "Hubbard_Settings", "Nintgrl_grid", 200)
 offdiag_U = rep.b(report, "Hubbard_Settings", "offdiagonal_U", False)
 
@@ -223,6 +226,7 @@ print("x0", x0)
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 # plot = rep.b(report, "Verbosity", "plot", False)
+# savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
 # ====== Calculate or equalize ======
 G = HubbardEqualizer(
@@ -243,6 +247,7 @@ G = HubbardEqualizer(
     zR=zR,  # Rayleigh range input by hand
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
+    zero_avgV=zero_avgV, # Shift V to zero average
     equalize=eq,
     eqtarget=eqt,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
@@ -266,14 +271,15 @@ if not eq:
     G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
-G.singleband_Hubbard(u=True, eig_sol=eig_sol)
+G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
 maskedA = G.ghost.mask_quantity(G.A)
-maskedU = G.ghost.mask_quantity(G.U)
+if calculate_U:
+    maskedU = G.ghost.mask_quantity(G.U)
 links = G.xy_links(G.ghost.links)
 
 nnt = G.nn_tunneling(maskedA)
 if G.sf == None:
-    G.sf, __ = G.txy_target(nnt, links, np.min)
+    G.sf, __ = G.txy_target(nnt, links, np.mean)
 # Print out Hubbard parameters
 if G.verbosity > 1:
     print(f"scale_factor = {G.sf}")
@@ -284,24 +290,29 @@ if G.verbosity > 1:
 #     G.draw_graph("adjust", A=G.A, U=G.U)
 #     G.draw_graph(A=G.A, U=G.U)
 
-# ====== Write output ======
+# ====== Write singleband and trap parameters ======
 write_singleband(report, G)
 # Off-diagonal elements of U
-if G.bands == 1 and offdiag_U:
+if G.bands == 1 and calculate_U and offdiag_U:
     print("Singleband off-diagonal U calculation.")
-    __, W, __ = G.multiband_WF(*eig_sol)
+    __, W, __, __ = multiband_WF(G, *eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
     values = {"U_ijkl": U}
     rep.create_report(report, "Singleband_Parameters", **values)
 write_trap_params(report, G)
 
+# ====== Calculate Hubbard parameter variances ======
 eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
 Vtarget = np.mean(np.real(np.diag(maskedA)))
 ttarget = G.txy_target(nnt, links, np.mean)
-Utarget = np.mean(maskedU)
-cu = G.u_cost_func(maskedU, Utarget, G.sf)
+if calculate_U:
+    Utarget = np.mean(maskedU)
+    cu = G.u_cost_func(maskedU, Utarget, G.sf)
+else:
+    cu = 0
+    Utarget = 0
 ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
 cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 cvec = np.array((cu, ct, cv))
@@ -324,8 +335,29 @@ else:
     G.eqinfo["termination_reason"] = "Not equalized"
 G.eqinfo.write_equalization(report, write_log=log)
 
+# if savefmt == "h5":
+#     outFile = inFile[:-4] + ".h5"  # remove .ini and add .h5
+#     tij = abs(G.A)
+#     # remove diagonal elements, replace with V
+#     tij += np.diag(np.diag(G.A) - np.diag(tij))
+#     dat = {
+#         "t_ij": tij,
+#         "U_i": G.U,
+#         "V_offset": G.Voff,
+#         "trap_centers": G.trap_centers,
+#         "wf_centers": G.wf_centers,
+#         "wf_cost": G.wf_cost,
+#         "total_cost_func": ctot,
+#     }
+#     with h5py.File(outFile, "w") as f:
+#         print(f"Writing to h5 file {outFile} ...")
+#         for k in dat.keys():
+#             f[k] = np.asarray(dat[k])
+#         print("Done!")
+
+# ====== Write multiband output ======
 if G.bands > 1:
-    maskedA, W, wf_centers = G.multiband_WF(*eig_sol)
+    maskedA, W, wf_centers, wf_costs = multiband_WF(G, *eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(maskedA[i]))
@@ -333,12 +365,14 @@ if G.bands > 1:
         values[f"t_{i+1}_ij"] = tij
         values[f"V_{i+1}_i"] = Vi
         values[f"wf_{i+1}_centers"] = wf_centers[i]
+        values[f"wf_{i+1}_cost"] = wf_costs[i]
 
-    U = interaction(G, W, *eig_sol[1:])
-    for i in range(band):
-        for j in range(band):
-            values[f"U_{i+1}{j+1}_i"] = U[i, j]
+    if calculate_U:
+        U = interaction(G, W, *eig_sol[1:])
+        for i in range(band):
+            for j in range(band):
+                values[f"U_{i+1}{j+1}_i"] = U[i, j]
 
     rep.create_report(report, "Multiband_Parameters", **values)
 
-sys.exit(0)
+sys.exit(0)  # Exit with no error

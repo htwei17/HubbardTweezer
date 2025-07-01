@@ -7,13 +7,14 @@ from .lattice import Lattice
 
 dmin = 1.4 # Minimum trap center spacing in unit of wx
 # 1.4 wx is roughtly -0.75V0 barrier height
+dv = 0.02 # 2% fluctuation, small enough to avoid failed Wannierization
 
 def init_V0(Voff: np.ndarray, lattice: Lattice, nobounds: bool = False):
     v01 = symm_fold(lattice.reflect, Voff)
     if nobounds:
         b1 = list((-np.inf, np.inf) for i in range(lattice.Nindep))
     else:
-        b1 = list((0.95, 1.05) for i in range(lattice.Nindep))  # 5% ~ 2.5kHz fluctuation
+        b1 = list((1 - dv, 1 + dv) for i in range(lattice.Nindep))  # 5% ~ 2.5kHz fluctuation
     return v01, b1
 
 
