@@ -61,7 +61,7 @@ And if we want to input a 1-D or n-D `numpy.array`, we use the following format:
 
 ## Example
 
-### Calculate single-band Hubbard parameters for a 2x2 square lattice
+### Example 1: Calculate single-band Hubbard parameters for a 2x2 square lattice
 
 We write the input `2x2.ini` file as below:
 
