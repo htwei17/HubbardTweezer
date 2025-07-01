@@ -214,7 +214,7 @@ class HubbardEqualizer(MLWF):
         else:
             W0 = None
 
-        # Set target
+        # Set U, t, V targets
         A, U, V = self.singleband_Hubbard(u=u, W0=W0)
         maskedA = self.ghost.mask_quantity(A)
         maskedU = self.ghost.mask_quantity(U) if u else None
