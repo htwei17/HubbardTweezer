@@ -508,7 +508,7 @@ def singleband_WF(
         else:
             # In high dimension, X, Y, Z don't commute
             solution = riemann_minimize(R, x0, dvr.verbosity)
-            U = site_order(dvr, solution, R)
+            U = site_sort(dvr, solution, R)
             wf_centers = np.array(
                 [np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]
             ).T
@@ -553,7 +553,7 @@ def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
 # =============================================================================
 
 
-def site_order(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
+def site_sort(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     # Order Wannier functions by lattice site label
 
     if dvr.lattice.dim == 1:

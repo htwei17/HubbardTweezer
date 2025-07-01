@@ -1,4 +1,6 @@
-# DVR
+# HubbatdTweezer
+
+--------------------
 
 ![release](https://img.shields.io/github/v/release/Kvanti17/HubbardTweezer?color=green&include_prereleases)
 
@@ -24,6 +26,11 @@ Please cite the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.1
   url = {https://link.aps.org/doi/10.1103/PhysRevA.109.013318}
 }
 ```
+
+## TODO
+
+1. Update site-specific Hubbard parameters target
+2. Add DVR support to DMD configs
 
 ## Features
 
