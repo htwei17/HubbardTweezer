@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from scipy.integrate import romb, simps
+from scipy.integrate import romb, simpson
 
 from ..DVR.core import dim
 

@@ -246,7 +246,7 @@ G = HubbardGraph(
     zR=zR,  # Rayleigh range input by hand
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
-    zero_avgV=zero_avgV, # Shift V to zero average
+    zero_avgV=zero_avgV,  # Shift V to zero average
     equalize=eq,
     eqtarget=eqt,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
@@ -294,7 +294,7 @@ write_singleband(report, G)
 # Off-diagonal elements of U
 if G.bands == 1 and calculate_U and offdiag_U:
     print("Singleband off-diagonal U calculation.")
-    __, W, __, __ = multiband_WF(G, *eig_sol)
+    __, W, __, __ = G.multiband_WF(*eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
     values = {"U_ijkl": U}
     rep.create_report(report, "Singleband_Parameters", **values)
@@ -356,7 +356,7 @@ if savefmt == "h5":
 
 # ====== Write multiband output ======
 if G.bands > 1:
-    maskedA, W, wf_centers, wf_costs = multiband_WF(G, *eig_sol)
+    maskedA, W, wf_centers, wf_costs = G.multiband_WF(*eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(maskedA[i]))

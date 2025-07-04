@@ -41,7 +41,7 @@ class MLWF(DVR):
 
     wf_centers: np.ndarray
     wf_cost: float
-    
+
     zero_avgV: bool = True
 
     def create_lattice(
@@ -160,7 +160,7 @@ class MLWF(DVR):
             raise TypeError(
                 "Absorber is not supported for Wannier Function construction!"
             )
-            
+
         self.zero_avgV = kwargs.pop("zero_avgV", True)
 
         self.Nintgrl_grid = kwargs.get(
@@ -223,7 +223,7 @@ class MLWF(DVR):
         E = E[band - 1]  # Eigen energy
         W = W[band - 1]  # Eigen vector
         p = p[band - 1]  # Sector index
-        self.A, V = singleband_WF(self, E, W, p, x0)
+        self.A, V = self.singleband_WF(E, W, p, x0)
         if self.zero_avgV is True:
             # Shift onsite potential to zero average
             self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
@@ -484,73 +484,69 @@ class MLWF(DVR):
             Rx = None
         return Rx
 
+    def singleband_WF(
+        self, E, W, parity, x0=None, eig1d: bool = True
+    ) -> tuple[np.ndarray, np.ndarray]:
+        # Singleband Wannier function optimization
+        # x0 is the initial guess
 
-# ========================== OPTIMIZATION ALGORITHMS ==========================
-
-
-def singleband_WF(
-    dvr: MLWF, E, W, parity, x0=None, eig1d: bool = True
-) -> tuple[np.ndarray, np.ndarray]:
-    # Singleband Wannier function optimization
-    # x0 is the initial guess
-
-    t0 = time()
-    if dvr.lattice.N > 1:
-        R = dvr.Xmat(W, parity)
-        if len(R) == 1 and eig1d:
-            # If only one R given, the problem is simply diagonalization
-            # solution is eigenstates of operator X
-            X, solution = la.eigh(R[0])
-            # Auto sort eigenvectors by X eigenvalues
-            order = np.argsort(X)
-            U = solution[:, order]
-            wf_centers = np.array([X[order], np.zeros_like(X)]).T
-        else:
-            # In high dimension, X, Y, Z don't commute
-            solution = riemann_minimize(R, x0, dvr.verbosity)
-            U = site_sort(dvr, solution, R)
-            wf_centers = np.array(
-                [np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]
-            ).T
-        cost = cost_func(U, R).item()  # Convert to float
-    else:
-        U = np.ones((1, 1))
-        wf_centers = np.zeros((1, 2))
-        cost = 0
-
-    dvr.wf_centers = wf_centers
-    dvr.wf_cost = cost
-    A = U.conj().T @ (E[:, None] * U) * dvr.V0 / dvr.kHz_2p
-    # TB parameter matrix, in unit of kHz
-    t1 = time()
-    if dvr.verbosity:
-        print(f"Single band optimization time: {t1 - t0}s.")
-    return A, U
-
-
-def multiband_WF(dvr: MLWF, E, W, parity, offset=True):
-    # Multiband optimization
-    A = []
-    w = []
-    wf_centers = []
-    wf_costs = []
-    for b in range(dvr.bands):
-        t_ij, w_mu = singleband_WF(dvr, E[b], W[b], parity[b])
-        if b == 0:
-            # Shift onsite potential to zero average
-            # Multi-band can only be shifted globally by 1st band
-            if offset:
-                zero = np.mean(np.real(np.diag(t_ij)))
+        t0 = time()
+        if self.lattice.N > 1:
+            R = self.Xmat(W, parity)
+            if len(R) == 1 and eig1d:
+                # If only one R given, the problem is simply diagonalization
+                # solution is eigenstates of operator X
+                X, solution = la.eigh(R[0])
+                # Auto sort eigenvectors by X eigenvalues
+                order = np.argsort(X)
+                U = solution[:, order]
+                wf_centers = np.array([X[order], np.zeros_like(X)]).T
             else:
-                zero = 0
-        A.append(t_ij - zero * np.eye(t_ij.shape[0]))
-        w.append(w_mu)
-        wf_centers.append(dvr.wf_centers)
-        wf_costs.append(dvr.wf_cost)
-    return A, w, wf_centers, wf_costs
+                # In high dimension, X, Y, Z don't commute
+                solution = riemann_minimize(R, x0, self.verbosity)
+                U = site_sort(self, solution, R)
+                wf_centers = np.array(
+                    [np.diag(U.conj().T @ R[i] @ U) for i in range(self.lattice.dim)]
+                ).T
+            cost = cost_func(U, R).item()  # Convert to float
+        else:
+            U = np.ones((1, 1))
+            wf_centers = np.zeros((1, 2))
+            cost = 0
+
+        self.wf_centers = wf_centers
+        self.wf_cost = cost
+        A = U.conj().T @ (E[:, None] * U) * self.V0 / self.kHz_2p
+        # TB parameter matrix, in unit of kHz
+        t1 = time()
+        if self.verbosity:
+            print(f"Single band optimization time: {t1 - t0}s.")
+        return A, U
+
+    def multiband_WF(self, E, W, parity, offset=True):
+        # Multiband optimization
+        A = []
+        w = []
+        wf_centers = []
+        wf_costs = []
+        for b in range(self.bands):
+            t_ij, w_mu = self.singleband_WF(E[b], W[b], parity[b])
+            if b == 0:
+                # Shift onsite potential to zero average
+                # Multi-band can only be shifted globally by 1st band
+                if offset:
+                    zero = np.mean(np.real(np.diag(t_ij)))
+                else:
+                    zero = 0
+            A.append(t_ij - zero * np.eye(t_ij.shape[0]))
+            w.append(w_mu)
+            wf_centers.append(self.wf_centers)
+            wf_costs.append(self.wf_cost)
+        return A, w, wf_centers, wf_costs
 
 
 # =============================================================================
+# ========================== HELPERS ==========================
 
 
 def site_sort(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
