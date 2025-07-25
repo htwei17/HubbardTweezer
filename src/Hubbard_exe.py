@@ -66,7 +66,7 @@ def help_message(s=2):
     ### Hubbard parameter equalization:
 
     * equalize:   equalize Hubbard parameters or not (default: False)
-    * equalize_target:    target Hubbard parameters to be equalized (default: `vT`)
+    * equalize_item:    determine which Hubbard parameters to be equalized (default: `vT`)
                         see `Hubbard.equalizer` for more details
     * method:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
                 see `scipy.optimize.minimize`, `least_squares`, and `nlopt` documentations for more details
@@ -197,7 +197,7 @@ ut = rep.f(report, "Equalization_Result", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Equalization_Parameters", "equalize", False)
-eqt = rep.s(report, "Equalization_Parameters", "equalize_target", "vT")
+eqt = rep.s(report, "Equalization_Parameters", "equalize_item", "vT")
 eqV0 = rep.b(report, "Equalization_Parameters", "equalize_V0", False)
 wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
 meth = rep.s(report, "Equalization_Parameters", "method", "trf")
@@ -205,6 +205,15 @@ nb = rep.b(report, "Equalization_Parameters", "no_bounds", False)
 gho = rep.b(report, "Equalization_Parameters", "ghost_sites", False)
 ghopen = rep.a(report, "Equalization_Parameters", "ghost_penalty", np.array([1, 1]))
 r = rep.b(report, "Equalization_Parameters", "random_initial_guess", False)
+Utarget = rep.a(report, "Equalization_Parameters", "U_target", None)
+tTarget = rep.a(report, "Equalization_Parameters", "t_target", None)
+Vtarget = rep.a(report, "Equalization_Parameters", "V_target", None)
+if any([Utarget is not None, tTarget is not None, Vtarget is not None]):
+    if tTarget is None or len(tTarget) == 1:
+        txTarget, tyTarget = tTarget, None
+    target_values = (Vtarget, Utarget, txTarget, tyTarget)
+else:
+    target_values = None
 sf = rep.f(report, "Equalization_Parameters", "scale_factor", None)
 # Try to read existing equalization result as initial guess for next equalization
 meth = "Nelder-Mead" if meth == "NM" else meth
@@ -248,9 +257,10 @@ G = HubbardGraph(
     sparse=s,  # Sparse matrix
     zero_avgV=zero_avgV,  # Shift V to zero average
     equalize=eq,
-    eqtarget=eqt,
+    eqitem=eqt,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
+    target_values=target_values,  # U, t, V target values
     Nintgrl_grid=Nintgrl_grid,
     ghost=gho,
     ghost_penalty=ghopen,
@@ -304,16 +314,21 @@ write_trap_params(report, G)
 eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-Vtarget = np.mean(np.real(np.diag(maskedA)))
-ttarget = G.txy_target(nnt, links, np.mean)
+if not target_values:
+    Vtarget = np.mean(np.real(np.diag(maskedA)))
+    tTarget = G.txy_target(nnt, links, np.mean)
+else:
+    Vtarget, Utarget, txTarget, tyTarget = target_values
+    tTarget = [txTarget, tyTarget]
+ct = G.t_cost_func(maskedA, links, tTarget, G.sf)
+cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 if calculate_U:
-    Utarget = np.mean(maskedU)
+    if not target_values:
+        Utarget = np.mean(maskedU)
     cu = G.u_cost_func(maskedU, Utarget, G.sf)
 else:
-    cu = 0
     Utarget = 0
-ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
-cv = G.v_cost_func(maskedA, Vtarget, G.sf)
+    cu = 0
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
@@ -321,13 +336,13 @@ fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo["sf"] = G.sf
 # Final U/t, so is determined by average values
-G.eqinfo["Ut"] = Utarget / ttarget[0]
+G.eqinfo["Ut"] = Utarget / tTarget[0]
 
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
 else:
     v0, __ = G.init_v0_and_bound(random=False)
-    G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
+    G.eqinfo.create_log(v0, (Vtarget, Utarget, *tTarget))
     G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1

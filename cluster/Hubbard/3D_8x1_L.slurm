@@ -44,7 +44,7 @@ waist = 930, 1250
 dimension = 3
 waist_direction = xy
 equalize = False
-equalize_target = uvt
+equalize_item = uvt
 verbosity = 2" >>$fn
 
 WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/"8x1_L="$SLURM_ARRAY_TASK_ID

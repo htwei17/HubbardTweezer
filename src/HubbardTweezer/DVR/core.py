@@ -47,7 +47,7 @@ class DVR:
         atom (`float`): Atom mass in unit of amu
         laser ('float'): Laser wavelength in unit of nm
         zR ('float'): Rayleigh length in unit of nm;
-            if not given, zR is calculated by \pi * w^2 / laser
+            if not given, zR is calculated by \\pi * w^2 / laser
         sparse (`bool`): Whether to use sparse matrix
         symmetry (`bool`): Whether to use symmetry in DVR
         absorber (`bool`): Whether to use absorber

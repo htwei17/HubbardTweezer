@@ -434,7 +434,7 @@ class HubbardGraph(HubbardEqualizer):
         )
 
     def add_scalebar(
-        self, ax: plt.Axes = None, color="teal", scale=1.0, unit="$\mathrm{\mu m}$"
+        self, ax: plt.Axes = None, color="teal", scale=1.0, unit="$\\mathrm{\\mu m}$"
     ):
         if ax is None:
             ax = plt.gca()

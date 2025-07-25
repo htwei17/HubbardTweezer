@@ -31,8 +31,12 @@ class GhostTrap:
         self.penfunc = func
         self.mask = np.ones(lattice.N, dtype=bool)
         self.links = lattice.links
-        self.Nsite = np.sum(self.mask)
         self.is_masked = False
+
+    @property
+    def Nsite(self):
+        # Number of sites in the ghost trap
+        return np.sum(self.mask)
 
     def set_mask(self, lattice: Lattice):
         # Set ghost trap for 1D & 2D lattice
@@ -71,7 +75,6 @@ class GhostTrap:
             raise err
         masked_idx = np.where(~self.mask)[0]
         self.links = squeeze_idx(lattice.links, masked_idx)
-        self.Nsite = np.sum(self.mask)
         # self.block = block
         self.is_masked = True
         print("Equalize: ghost sites are set.")

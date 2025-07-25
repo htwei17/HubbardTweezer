@@ -144,7 +144,7 @@ lattice_const = 1550,
 lattice_symmetry = True
 [Equalization_Parameters]
 equalize = True
-equalize_target = UvT
+equalize_item = UvT
 waist_direction = None
 U_over_t = None
 method = trf
@@ -283,11 +283,11 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 For the following sections about equalization process, please refer to the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318) for more details.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
-* `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
+* `equalize_item`:    (string) determine which Hubbard parameters to be equalized (default: `vT`)
 
-##### Explain equalization target
+##### Explain equalization item
 >
-> The expression of the equalization cost function is the Eq.(16) in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
+> The expression of the equalization cost function is the Eq.(16) in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_item` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
 > 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
 > 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the input in `[Equalization_Result]` [section](#input-in-equalization_result)  
@@ -303,7 +303,7 @@ For the following sections about equalization process, please refer to the [pape
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 * `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
-                None means the smallest target value (see [explanation](#explain-equalization-target) above) calculated in initial guess  
+                None means the smallest target value (see [explanation](#explain-equalization-item) above) calculated in initial guess  
                 in unit of kHz (default: None)
 
 ##### Equalization proposal: adjust waist

@@ -41,7 +41,7 @@ waist = 1000, 1000
 dimension = "$d >> $fn
 echo "waist_direction = xy
 equalize = "$EQ_FLAG >> $fn
-echo "equalize_target = "$STATUS >>$fn
+echo "equalize_item = "$STATUS >>$fn
 echo "verbosity = 2" >>$fn
 
 WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/$JOB_NAME

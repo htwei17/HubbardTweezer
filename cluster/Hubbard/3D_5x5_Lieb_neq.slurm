@@ -42,7 +42,7 @@ waist = 1000, 1000
 dimension = 3
 waist_direction = xy
 equalize = False
-equalize_target = uvt
+equalize_item = uvt
 verbosity = 2" >>$fn
 
 WORKING_LOCAL_PATH=$SHARED_SCRATCH/$USER/HubbardTweezer/"5x5_Lieb_neq"

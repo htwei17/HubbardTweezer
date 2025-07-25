@@ -223,7 +223,7 @@ class MLWF(DVR):
         E = E[band - 1]  # Eigen energy
         W = W[band - 1]  # Eigen vector
         p = p[band - 1]  # Sector index
-        self.A, V = self.singleband_WF(E, W, p, x0)
+        self.A, WF = self.singleband_WF(E, W, p, x0)
         if self.zero_avgV is True:
             # Shift onsite potential to zero average
             self.zero = np.mean(np.real(np.diag(self.A)[self.ghost.mask]))
@@ -235,9 +235,9 @@ class MLWF(DVR):
 
         if u and self.verbosity:
             print("Calculate U.")
-        self.U = singleband_interaction(self, V, V, W, W, p, p) if u else None
+        self.U = singleband_interaction(self, WF, WF, W, W, p, p) if u else None
         self.bands = band_bak
-        return self.A, self.U, V
+        return self.A, self.U, WF
 
     def trap_mat(self):
         # depth of each trap center
@@ -499,29 +499,29 @@ class MLWF(DVR):
                 X, solution = la.eigh(R[0])
                 # Auto sort eigenvectors by X eigenvalues
                 order = np.argsort(X)
-                U = solution[:, order]
+                WF = solution[:, order]
                 wf_centers = np.array([X[order], np.zeros_like(X)]).T
             else:
                 # In high dimension, X, Y, Z don't commute
                 solution = riemann_minimize(R, x0, self.verbosity)
-                U = site_sort(self, solution, R)
+                WF = site_sort(self, solution, R)
                 wf_centers = np.array(
-                    [np.diag(U.conj().T @ R[i] @ U) for i in range(self.lattice.dim)]
+                    [np.diag(WF.conj().T @ R[i] @ WF) for i in range(self.lattice.dim)]
                 ).T
-            cost = cost_func(U, R).item()  # Convert to float
+            cost = cost_func(WF, R).item()  # Convert to float
         else:
-            U = np.ones((1, 1))
+            WF = np.ones((1, 1))
             wf_centers = np.zeros((1, 2))
             cost = 0
 
         self.wf_centers = wf_centers
         self.wf_cost = cost
-        A = U.conj().T @ (E[:, None] * U) * self.V0 / self.kHz_2p
+        A = WF.conj().T @ (E[:, None] * WF) * self.V0 / self.kHz_2p
         # TB parameter matrix, in unit of kHz
         t1 = time()
         if self.verbosity:
             print(f"Single band optimization time: {t1 - t0}s.")
-        return A, U
+        return A, WF
 
     def multiband_WF(self, E, W, parity, offset=True):
         # Multiband optimization
@@ -549,24 +549,26 @@ class MLWF(DVR):
 # ========================== HELPERS ==========================
 
 
-def site_sort(dvr: MLWF, U: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
+def site_sort(dvr: MLWF, WF: np.ndarray, R: list[np.ndarray]) -> np.ndarray:
     # Order Wannier functions by lattice site label
 
     if dvr.lattice.dim == 1:
         # Find WF center of mass
-        x = np.diag(U.conj().T @ R[0] @ U)
+        x = np.diag(WF.conj().T @ R[0] @ WF)
         order = np.argsort(x)
     elif dvr.lattice.dim > 1:
         # Find WF center of mass
-        x = np.array([np.diag(U.conj().T @ R[i] @ U) for i in range(dvr.lattice.dim)]).T
+        x = np.array(
+            [np.diag(WF.conj().T @ R[i] @ WF) for i in range(dvr.lattice.dim)]
+        ).T
         order = nearest_match(dvr.trap_centers, x)
     if dvr.verbosity > 1:
         print("Trap site position of Wannier functions:", order)
         print("Order of Wannier functions is set to match traps.")
-    return U[:, order]
+    return WF[:, order]
 
 
-def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs):
+def interaction(dvr: MLWF, WF: Iterable, W: Iterable, parity: Iterable, **kwargs):
     # Interaction between i band and j band
     onsite = kwargs.get("onsite", True)
     if onsite:
@@ -574,7 +576,7 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs)
         for i in range(dvr.bands):
             for j in range(i, dvr.bands):
                 Uint[i, j, :] = singleband_interaction(
-                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                    dvr, WF[i], WF[j], W[i], W[j], parity[i], parity[j], **kwargs
                 )
                 if i != j:
                     Uint[j, i, :] = Uint[i, j, :]
@@ -592,7 +594,7 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs)
         for i in range(dvr.bands):
             for j in range(i, dvr.bands):
                 Uint[i, j] = singleband_interaction(
-                    dvr, U[i], U[j], W[i], W[j], parity[i], parity[j], **kwargs
+                    dvr, WF[i], WF[j], W[i], W[j], parity[i], parity[j], **kwargs
                 )
                 if i != j:
                     Uint[j, i] = Uint[i, j]
@@ -601,8 +603,8 @@ def interaction(dvr: MLWF, U: Iterable, W: Iterable, parity: Iterable, **kwargs)
 
 def singleband_interaction(
     dvr: MLWF,
-    Ui,
-    Uj,
+    WFi,
+    WFj,
     Wi,
     Wj,
     pi: np.ndarray,
@@ -624,8 +626,8 @@ def singleband_interaction(
         else:
             x.append(np.array([0]))
             dx.append(0)
-    Vi = wannier_func(x, Ui, dvr, Wi, pi)
-    Vj = Vi if Ui is Uj else wannier_func(x, Uj, dvr, Wj, pj)
+    Vi = wannier_func(x, WFi, dvr, Wi, pi)
+    Vj = Vi if WFi is WFj else wannier_func(x, WFj, dvr, Wj, pj)
     if onsite:
         integrand = abs(Vi) ** 2 * abs(Vj) ** 2
         Uint = integrate(x, dx, integrand, method)
@@ -664,12 +666,12 @@ def integrate(x, dx, integrand, method):
     return U
 
 
-def wannier_func(x: Iterable, U, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
+def wannier_func(x: Iterable, WF, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(dim)]
     V = np.zeros((*(len(x[i]) for i in range(dim)), p.shape[0]))
     for i in range(p.shape[0]):  # Loop over trap sites, p.shape[0] = Ntrap
         V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
-    return V @ U
+    return V @ WF
 
 
 def symm_fold(reflection, info):

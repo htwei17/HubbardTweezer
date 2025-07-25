@@ -301,7 +301,7 @@ lattice_symmetry = $SYMMETRY
 zero_average_V = False
 [Equalization_Parameters]
 equalize = $EQ_FLAG
-equalize_target = $STATUS
+equalize_item = $STATUS
 U_over_t = $Ut
 method = $METHOD
 random_initial_guess = $RAND
