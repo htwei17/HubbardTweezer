@@ -3,13 +3,13 @@ from numbers import Number
 from typing import Iterable
 
 from .core import symm_fold
-from .lattice import Lattice
+from .lattice import LatticeGrid
 
 dmin = 1.4 # Minimum trap center spacing in unit of wx
 # 1.4 wx is roughtly -0.75V0 barrier height
 dv = 0.02 # 2% fluctuation, small enough to avoid failed Wannierization
 
-def init_V0(Voff: np.ndarray, lattice: Lattice, nobounds: bool = False):
+def init_V0(Voff: np.ndarray, lattice: LatticeGrid, nobounds: bool = False):
     v01 = symm_fold(lattice.reflect, Voff)
     if nobounds:
         b1 = list((-np.inf, np.inf) for i in range(lattice.Nindep))
@@ -19,7 +19,7 @@ def init_V0(Voff: np.ndarray, lattice: Lattice, nobounds: bool = False):
 
 
 def init_w0(
-    lattice: Lattice,
+    lattice: LatticeGrid,
     waists: np.ndarray,
     waist_dir,
     w_dof,
@@ -42,7 +42,7 @@ def init_w0(
 
 
 def init_aij(
-    lattice: Lattice,
+    lattice: LatticeGrid,
     lc: Iterable,
     trap_centers: np.ndarray,
     tc_dof,

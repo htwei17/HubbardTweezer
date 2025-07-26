@@ -1,6 +1,6 @@
 import numpy as np
 
-from .lattice import Lattice, squeeze_idx
+from .lattice import LatticeGrid, squeeze_idx
 
 
 def _lieb_ghost_sites(Nx, Ny):
@@ -24,7 +24,7 @@ class GhostTrap:
     is_masked: bool = False
     penfunc: str = "exp"
 
-    def __init__(self, lattice: Lattice, shape, penalty=0, threshold=0, func="exp"):
+    def __init__(self, lattice: LatticeGrid, shape, penalty=0, threshold=0, func="exp"):
         self.shape = shape
         self.weight = penalty
         self.threshold = threshold
@@ -38,7 +38,7 @@ class GhostTrap:
         # Number of sites in the ghost trap
         return np.sum(self.mask)
 
-    def set_mask(self, lattice: Lattice):
+    def set_mask(self, lattice: LatticeGrid):
         # Set ghost trap for 1D & 2D lattice
         # If trap is ghost, mask is False
 
@@ -79,7 +79,7 @@ class GhostTrap:
         self.is_masked = True
         print("Equalize: ghost sites are set.")
 
-    def xy_boundaries(self, lattice: Lattice, N):
+    def xy_boundaries(self, lattice: LatticeGrid, N):
         # Identify x and y boundary site indices
         # For example, for a 4x4 square lattice,
         # x_bdry = [0, 1, 2, 3, 12, 13, 14, 15]

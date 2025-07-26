@@ -4,6 +4,10 @@ import numpy as np
 
 
 class Lattice:
+    pass
+
+
+class LatticeGrid:
     def __init__(
         self,
         size: np.ndarray,

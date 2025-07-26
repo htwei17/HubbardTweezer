@@ -1,11 +1,12 @@
 import numpy as np
 from numpy.linalg import LinAlgError
-from typing import Iterable
+from typing import Iterable, Union, Optional
 from numbers import Number
 from opt_einsum import contract
 from time import time
 from itertools import product
 import numpy.linalg as la
+import scipy.interpolate as interp
 
 from ..DVR import DVR
 from ..DVR.const import *
@@ -13,7 +14,7 @@ from ..DVR.wavefunc import psi
 from ..tools.integrate import romb3d, trapz3dnp
 from ..tools.point_match import nearest_match
 from .riemann import *
-from .lattice import Lattice
+from .lattice import LatticeGrid
 from .ghost import GhostTrap
 
 tri_lattice_list = ["triangular", "honeycomvb", "defecthoneycomb", "kagome", "zigzag"]
@@ -36,7 +37,8 @@ class MLWF(DVR):
 
     Nintgrl_grid: int = 257
     ghost: GhostTrap
-    lattice: Lattice
+    lattice: LatticeGrid
+    custom_potential: callable = None  # Custom potential function, if any
     # Rintgrl: np.ndarray
 
     wf_centers: np.ndarray
@@ -54,7 +56,7 @@ class MLWF(DVR):
     ):
         # graph : each line represents coordinate (x, y) of one lattice site
 
-        self.lattice = Lattice(lattice, shape, self.ls, nodes, links)
+        self.lattice = LatticeGrid(lattice, shape, self.ls, nodes, links)
 
         self.set_lc(lc, shape)  # Convert lc to (lc, lc) and in unit of wx
 
@@ -137,7 +139,10 @@ class MLWF(DVR):
         # Custom lattice site positions & lattice links
         custom_lattice: tuple[np.ndarray] = (None, None),
         isotropic: bool = False,  # Check if the lattice is isotropic
-        ascatt=1770,  # Scattering length, in unit of Bohr radius, default 1770
+        custom_potential: Optional[
+            Union[callable, tuple[Iterable, np.ndarray]]
+        ] = None,  # Custom potential function, if any
+        ascatt: float = 1770,  # Scattering length, in unit of Bohr radius, default 1770
         band=1,  # Number of bands
         equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
@@ -167,6 +172,21 @@ class MLWF(DVR):
             "Nintgrl_grid", 257
         )  # Numerical integration grid point number
         print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
+
+        model = kwargs.get("model", "Gaussian")
+        if model == "custom":
+            print("Wannier: Custom potential model is set. Ignore lattice parameters.")
+            if custom_potential is not None:
+                if isinstance(custom_potential, Iterable):
+                    self.custom_potential = interp.RegularGridInterpolator(
+                        custom_potential[0], custom_potential[1]
+                    )
+                elif isinstance(custom_potential, callable):
+                    self.custom_potential = custom_potential
+                else:
+                    raise TypeError(
+                        "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
+                    )
 
         super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
@@ -202,6 +222,9 @@ class MLWF(DVR):
                 + np.cos(2 * np.pi * y / self.lc[1])
                 - 2
             ) / 2
+        elif self.model == "custom" and self.custom_potential is not None:
+            # Custom potential case
+            V += self.custom_potential(x, y, z)
         else:
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!

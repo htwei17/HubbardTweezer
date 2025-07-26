@@ -53,7 +53,7 @@ class DVRplot(DVRdynamics):
             self.freq_unit = 1
             self.t_unit = '(s)'
             self.xlabel = '$t$ (s)'
-        elif self.model == 'sho':
+        elif self.model == "sho":
             self.freq_unit_str = '$\omega$'
             self.freq_unit = 1
             self.t_unit = ''

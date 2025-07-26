@@ -37,8 +37,9 @@ class DVR:
             If i-th dimension is not calculated, n[i]=0
         R0 (`np.ndarray[float, float]`): Grid halfwidth in each direction
         model (`str`): Trap potential.
-            'Gaussian' means tweezer potential;
-            'sho' means harmonic potential
+            "Gaussian": tweezer potential
+            "sho": simple harmonic potential
+            "free": free particle, no potential
         avg (`float`): Factor a in Humiltonian H = T + aV
         trap (`tuple[float, float | tuple[float, float]]`): Trap potential parameters.
             trap[0] is the trap potential strength in unit of kHz

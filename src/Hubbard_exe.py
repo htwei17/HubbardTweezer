@@ -162,20 +162,31 @@ s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
-shape = rep.s(report, "Lattice_Parameters", "shape", "square")
-if shape == "custom":
-    nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
-    links = rep.a(report, "Lattice_Parameters", "bond_links", None)
-else:
-    nodes = None
-    links = None
-    lattice = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
-        int
+model = rep.s(report, "Lattice_Parameters", "lattice_model", "tweezer")
+if model == "tweezer":
+    model = "Gaussian"  # Use Gaussian potential for tweezer
+    shape = rep.s(report, "Lattice_Parameters", "shape", "square")
+    if shape == "custom":
+        nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
+        links = rep.a(report, "Lattice_Parameters", "bond_links", None)
+    else:
+        nodes = None
+        links = None
+        lattice = rep.a(
+            report, "Lattice_Parameters", "lattice_size", np.array([4])
+        ).astype(int)
+        lc = tuple(
+            rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
+        )
+        ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
+elif model == "custom":
+    model = "custom"
+    custom_potential_grid = rep.a(
+        report, "Lattice_Parameters", "custom_potential_grid", None
     )
-    lc = tuple(
-        rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
+    custom_potential_value = rep.a(
+        report, "Lattice_Parameters", "custom_potential_value", None
     )
-ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
 
 # ====== Physical trap parameters ======
 a_s = rep.f(report, "Trap_Parameters", "scattering_length", 1000)
@@ -248,7 +259,7 @@ G = HubbardGraph(
     ascatt=a_s,
     band=band,
     avg=avg,
-    model="Gaussian",  # Tweezer potetnial
+    model=model,  # Tweezer potetnial
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
