@@ -85,7 +85,7 @@ class HubbardGraph(HubbardEqualizer):
         # # Resize [n] to [n, 1]
         # self.lattice = np.resize(
         #     np.pad(self.lattice, pad_width=(0, 1), constant_values=1), 2)
-        self.edges = [tuple(row) for row in self.lattice.links]
+        self.edges = [tuple(row) for row in self.lattice.grid.links]
         self.graph = nx.DiGraph(self.edges, name="Lattice")
         self.pos = dict(
             # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
@@ -100,7 +100,7 @@ class HubbardGraph(HubbardEqualizer):
                 length = abs(self.A[link[0], link[1]]) * 1e3  # Convert to kHz
             elif label == "adjust":
                 # Label bond length
-                length = la.norm(np.diff(self.trap_centers[link, :], axis=0))
+                length = la.norm(np.diff(self.lattice.trap_centers[link, :], axis=0))
             else:
                 length = 1.0
             self.graph[link[0]][link[1]]["weight"] = length
@@ -134,7 +134,7 @@ class HubbardGraph(HubbardEqualizer):
             # Label trap offset
             self.pos = dict(
                 # (n, np.sign(self.trap_centers[n]) * abs(self.trap_centers[n])**1.1)
-                (n, self.trap_centers[n])
+                (n, self.lattice.trap_centers[n])
                 for n in self.graph.nodes()
             )
             self.node_label = dict(
@@ -234,7 +234,7 @@ class HubbardGraph(HubbardEqualizer):
 
         plt.axis("off")
         plt.savefig(
-            f"{self.lattice.size} nx {self.dim}d {self.ghost.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf",
+            f"{self.lattice.size} nx {self.dim}d {self.lattice.ghost.shape} {label} {self.waist_dir} {self.eq_label} band{band}.pdf",
             transparent=True,
             bbox_inches="tight",
         )
@@ -245,7 +245,7 @@ class HubbardGraph(HubbardEqualizer):
         self.nn_edge_label = dict()
         self.nnn_edge_label = dict()
         for i in link_list:
-            isnn = np.append(isnn, any((i == self.lattice.links).all(axis=1)))
+            isnn = np.append(isnn, any((i == self.lattice.grid.links).all(axis=1)))
             if isnn[-1]:
                 self.nn_edge_label[i] = self.edge_label[i]
             else:

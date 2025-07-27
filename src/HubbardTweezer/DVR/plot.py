@@ -257,7 +257,7 @@ def plot_lifetime(N0_list,
     if err:
         lt_err = [lt_vs_freq, lt_vs_freq]
 
-    fn = 'tau %gd %.1f.csv' % (dim, tau)
+    fn = 'tau %gd %.1f.csv' % (DIM, tau)
     if file:
         no_file = False
         try:

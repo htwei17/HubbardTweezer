@@ -154,7 +154,7 @@ class DVR:
         #     print(self.R)
         #     print(self.R0)
 
-        self.p = np.zeros(dim, dtype=int)
+        self.p = np.zeros(DIM, dtype=int)
         if self.dvr_symm:
             if parity is None:
                 self.p[self.nd] = 1
@@ -168,7 +168,7 @@ class DVR:
         if model == "Gaussian" or model == "lattice":
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
-            self.m: Literal = atom * amu  # Atom mass, in unit of electron mass
+            self.m: Literal = atom * AMU  # Atom mass, in unit of electron mass
             self.l: Literal = laser * 1e-9  # Laser wavelength, in unit of Bohr radius
             self.kHz: Literal = 1e3  # Make in the frequency unit of kHz
             self.kHz_2p: Literal = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
@@ -214,7 +214,7 @@ class DVR:
         elif model == "sho":
             # Harmonic parameters
             self.hb: Literal = 1.0  # Reduced Planck constant
-            self.omega = np.ones(dim)  # Harmonic frequencies
+            self.omega = np.ones(DIM)  # Harmonic frequencies
             self.m: Literal = 1.0
             self.w: Literal = 1.0
             self.mtV0 = self.m
@@ -274,7 +274,7 @@ class DVR:
         # NOTE: here n, dx are 3-element np.array s.t. n = [nx, ny, nz], dx = [dx, dy, dz]
         #       potential(x, y, z) is a function handle to be processed as potential function for solving
         x = []
-        for i in range(dim):
+        for i in range(DIM):
             x.append(
                 np.arange(self.init[i], self.n[i] + 1) * self.dx[i]
             )  # In unit of micron
@@ -322,7 +322,7 @@ class DVR:
         #       2. p=0, d=-1 means no symmetry applied
         delta = []
         T0 = []
-        for i in range(dim):
+        for i in range(DIM):
             delta.append(np.eye(self.n[i] + 1 - self.init[i]))  # eg. delta_xx'
             if self.n[i]:
                 T0.append(self._Tmat_1d(i))  # append p-sector
@@ -331,7 +331,7 @@ class DVR:
                 T0.append(None)
 
         if self.sparse:
-            for i in range(dim):
+            for i in range(DIM):
                 if not isinstance(T0[i], np.ndarray):
                     T0[i] = np.zeros((1, 1))
             return T0
@@ -340,7 +340,7 @@ class DVR:
             # delta_xx' T_yy' delta_zz'
             # T_xx' delta_yy' delta_zz'
             T = 0
-            for i in range(dim):
+            for i in range(DIM):
                 if isinstance(T0[i], np.ndarray):
                     T += contract(
                         "ij,kl,mn->ikmjln", *delta[:i], T0[i], *delta[i + 1 :]

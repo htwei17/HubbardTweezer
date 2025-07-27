@@ -3,7 +3,7 @@ from opt_einsum import contract
 
 # from numba import njit, guvectorize, int64, float64, complex128
 
-from .const import dim
+from .const import DIM
 from .core import get_init
 
 
@@ -12,7 +12,7 @@ def psi(
     n: np.ndarray,
     dx: np.ndarray,
     W: np.ndarray,
-    p: np.ndarray = np.zeros(dim, dtype=int),
+    p: np.ndarray = np.zeros(DIM, dtype=int),
 ) -> np.ndarray:
     init = get_init(n, p)
     # V = np.sum(
@@ -21,8 +21,8 @@ def psi(
     deltax = dx.copy()
     nd = deltax == 0
     deltax[nd] = 1
-    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(dim)]
-    x = [x[i] / deltax[i] for i in range(dim)]
+    xn = [np.arange(init[i], n[i] + 1, dtype=float) for i in range(DIM)]
+    x = [x[i] / deltax[i] for i in range(DIM)]
     # map object itself is not a list, but we can unpacked it by *V
     V = map(delta, p, x, xn)
     # ufunc of list of different length of arrays are not supported by numpy

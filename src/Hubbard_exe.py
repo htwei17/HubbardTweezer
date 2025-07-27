@@ -157,12 +157,13 @@ except FileNotFoundError as ferr:
 # ====== DVR parameters ======
 N = rep.i(report, "DVR_Parameters", "N", 20)
 L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]))
-dim = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
+DIM = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
 s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
 model = rep.s(report, "Lattice_Parameters", "lattice_model", "tweezer")
+custom_potential = None
 if model == "tweezer":
     model = "Gaussian"  # Use Gaussian potential for tweezer
     shape = rep.s(report, "Lattice_Parameters", "shape", "square")
@@ -172,7 +173,7 @@ if model == "tweezer":
     else:
         nodes = None
         links = None
-        lattice = rep.a(
+        lsize = rep.a(
             report, "Lattice_Parameters", "lattice_size", np.array([4])
         ).astype(int)
         lc = tuple(
@@ -187,6 +188,11 @@ elif model == "custom":
     custom_potential_value = rep.a(
         report, "Lattice_Parameters", "custom_potential_value", None
     )
+    if custom_potential_grid is not None and custom_potential_value is not None:
+        custom_potential = (custom_potential_grid, custom_potential_value)
+    else:
+        custom_potential = None
+        print("Custom potential grid or value not provided, using default potential.")
 
 # ====== Physical trap parameters ======
 a_s = rep.f(report, "Trap_Parameters", "scattering_length", 1000)
@@ -247,15 +253,26 @@ verb = rep.i(report, "Verbosity", "verbosity", 0)
 plot = rep.b(report, "Verbosity", "plot", False)
 savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
+# ====== Lattice parameters ======
+lattice = Lattice(
+    shape=shape,  # lattice geometries
+    lattice_symmetry=ls,  # lattice reflection symmetry
+    lattice=lsize,  # lattice size
+    lc=lc,  # lattice constant in nm
+    nodes=nodes,  # custom lattice site positions
+    links=links,  # custom lattice links
+    isotropic=False,  # check if the lattice is isotropic
+    ghost=gho,
+    ghost_penalty=ghopen,
+)
+
 # ====== Equalize ======
 G = HubbardGraph(
     N,
     R0=L0,
-    dim=dim,
-    shape=shape,  # lattice geometries
-    lattice_symmetry=ls,
-    lattice_params=(lattice, lc),
-    custom_lattice=(nodes, links),
+    dim=DIM,
+    lattice=lattice,  # Lattice object
+    custom_potential=custom_potential,  # Custom trapping potential
     ascatt=a_s,
     band=band,
     avg=avg,
@@ -273,8 +290,6 @@ G = HubbardGraph(
     Ut=ut,
     target_values=target_values,  # U, t, V target values
     Nintgrl_grid=Nintgrl_grid,
-    ghost=gho,
-    ghost_penalty=ghopen,
     random=r,
     x0=x0,
     scale_factor=sf,
@@ -292,19 +307,19 @@ if not eq:
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
-maskedA = G.ghost.mask_quantity(G.A)
+maskedA = G.lattice.ghost.mask_quantity(G.A)
 if calculate_U:
-    maskedU = G.ghost.mask_quantity(G.U)
-links = G.xy_links(G.ghost.links)
+    maskedU = G.lattice.ghost.mask_quantity(G.U)
+links = G.xy_links(G.lattice.ghost.links)
 
-nnt = G.nn_tunneling(maskedA)
+nnt = G.lattice.nn_tunneling(maskedA)
 if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.mean)
 # Print out Hubbard parameters
 if G.verbosity > 1:
     print(f"scale_factor = {G.sf}")
     print(f"V = {np.diag(G.A)}")
-    print(f"t = {abs(G.nn_tunneling(G.A))}")
+    print(f"t = {abs(G.lattice.nn_tunneling(G.A))}")
     print(f"U = {G.U}")
 if plot:
     G.draw_graph("adjust", A=G.A, U=G.U)
@@ -369,7 +384,7 @@ if savefmt == "h5":
         "t_ij": tij,
         "U_i": G.U,
         "V_offset": G.Voff,
-        "trap_centers": G.trap_centers,
+        "trap_centers": G.lattice.trap_centers,
         "wf_centers": G.wf_centers,
         "wf_cost": G.wf_cost,
         "total_cost_func": ctot,

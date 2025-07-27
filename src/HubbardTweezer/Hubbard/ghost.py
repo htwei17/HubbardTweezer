@@ -1,6 +1,6 @@
 import numpy as np
 
-from .lattice import LatticeGrid, squeeze_idx
+from .grid import LatticeGrid, squeeze_idx
 
 
 def _lieb_ghost_sites(Nx, Ny):
