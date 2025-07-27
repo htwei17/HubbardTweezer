@@ -148,6 +148,7 @@ equalize_item = UvT
 waist_direction = None
 U_over_t = None
 method = trf
+no_bounds = False
 [Verbosity]
 write_log = False
 verbosity = 3
@@ -300,7 +301,7 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 
 #### `[Equalization_Parameters]`
 
-For the following sections about equalization process, please refer to the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318) for more details.
+For the following sections about equalization process, please refer to the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318) for more details. So far the equalization program only supports the lowest band Hubbard parameters.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
 * `equalize_item`:    (string) determine which Hubbard parameters to be equalized (default: `vT`)
@@ -317,9 +318,9 @@ For the following sections about equalization process, please refer to the [pape
 > 3. Multiple letters can be used together, e.g. `uT` means to equalize `u` to uniform and `T` to target values determined by the initial physical trap parameters, while the uniformity of `V` is not considered
 
 * `method`:    (string) optimization algorithm to equalize Hubbard parameters (default: `trf`)  
-               available algorithms:
-               implemented by `scipy.optimize`:`trf`, `Nelder-Mead`, `SLSQP`, `L-BFGS-B` and `cobyla`,
-               implemented by `nlopt`: `praxis` and `bobyqa`
+               available algorithms:  
+               implemented by `scipy.optimize`:`trf`, `Nelder-Mead` (`NM` is accepted), `SLSQP`, `L-BFGS-B` and `cobyla`,  
+               implemented by `nlopt`: `praxis` and `bobyqa`  
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 * `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
@@ -336,6 +337,7 @@ The following optional parameters are used to set the target values of Hubbard p
 * `V_target`:   (float or 1-D array, optional) target on-site potential $V$ value in unit of kHz (default: `None`)  
                 `None` means to set $V$ to zero, i.e. to always shift the potential by its average value
 
+Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318).
 
 ##### Equalization proposal: adjust waist
 
@@ -353,7 +355,8 @@ The following optional parameters are used to set the target values of Hubbard p
 ##### Explain ghost penalty
 >
 > ghost_penalty determines how the penalty is added to the equalization cost function. The formula is as below:
-> $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\mathrm{threshold})]$
+> $\mathrm{penalty} = \mathrm{factor} \times \exp[-6(q-\tilde{q}-\mathrm{threshold})]$
+> ehere $\tilde{q}$ is the target value of Hubbard parameter $q$.
 
 #### `[Verbosity]`
 
@@ -367,8 +370,10 @@ The following optional parameters are used to set the target values of Hubbard p
 #### input in `[Equalization_Result]`
 
 * `x`:  (optional, 1-D array) initial trap parameters for equalization as a 1-D array  
-        used as the initial guess for equalization.
-        The structure is `concatenate([V_offset, trap_centers, waist_factors])`
+        used as the initial guess for equalization.  
+        The structure is `concatenate([V_offset, trap_centers, waist_factors])`.  
+        Note that this only contains free parameters e.g. if `waist_direction=None` then `waist_factors` is not included.
+        If `lattice_symmetry=True` then it only contains free parameters of the $(x\le 0, y\le 0)$ quadrant.
 * `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
                 `None` means this value is calculated by the ratio of $\mathrm{max} U / \mathrm{min} t_x$ in initial guess
 
@@ -428,7 +433,7 @@ Log of equalization process, turn on/off by `write_log`. Each item is an array o
 
 Multiband Hubbard parameters in unit of kHz, turn on if `band > 1`. Parameters have the same format as in `[Singleband_Parameters]`, labeled by band index.
 
-For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 1st band, and `U_12_i` is the on-site Hubbard interaction at site `i` between 1st and 2nd bands.
+For example, `t_1_ij` is the tunneling matrix between sites `i` and `j` for the 1st band, and `U_12_i` is the on-site Hubbard density-density interaction at site `i` between 1st and 2nd bands.
 
 ## Code structure
 
