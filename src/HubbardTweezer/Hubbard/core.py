@@ -124,7 +124,7 @@ class MLWF(DVR):
 
         self.lattice = lattice
         # Set lattice constants in unit of wx
-        if self.model in ["Gaussian", "lattice"]:
+        if self.model in ["Gaussian", "optical_lattice"]:
             self.lattice.set_lc(
                 np.array(self.lattice.lc) * 1e-9 / self.w, self.lattice.shape
             )
@@ -169,7 +169,7 @@ class MLWF(DVR):
         if self.model == "sho" and self.lattice.N == 2:
             # Two-site SHO case
             V += super().Vfun(abs(x) - self.lattice.lc[0] / 2, y, z)
-        elif self.model == "lattice":
+        elif self.model == "optical_lattice":
             # Optical lattice potential in 2D
             V = (
                 np.cos(2 * np.pi * x / self.lattice.lc[0])

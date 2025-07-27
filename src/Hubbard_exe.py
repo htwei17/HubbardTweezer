@@ -162,11 +162,14 @@ s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
-model = rep.s(report, "Lattice_Parameters", "lattice_model", "tweezer")
+model = rep.s(report, "Lattice_Parameters", "potential_model", "Gaussian")
 custom_potential = None
-if model == "tweezer":
-    model = "Gaussian"  # Use Gaussian potential for tweezer
+if model in ["Gaussian", "optical_lattice"]:
     shape = rep.s(report, "Lattice_Parameters", "shape", "square")
+    if model == "optical_lattice" and shape != "square":
+        raise ValueError(
+            "optical_lattice model only supports square lattice shape, please use Gaussian model for other shapes."
+        )
     if shape == "custom":
         nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
         links = rep.a(report, "Lattice_Parameters", "bond_links", None)
@@ -276,7 +279,7 @@ G = HubbardGraph(
     ascatt=a_s,
     band=band,
     avg=avg,
-    model=model,  # Tweezer potetnial
+    model=model,  # Trapping potetnial type
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength

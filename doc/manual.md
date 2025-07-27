@@ -207,6 +207,26 @@ In this section, `Nsite` is the number of trap sites.
 
 #### `[Lattice_Parameters]`
 
+In DVR computation, the lattice information is used to construct the trapping potential:
+$$ V(\mathbf{r}) = \sum_i V_i(\mathbf{r} - \mathbf{r}_i).$$
+
+Therefore, `[Lattice_Parameters]` supports two types of input: 1. specifying a lattice with geometries, which provide the positions $\mathbf{r}_i$ for each of the traps, and 2. specify directly the trapping potential value tensor $V(\mathbf{R})$ at spatial positions of a grid $\mathbf{R}$. The input type is specified by the `potential_model` option.
+
+* `potential_model`:  (string) type of potential model for lattice parameters (default: `Gaussian`)
+                    Supported strings: `Gaussian`, `optical_lattice`, `custom`
+                    If `Gaussian` or `optical_lattice`, the lattice is specified by the lattice geometry parameters, otherwise it is specified by the next two parameters
+
+##### Potential specified by potential grid
+
+(In progress) If `potential_model` is `custom`, the trapping potential is specified by the following two parameters:
+
+* `custom_potential_grid`:  (`DVR_dimension`-length tuple of 1D arrays) spatial grid point positions in `x`, `y` and `z` dimension (may be fewer dimensions if `DVR_dimension` < 3) (default: None)
+* `custom_potential_value`:  (rank-3 tensor) custom trapping potential values at grid point positions (default: None)
+
+##### Potential specified by lattice geometry parameters
+
+The rest of the section explains the trapping potential specified by lattice geometry parameters.
+
 * `shape`:  (string) lattice shape.  
                     Supported strings: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb`, `kagome` and `custom` (default: `square`)
 * `lattice_constant`:   (tuple or float) the $x$ and $y$ directions lattice spatial scaling, in unit of nm  
@@ -306,6 +326,17 @@ For the following sections about equalization process, please refer to the [pape
                 None means the smallest target value (see [explanation](#explain-equalization-item) above) calculated in initial guess  
                 in unit of kHz (default: None)
 
+The following optional parameters are used to set the target values of Hubbard parameters. They can be set uniform or site-specific.
+
+* `U_target`:   (float or 1-D array, optional) target Hubbard on-site interaction value in unit of kHz (default: `None`)  
+                `None` means to use the maximum value of the calculated $U$'s by the initial physical trap parameters
+* `t_target`:   (tuple of two 1-D arrays, optional) target tunneling $t_x$, $t_y$ values in unit of kHz (default: `None`)
+                `None` means to use the minimum value of the calculated $t$'s by the initial physical trap parameters
+                `(t_x, None)` can be used for 1-D chain
+* `V_target`:   (float or 1-D array, optional) target on-site potential $V$ value in unit of kHz (default: `None`)  
+                `None` means to set $V$ to zero, i.e. to always shift the potential by its average value
+
+
 ##### Equalization proposal: adjust waist
 
 * `waist_direction`:  (optional, string) direction of waist adjustment. `x`, `y`, `xy` are supported  
@@ -339,7 +370,7 @@ For the following sections about equalization process, please refer to the [pape
         used as the initial guess for equalization.
         The structure is `concatenate([V_offset, trap_centers, waist_factors])`
 * `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
-                `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
+                `None` means this value is calculated by the ratio of $\mathrm{max} U / \mathrm{min} t_x$ in initial guess
 
 ### Items output by the program
 

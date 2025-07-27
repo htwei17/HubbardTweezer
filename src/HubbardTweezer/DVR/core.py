@@ -165,7 +165,7 @@ class DVR:
                 print(f"{axis[self.nd]}-reflection symmetry is used.")
         self.init = get_init(self.n, self.p)
 
-        if model == "Gaussian" or model == "lattice":
+        if model in ["Gaussian", "optical_lattice"]:
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
             self.m: Literal = atom * AMU  # Atom mass, in unit of electron mass
