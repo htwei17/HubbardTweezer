@@ -67,7 +67,7 @@ def help_message(s=2):
     ### Hubbard parameter equalization:
 
     * equalize:   equalize Hubbard parameters or not (default: False)
-    * equalize_target:    target Hubbard parameters to be equalized (default: `vT`)
+    * equalize_item:    determine which Hubbard parameters to be equalized (default: `vT`)
                         see `Hubbard.equalizer` for more details
     * method:     optimization algorithm to equalize Hubbard parameters (default: `trf`)
                 see `scipy.optimize.minimize`, `least_squares`, and `nlopt` documentations for more details
@@ -158,25 +158,45 @@ except FileNotFoundError as ferr:
 # ====== DVR parameters ======
 N = rep.i(report, "DVR_Parameters", "N", 20)
 L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]))
-dim = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
+dimension = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
 s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
-shape = rep.s(report, "Lattice_Parameters", "shape", "square")
-if shape == "custom":
-    nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
-    links = rep.a(report, "Lattice_Parameters", "bond_links", None)
-else:
-    nodes = None
-    links = None
-    lsize = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(
-        int
+model = rep.s(report, "Lattice_Parameters", "potential_model", "Gaussian")
+custom_potential = None
+if model in ["Gaussian", "optical_lattice"]:
+    shape = rep.s(report, "Lattice_Parameters", "shape", "square")
+    if model == "optical_lattice" and shape != "square":
+        raise ValueError(
+            "optical_lattice model only supports square lattice shape, please use Gaussian model for other shapes."
+        )
+    if shape == "custom":
+        nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
+        links = rep.a(report, "Lattice_Parameters", "bond_links", None)
+    else:
+        nodes = None
+        links = None
+        lsize = rep.a(
+            report, "Lattice_Parameters", "lattice_size", np.array([4])
+        ).astype(int)
+        lc = tuple(
+            rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
+        )
+        ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
+elif model == "custom":
+    model = "custom"
+    custom_potential_grid = rep.a(
+        report, "Lattice_Parameters", "custom_potential_grid", None
     )
-    lc = tuple(
-        rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
+    custom_potential_value = rep.a(
+        report, "Lattice_Parameters", "custom_potential_value", None
     )
-ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
+    if custom_potential_grid is not None and custom_potential_value is not None:
+        custom_potential = (custom_potential_grid, custom_potential_value)
+    else:
+        custom_potential = None
+        print("Custom potential grid or value not provided, using default potential.")
 
 # ====== Physical trap parameters ======
 a_s = rep.f(report, "Trap_Parameters", "scattering_length", 1000)
@@ -198,7 +218,7 @@ ut = rep.f(report, "Equalization_Result", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Equalization_Parameters", "equalize", False)
-eqt = rep.s(report, "Equalization_Parameters", "equalize_target", "vT")
+eqt = rep.s(report, "Equalization_Parameters", "equalize_item", "vT")
 eqV0 = rep.b(report, "Equalization_Parameters", "equalize_V0", False)
 wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
 meth = rep.s(report, "Equalization_Parameters", "method", "trf")
@@ -206,6 +226,15 @@ nb = rep.b(report, "Equalization_Parameters", "no_bounds", False)
 gho = rep.b(report, "Equalization_Parameters", "ghost_sites", False)
 ghopen = rep.a(report, "Equalization_Parameters", "ghost_penalty", np.array([1, 1]))
 r = rep.b(report, "Equalization_Parameters", "random_initial_guess", False)
+Utarget = rep.a(report, "Equalization_Parameters", "U_target", None)
+tTarget = rep.a(report, "Equalization_Parameters", "t_target", None)
+Vtarget = rep.a(report, "Equalization_Parameters", "V_target", None)
+if any([Utarget is not None, tTarget is not None, Vtarget is not None]):
+    if tTarget is None or len(tTarget) == 1:
+        txTarget, tyTarget = tTarget, None
+    target_values = (Vtarget, Utarget, txTarget, tyTarget)
+else:
+    target_values = None
 sf = rep.f(report, "Equalization_Parameters", "scale_factor", None)
 # Try to read existing equalization result as initial guess for next equalization
 meth = "Nelder-Mead" if meth == "NM" else meth
@@ -228,33 +257,43 @@ verb = rep.i(report, "Verbosity", "verbosity", 0)
 # plot = rep.b(report, "Verbosity", "plot", False)
 # savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
-# ====== Calculate or equalize ======
-G = HubbardEqualizer(
+# ====== Lattice parameters ======
+lattice = Lattice(
+    shape=shape,  # lattice geometries
+    lattice_symmetry=ls,  # lattice reflection symmetry
+    lattice=lsize,  # lattice size
+    lc=lc,  # lattice constant in nm
+    nodes=nodes,  # custom lattice site positions
+    links=links,  # custom lattice links
+    isotropic=False,  # check if the lattice is isotropic
+    ghost=gho,
+    ghost_penalty=ghopen,
+)
+
+# ====== Equalize ======
+G = HubbardGraph(
     N,
     R0=L0,
-    dim=dim,
-    shape=shape,  # lattice geometries
-    lattice_symmetry=ls,
-    lattice_params=(lsize, lc),
-    custom_lattice=(nodes, links),
+    dim=dimension,
+    lattice=lattice,  # Lattice object
+    custom_potential=custom_potential,  # Custom trapping potential
     ascatt=a_s,
     band=band,
     avg=avg,
-    model="Gaussian",  # Tweezer potential
+    model=model,  # Trapping potetnial type
     trap=(V0, w),  # 2nd entry in array is (wx, wy), in number is (w, w)
     atom=m,  # Atom mass, in amu. Default Lithium-6
     laser=l,  # Laser wavelength
     zR=zR,  # Rayleigh range input by hand
     waist=wd,  # Waist varying directions
     sparse=s,  # Sparse matrix
-    zero_avgV=zero_avgV, # Shift V to zero average
+    zero_avgV=zero_avgV,  # Shift V to zero average
     equalize=eq,
-    eqtarget=eqt,
+    eqitem=eqt,
     equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
+    target_values=target_values,  # U, t, V target values
     Nintgrl_grid=Nintgrl_grid,
-    ghost=gho,
-    ghost_penalty=ghopen,
     random=r,
     x0=x0,
     scale_factor=sf,
@@ -272,19 +311,19 @@ if not eq:
 
 eig_sol = G.eigen_basis()
 G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
-maskedA = G.ghost.mask_quantity(G.A)
+maskedA = G.lattice.ghost.mask_quantity(G.A)
 if calculate_U:
-    maskedU = G.ghost.mask_quantity(G.U)
-links = G.xy_links(G.ghost.links)
+    maskedU = G.lattice.ghost.mask_quantity(G.U)
+links = G.xy_links(G.lattice.ghost.links)
 
-nnt = G.nn_tunneling(maskedA)
+nnt = G.lattice.nn_tunneling(maskedA)
 if G.sf == None:
     G.sf, __ = G.txy_target(nnt, links, np.mean)
 # Print out Hubbard parameters
 if G.verbosity > 1:
     print(f"scale_factor = {G.sf}")
     print(f"V = {np.diag(G.A)}")
-    print(f"t = {abs(G.nn_tunneling(G.A))}")
+    print(f"t = {abs(G.lattice.nn_tunneling(G.A))}")
     print(f"U = {G.U}")
 # if plot:
 #     G.draw_graph("adjust", A=G.A, U=G.U)
@@ -295,7 +334,7 @@ write_singleband(report, G)
 # Off-diagonal elements of U
 if G.bands == 1 and calculate_U and offdiag_U:
     print("Singleband off-diagonal U calculation.")
-    __, W, __, __ = multiband_WF(G, *eig_sol)
+    __, W, __, __ = G.multiband_WF(*eig_sol)
     U = interaction(G, W, *eig_sol[1:], onsite=False)[0][0]
     values = {"U_ijkl": U}
     rep.create_report(report, "Singleband_Parameters", **values)
@@ -305,16 +344,21 @@ write_trap_params(report, G)
 eqt = "uvt" if eqt == "neq" else eqt
 u, t, v, __, __, __ = str_to_flags(eqt)
 w = np.array([u, t, v])
-Vtarget = np.mean(np.real(np.diag(maskedA)))
-ttarget = G.txy_target(nnt, links, np.mean)
+if not target_values:
+    Vtarget = np.mean(np.real(np.diag(maskedA)))
+    tTarget = G.txy_target(nnt, links, np.mean)
+else:
+    Vtarget, Utarget, txTarget, tyTarget = target_values
+    tTarget = [txTarget, tyTarget]
+ct = G.t_cost_func(maskedA, links, tTarget, G.sf)
+cv = G.v_cost_func(maskedA, Vtarget, G.sf)
 if calculate_U:
-    Utarget = np.mean(maskedU)
+    if not target_values:
+        Utarget = np.mean(maskedU)
     cu = G.u_cost_func(maskedU, Utarget, G.sf)
 else:
-    cu = 0
     Utarget = 0
-ct = G.t_cost_func(maskedA, links, ttarget, G.sf)
-cv = G.v_cost_func(maskedA, Vtarget, G.sf)
+    cu = 0
 cvec = np.array((cu, ct, cv))
 c = w @ cvec
 cvec = np.sqrt(cvec)
@@ -322,13 +366,13 @@ fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo["sf"] = G.sf
 # Final U/t, so is determined by average values
-G.eqinfo["Ut"] = Utarget / ttarget[0]
+G.eqinfo["Ut"] = Utarget / tTarget[0]
 
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)
 else:
     v0, __ = G.init_v0_and_bound(random=False)
-    G.eqinfo.create_log(v0, (Vtarget, Utarget, *ttarget))
+    G.eqinfo.create_log(v0, (Vtarget, Utarget, *tTarget))
     G.eqinfo.update_cost(cvec, fval, ctot)
     G.eqinfo["success"] = False
     G.eqinfo["exit_status"] = -1
@@ -357,7 +401,7 @@ G.eqinfo.write_equalization(report, write_log=log)
 
 # ====== Write multiband output ======
 if G.bands > 1:
-    maskedA, W, wf_centers, wf_costs = multiband_WF(G, *eig_sol)
+    maskedA, W, wf_centers, wf_costs = G.multiband_WF(*eig_sol)
     values = {}
     for i in range(band):
         Vi = np.real(np.diag(maskedA[i]))

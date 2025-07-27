@@ -123,7 +123,7 @@ class EqulizeInfo(dict):
 def write_trap_params(report, G):
     values = {
         "V_offset": G.Voff,
-        "trap_centers": G.trap_centers,
+        "trap_centers": G.lattice.trap_centers,
         "waist_factors": G.waists,
     }
     rep.create_report(report, "Trap_Adjustments", **values)

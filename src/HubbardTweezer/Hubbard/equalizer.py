@@ -1,21 +1,26 @@
-import numpy as np
-import numpy.linalg as la
 from numbers import Number
-from typing import Callable, Iterable, Union
-from scipy.optimize import minimize, least_squares, root, OptimizeResult
+from typing import Callable, Iterable, Literal, Union, Optional
 from configobj import ConfigObj
 from time import time
 
+import numpy as np
+import numpy.linalg as la
+
+from scipy.optimize import minimize, least_squares, root, OptimizeResult
 import nlopt
+
+from ..tools.funcs import duplicate
 
 from .core import *
 from .io import *
 from .eqinit import *
 from .ghost import GhostTrap
 
-# If we want our target to be from our random initial guess, then set this to be True
-# Otherwise, the target values are from the uniform physical configuration
-set_target_from_random = False
+
+LINK_TYPE = tuple[np.ndarray, np.ndarray]
+TARGET_TYPE = Optional[Union[float, np.ndarray]]
+
+set_target_from_random = False  # If we want our target to be from our (random) initial guess, then set this to be True
 
 
 def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
@@ -37,13 +42,12 @@ def str_to_flags(target: str) -> tuple[bool, bool, bool, bool, bool, bool]:
     return u, t, v, fix_u, fix_t, fix_v
 
 
-def _set_uv(uv, target, factor):
-    # Set U and V target values and factors
+def _set_uv(uv: np.ndarray, target: TARGET_TYPE, factor: Optional[float]):
     if target is None:
         target = np.mean(uv)
     if factor is None:
         # Avoid division by zero
-        factor = abs(target)
+        factor = np.min(np.abs(target))
         if factor < 1e-1:
             factor = 1e-1
     return target, factor
@@ -86,15 +90,15 @@ class HubbardEqualizer(MLWF):
     def __init__(
         self,
         N,
+        lattice: Lattice,  # Lattice object containing lattice parameters
         equalize=False,  # Homogenize trap or not
-        eqtarget="UvT",  # Equalization target
+        eqitem="UvT",  # Determine which item to equalize, e.g. "UvT" for U, t, V
         scale_factor=None,  # Scale factor for cost function
         Ut: float = None,  # Interaction target in unit of tx
+        target_values: tuple[TARGET_TYPE, ...] = None,  # Target values for U, t, V
         eqmethod: str = None,  # Minimize algorithm method
         nobounds: bool = False,  # Whether to use bounds or not
         waist="x",  # Waist to vary, None means no waist change
-        ghost: bool = False,  # Whether to use ghost atoms or not
-        ghost_penalty=(0, 0),  # Ghost penalty weight & threshold
         random: bool = False,  # Random initial guess
         iofile=None,  # Input/output file
         write_log: bool = False,  # Whether to write detailed log into iofile
@@ -102,21 +106,10 @@ class HubbardEqualizer(MLWF):
         *args,
         **kwargs,
     ):
-        # Set ghost lattice shape
-        lattice_shape = kwargs.get("shape", "square")
-        kwargs.pop("shape", None)
-        ghost_shape = lattice_shape
-        if ghost and lattice_shape == "Lieb":
-            # If use ghost traps,
-            # Lieb lattice has ghost sites in the interior
-            # But its shape is square
-            print("Equalize: Lieb lattice ghost sites.")
-            print("Set shape to square for total system.")
-            lattice_shape = "square"
-        super().__init__(N, shape=lattice_shape, *args, **kwargs)
+        super().__init__(N, lattice=lattice, *args, **kwargs)
 
         # set equalization label in file output
-        self.eq_label = eqtarget
+        self.eq_label = eqitem
         self.waist_dir = waist
         self.eqinfo = EqulizeInfo()
         if eqmethod is None:
@@ -130,17 +123,6 @@ class HubbardEqualizer(MLWF):
             print("Equalize: scale_factor is not a number. Set to None.")
             self.sf = None
 
-        # Set target to be already limited in the bulk
-        self.ghost = GhostTrap(self.lattice, ghost_shape, *ghost_penalty)
-        if ghost:
-            self.ghost.set_mask(self.lattice)
-
-        if self.ghost.Nsite == 1:
-            raise ValueError(
-                "Equalize: only one site in the system, equalization is not valid."
-            )
-
-        # Format str parameter on which waist directions to be varied
         if self.waist_dir not in ["x", "y", "xy", "yx", None]:
             self.waist_dir = None
         elif self.waist_dir == "yx":
@@ -153,9 +135,12 @@ class HubbardEqualizer(MLWF):
         # Set init guess & bounds
         v0, bounds = self.init_v0_and_bound(random, nobounds)
 
+        v0, init_simplex = self._ext_init_guess(x0, v0)
+        print("Equalize: initial guess: ", v0)
+
         # Read in initial guess, for NM read initial simplex given x0.shape
         if equalize:
-            if self.ghost.Nsite == 1:
+            if self.lattice.ghost.Nsite == 1:
                 raise ValueError(
                     "Equalize: only one site in the system, equalization is not valid."
                 )
@@ -176,9 +161,10 @@ class HubbardEqualizer(MLWF):
                 v0=v0,
                 bounds=bounds,
                 init_simplex=init_simplex,
-                target=eqtarget,
+                item=eqitem,
                 Ut=Ut,
-                eig_callback=ed_callback,
+                targets=target_values,
+                eig_callback=eig_callback,
                 unitary_callback=unitary_callback,
                 iofile=iofile,
             )
@@ -192,20 +178,20 @@ class HubbardEqualizer(MLWF):
         v0: np.ndarray,
         bounds: Iterable,
         init_simplex: np.ndarray = None,
-        target: str = "UvT",
-        Ut: float = None,  # Target onsite interaction in unit of tx
-        weight: np.ndarray = np.ones(3),  # Weight for U, v, T terms in cost function
+        item: str = "UvT",
+        Ut: Optional[float] = None,  # Target onsite interaction in unit of tx
+        targets: tuple[TARGET_TYPE, ...] = None,  # Target values for U, t, V
+        weight: np.ndarray = np.ones(3),
         eig_callback: bool = False,
         unitary_callback: bool = False,
-        iofile: ConfigObj = None,
+        iofile: Optional[ConfigObj] = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, dict]:
         print(f"Equalize: varying waist direction = {self.waist_dir}.")
         print(f"Equalize: method = {self.eqmethod}")
-        print(f"Equalize: quantities = {target}\n")
+        print(f"Equalize: quantities = {item}\n")
 
-        # fix_v is unused as it plays no effect
-        u, t, v, fix_u, fix_t, fix_v = str_to_flags(target)
-        # Impose flags u,t,v on input weight
+        u, t, v, fix_u, fix_t, fix_v = str_to_flags(item)
+        # Force corresponding factor to be 0 if flags u,t,v are false
         weight: np.ndarray = np.array([u, t, v]) * np.array(weight.copy())
 
         # Set ED callback
@@ -215,58 +201,27 @@ class HubbardEqualizer(MLWF):
             W0 = None
 
         # Set U, t, V targets
-        A, U, V = self.singleband_Hubbard(u=u, W0=W0)
-        maskedA = self.ghost.mask_quantity(A)
-        maskedU = self.ghost.mask_quantity(U) if u else None
-        links = self.xy_links(self.ghost.links)  # Classify x, y links
-        # Set target for each term in cost function
-        target = self._set_targets(Ut, fix_u, fix_t, links, maskedA, maskedU)
+        links = self.xy_links(self.lattice.ghost.links)
+        if targets is None:
+            WF, links, targets = self.set_uniform_targets(
+                Ut, links, u, fix_u, fix_t, W0
+            )
+        else:
+            targets = self.unfold_site_targets(links, targets, fix_u, fix_t)
+            WF = None
 
-        # Create log variable eqinfo
-        self.eqinfo.create_log(v0, target)
-        print("Equalizer: initial guess: ", v0)
         # Decide if each step cost function used the last step's unitary matrix
         # callback can have sometimes very few iteraction steps
         # But since unitary optimize time cost is not large in larger systems
         # it is not effective to use callback
         # Pack U0 to be mutable, thus can be updated in each iteration of minimize
-        U0 = [V] if unitary_callback else None
+        U0 = [WF] if unitary_callback else None
 
-        # Set modes and flags for different optimization methods
-        if self.eqmethod in ["trf"]:
-            mode = "res"
-        elif self.eqmethod in [
-            "Nelder-Mead",
-            "Powell",
-            "L-BFGS-B",
-            "cobyla",
-            "SLSQP",
-        ]:
-            mode = "cost"
-        elif self.eqmethod in ["bobyqa", "praxis", "direct", "crs2"]:
-            mode = "nlopt"
-            goptim = False  # whether to use global optimization
-            if self.eqmethod == "bobyqa":
-                self.eqmethod = nlopt.LN_BOBYQA
-            elif self.eqmethod == "praxis":
-                self.eqmethod = nlopt.LN_PRAXIS
-            elif self.eqmethod == "subplex":
-                self.eqmethod = nlopt.LN_SBPLX
-            elif self.eqmethod == "direct":
-                goptim = True
-                self.eqmethod = nlopt.GN_DIRECT_L
-            elif self.eqmethod == "crs2":
-                goptim = True
-                self.eqmethod = nlopt.GN_CRS2_LM
-            else:
-                self.eqmethod = nlopt.LN_COBYLA
-            opt = nlopt.opt(self.eqmethod, len(v0))
-        else:  # default
-            print(
-                f"Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf."
-            )
-            mode = "res"
-            self.eqmethod = "trf"
+        # Create eqinfo log
+        self.eqinfo.create_log(v0, targets)
+        print(v0)
+
+        mode, goptim, opt = self._set_method(v0)
 
         # Define objective function
         def opt_target(point: np.ndarray, info: Union[EqulizeInfo, None]):
@@ -274,7 +229,7 @@ class HubbardEqualizer(MLWF):
                 point,
                 info,
                 links,
-                target,
+                targets,
                 weight,
                 self.sf,
                 W0,
@@ -298,7 +253,7 @@ class HubbardEqualizer(MLWF):
                         point,
                         info,
                         links,
-                        target,
+                        targets,
                         weight,
                         self.sf,
                         W0,
@@ -316,6 +271,81 @@ class HubbardEqualizer(MLWF):
 
         self.eqinfo.update_log_final(res, self.sf)
         return self.param_unfold(res.x, "final")
+
+    def set_uniform_targets(self, Ut, links, u, fix_u, fix_t, W0):
+        A, U, WF = self.singleband_Hubbard(u=u, W0=W0)
+        maskedA = self.lattice.ghost.mask_quantity(A)
+        maskedU = self.lattice.ghost.mask_quantity(U) if u else None
+        nnt = self.lattice.nn_tunneling(maskedA)
+        # Set tx, ty target to be small s.t.
+        # lattice spacing is not too close and WF collapses
+        txTarget, tyTarget = self.txy_target(nnt, links, np.min)
+        targets = self._set_targets(
+            fix_u, fix_t, (txTarget, tyTarget), maskedU, Ut, mode="uniform"
+        )
+        return WF, links, targets
+
+    def unfold_site_targets(
+        self,
+        links: LINK_TYPE,
+        targets: tuple[TARGET_TYPE, ...],
+        fix_u,
+        fix_t,
+    ) -> tuple[TARGET_TYPE, ...]:
+        # Unfold the site-specific target values for U, t, V
+        # TODO: add multiband support
+        Vtarget, Utarget, txTarget, tyTarget = targets
+        xlinks, ylinks = links
+        Vtarget = duplicate(Vtarget, self.lattice.ghost.Nsite)
+        Utarget = duplicate(Utarget, self.lattice.ghost.Nsite)
+        txTarget = duplicate(txTarget, len(xlinks))
+        tyTarget = duplicate(tyTarget, len(ylinks))
+        targets = self._set_targets(
+            fix_u, fix_t, (txTarget, tyTarget), Utarget, None, mode="local"
+        )
+        return targets
+
+    def _set_method(self, v0):
+        # Set optimization method
+        goptim = False
+        opt = None
+        if self.eqmethod in ["trf", "dogbox"]:
+            mode = "res"
+        elif self.eqmethod in [
+            "Nelder-Mead",
+            "Powell",
+            "bfgs",
+            "L-BFGS-B",
+            "cobyla",
+            "SLSQP",
+        ]:
+            mode = "cost"
+        elif self.eqmethod in ["hybr"]:
+            mode = "func"
+        elif self.eqmethod in ["bobyqa", "praxis", "subplex", "direct", "crs2"]:
+            mode = "nlopt"
+            if self.eqmethod == "bobyqa":
+                self.eqmethod = nlopt.LN_BOBYQA
+            elif self.eqmethod == "praxis":
+                self.eqmethod = nlopt.LN_PRAXIS
+            elif self.eqmethod == "subplex":
+                self.eqmethod = nlopt.LN_SBPLX
+            elif self.eqmethod == "direct":
+                goptim = True
+                self.eqmethod = nlopt.GN_DIRECT_L
+            elif self.eqmethod == "crs2":
+                goptim = True
+                self.eqmethod = nlopt.GN_CRS2_LM
+            else:
+                self.eqmethod = nlopt.LN_COBYLA
+            opt = nlopt.opt(self.eqmethod, len(v0))
+        else:
+            mode = "res"
+            self.eqmethod = "trf"
+            print(
+                f"Equalize WARNING: unknown optimization method: {self.eqmethod}. Set to trf."
+            )
+        return mode, goptim, opt
 
     def _ext_init_guess(self, x0: np.ndarray, v0: np.ndarray):
         # Compare and decide if external initial guess x0 is passed to v0 and init_simplex
@@ -396,12 +426,8 @@ class HubbardEqualizer(MLWF):
         )
         return res
 
-    def _set_targets(self, Ut, fix_u, fix_t, links, A, U):
-        # Set target values
-        nnt = self.nn_tunneling(A, self.ghost.links)  # Pick n.n. tunnelings
-        # Set tx, ty target to be small s.t.
-        # TB limit is valid for all sites
-        txTarget, tyTarget = self.txy_target(nnt, links, np.min)
+    def _set_targets(self, fix_u, fix_t, tTargets, Utarget, Ut, mode="uniform"):
+        txTarget, tyTarget = tTargets
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
             self.sf = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
@@ -409,13 +435,13 @@ class HubbardEqualizer(MLWF):
             txTarget, tyTarget = None, None
 
         if fix_u:
-            if Ut is None:
+            if Ut is None and mode == "uniform":
                 # Set target interaction to be max of initial interaction.
                 # This is to make traps not that localized in the middle to equalize U.
                 # As to achieve larger U traps depths seem more even.
-                Utarget = np.max(U)
+                Utarget = np.max(Utarget)
                 Ut = Utarget / self.sf
-            else:
+            elif isinstance(Ut, Number):
                 Utarget = Ut * self.sf
         else:
             Utarget = None
@@ -434,7 +460,7 @@ class HubbardEqualizer(MLWF):
         # Distinguish x and y n.n. links fro list of all n.n. links
         if links is None:
             links = self.lattice.links
-        if not self.isotropic and self.lattice.shape in [
+        if not self.lattice.isotropic and self.lattice.shape in [
             "square",
             "Lieb",
             "triangular",
@@ -460,13 +486,16 @@ class HubbardEqualizer(MLWF):
             self.w_dof = np.array([wx, wy]).T.reshape(-1)
 
         tcx = np.array(
-            [not self.lattice.inv_coords[i, 0] for i in range(self.lattice.Nindep)]
+            [not self.lattice.grid.inv_coords[i, 0] for i in range(self.lattice.Nindep)]
         )
         if self.lattice.dim == 1:
             tcy = np.tile(False, self.lattice.Nindep)
         else:
             tcy = np.array(
-                [not self.lattice.inv_coords[i, 1] for i in range(self.lattice.Nindep)]
+                [
+                    not self.lattice.grid.inv_coords[i, 1]
+                    for i in range(self.lattice.Nindep)
+                ]
             )
         self.tc_dof = np.array([tcx, tcy]).T.reshape(-1)
 
@@ -475,19 +504,18 @@ class HubbardEqualizer(MLWF):
     def init_v0_and_bound(
         self, random=False, nobounds=False
     ) -> tuple[np.ndarray, tuple]:
-        # Initialize the optimization starting point and bounds
-        # Mark free parameters
+        # Mark effective DoFs
         self.eff_dof()
 
         # Trap depth variation inital guess and bounds
         # s1 = np.inf if nobounds else 0.1
         # v01 = np.ones(self.lattice.Nindep)
-        v01, b1 = init_V0(self.Voff, self.lattice, nobounds)
+        v01, b1 = init_V0(self.Voff, self.lattice.grid, nobounds)
 
         # Waist variation inital guess and bounds
         # UB from resolution limit; LB by wavelength
         v02, b2 = init_w0(
-            self.lattice,
+            self.lattice.grid,
             self.waists,
             self.waist_dir,
             self.w_dof,
@@ -498,7 +526,11 @@ class HubbardEqualizer(MLWF):
         # Lattice spacing variation inital guess and bounds
         # Must be separated by at least 1 waist
         v03, b3 = init_aij(
-            self.lattice, self.lc, self.trap_centers, self.tc_dof, nobounds
+            self.lattice.grid,
+            self.lattice.lc,
+            self.lattice.trap_centers,
+            self.tc_dof,
+            nobounds,
         )
 
         bounds = tuple(b1 + b2 + b3)
@@ -534,18 +566,21 @@ class HubbardEqualizer(MLWF):
             print(trap_center)
         return trap_depth, trap_waist, trap_center
 
-    def txy_target(self, nnt, links, func: Callable = np.min):
-        # Separate x and y direction links
+    def txy_target(self, nnt, links: LINK_TYPE, func: Callable = np.min):
         xlinks, ylinks = links
         nntx = func(abs(nnt[xlinks]))  # Find x direction links
         # Find y direction links, if lattice is 1D this is nan
         nnty = func(abs(nnt[ylinks])) if any(ylinks == True) else None
         return nntx, nnty
 
-    def _set_t(self, A, links, target):
-        # Set tunneling target tx, ty and lsits of xlinks, ylinks to be used in the cost function
+    def _set_t(
+        self,
+        A,
+        links: Optional[tuple[np.ndarray, np.ndarray]],
+        target: Optional[tuple[TARGET_TYPE, ...]] = None,
+    ):
         links = self.xy_links() if links is None else links
-        nnt = self.nn_tunneling(A, self.ghost.links)
+        nnt = self.lattice.nn_tunneling(A)
         # Mostly not usable if not directly call this function
         if target is None:
             txTarget, tyTarget = self.txy_target(nnt, links)
@@ -559,19 +594,19 @@ class HubbardEqualizer(MLWF):
     def param_unfold(self, point: np.ndarray, status: str = "current"):
         # Assign minimization parameter vector to trap parameters
         td, tw, tc = self.set_trap_params(point, self.verbosity, status)
-        self.symm_unfold(self.Voff, td)
+        self.lattice.symm_unfold(self.Voff, td)
         if self.waist_dir != None:
-            self.symm_unfold(self.waists, tw)
-        self.symm_unfold(self.trap_centers, tc, graph=True)
-        self.update_lattice(self.trap_centers)
-        return self.Voff, self.waists, self.trap_centers, self.eqinfo
+            self.lattice.symm_unfold(self.waists, tw)
+        self.lattice.symm_unfold(self.lattice.trap_centers, tc, graph=True)
+        self.update_lattice(self.lattice.trap_centers)
+        return self.Voff, self.waists, self.lattice.trap_centers, self.eqinfo
 
     def opt_func(
         self,
         point: np.ndarray,
         info: Union[EqulizeInfo, None],
-        links: tuple[np.ndarray, np.ndarray],
-        target: tuple[float, ...],
+        links: LINK_TYPE,
+        targets: tuple[TARGET_TYPE, ...],
         weight: np.ndarray = np.ones(3),
         scale_factor: float = None,
         eig_vec: list[np.ndarray] = None,
@@ -593,13 +628,13 @@ class HubbardEqualizer(MLWF):
         if self.verbosity > 1:
             print(f"scale_factor = {scale_factor}")
             print(f"V = {np.diag(A)}")
-            print(f"t = {abs(self.nn_tunneling(A, self.ghost.links))}")
+            print(f"t = {abs(self.lattice.nn_tunneling(A))}")
             print(f"U = {U}")
 
-        if not isinstance(target, Iterable):
-            target = (None, None, None, None)
+        if not isinstance(targets, Iterable):
+            targets = (None, None, None, None)
 
-        maskedU = self.ghost.mask_quantity(U) if u else None
+        maskedU = self.lattice.ghost.mask_quantity(U) if u else None
 
         if mode in ["cost", "nlopt"]:
             return self._cost_func(
@@ -609,7 +644,7 @@ class HubbardEqualizer(MLWF):
                 report,
                 (A, maskedU),
                 links,
-                target,
+                targets,
                 weight,
             )
         elif mode in ["res"]:
@@ -620,7 +655,7 @@ class HubbardEqualizer(MLWF):
                 report,
                 (A, maskedU),
                 links,
-                target,
+                targets,
                 weight,
             )
         else:
@@ -629,25 +664,35 @@ class HubbardEqualizer(MLWF):
     # ================= GENERAL MINIMIZATION =================
 
     def _cost_func(
-        self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
+        self,
+        point,
+        info: EqulizeInfo,
+        scale_factor,
+        report,
+        res,
+        links,
+        targets: tuple[TARGET_TYPE, ...],
+        w,
     ):
-        Vtarget, Utarget, txTarget, tyTarget = target
+        Vtarget, Utarget, txTarget, tyTarget = targets
         A, maskedU = res
-        maskedA = self.ghost.mask_quantity(A)
+        maskedA = self.lattice.ghost.mask_quantity(A)
 
         # U is default not to calculate, as U calculation costs time
         cu = self.u_cost_func(maskedU, Utarget, scale_factor) if w[0] else 0
         cv = self.v_cost_func(A, Vtarget, scale_factor)
         ct = self.t_cost_func(maskedA, links, (txTarget, tyTarget), scale_factor)
 
-        cvec = np.array((cu, ct, cv))  # Cost function by terms
-        c = w @ cvec  # Weighted cost function value, the actual value to be minimized
-        cvec = np.sqrt(cvec)  # sqrt of cost function by terms
-        fval = np.sqrt(c)  # sqrt of weighted cost function value
-        info.update_log(self, point, report, target, cvec, fval)
+        cvec = np.array((cu, ct, cv))
+        c = w @ cvec
+        cvec = np.sqrt(cvec)
+        fval = np.sqrt(c)
+        info.update_log(self, point, report, targets, cvec, fval)
         return c
 
-    def v_cost_func(self, A, Vtarget: float, Vfactor: float = None) -> float:
+    def v_cost_func(
+        self, A: np.ndarray, Vtarget: TARGET_TYPE, Vfactor: Optional[float] = None
+    ) -> float:
         Vdiff = self.v_res_func(A, Vtarget, Vfactor)
         cv = np.sum(Vdiff**2)
         if self.verbosity > 1:
@@ -657,9 +702,9 @@ class HubbardEqualizer(MLWF):
     def t_cost_func(
         self,
         maskedA: np.ndarray,
-        links: tuple[np.ndarray, np.ndarray],
-        target: tuple[float, ...],
-        tfactor: float,
+        links: LINK_TYPE,
+        target: tuple[TARGET_TYPE, ...],
+        tfactor: Optional[float],
     ) -> float:
         tdiff = self.t_res_func(maskedA, links, target, tfactor)
         ct = np.sum(tdiff**2)
@@ -667,7 +712,9 @@ class HubbardEqualizer(MLWF):
             print(f"Tunneling cost ct^2 = {ct}")
         return ct
 
-    def u_cost_func(self, maskedU, Utarget: float, Ufactor: float = None) -> float:
+    def u_cost_func(
+        self, maskedU: np.ndarray, Utarget: TARGET_TYPE, Ufactor: Optional[float] = None
+    ) -> float:
         Udiff = self.u_res_func(maskedU, Utarget, Ufactor)
         cu = np.sum(Udiff**2)
         if self.verbosity > 1:
@@ -677,11 +724,19 @@ class HubbardEqualizer(MLWF):
     # ==================== LEAST SQUARES ====================
 
     def _res_func(
-        self, point, info: EqulizeInfo, scale_factor, report, res, links, target, w
+        self,
+        point,
+        info: EqulizeInfo,
+        scale_factor,
+        report,
+        res: LINK_TYPE,
+        links: LINK_TYPE,
+        targets: tuple[TARGET_TYPE, ...],
+        w,
     ):
-        Vtarget, Utarget, txTarget, tyTarget = target
+        Vtarget, Utarget, txTarget, tyTarget = targets
         A, maskedU = res
-        maskedA = self.ghost.mask_quantity(A)
+        maskedA = self.lattice.ghost.mask_quantity(A)
 
         cu = (
             self.u_res_func(maskedU, Utarget, scale_factor)
@@ -696,23 +751,22 @@ class HubbardEqualizer(MLWF):
         c = np.concatenate([np.sqrt(w[0]) * cu, np.sqrt(w[1]) * ct, np.sqrt(w[2]) * cv])
         # The cost func val in least_squares is fval**2 / 2
         fval = la.norm(c)
-        info.update_log(self, point, report, target, cvec, fval)
+        info.update_log(self, point, report, targets, cvec, fval)
         return c
 
-    def v_res_func(self, A, Vtarget: float, Vfactor: float = None):
+    def v_res_func(
+        self, A: np.ndarray, Vtarget: TARGET_TYPE, Vfactor: Optional[float] = None
+    ):
         V = np.real(np.diag(A))
-        if len(V) == self.ghost.Nsite:
+        if len(V) == self.lattice.ghost.Nsite:
             maskedV = V
         else:
-            maskedV = self.ghost.mask_quantity(V)
+            maskedV = self.lattice.ghost.mask_quantity(V)
         Vtarget, Vfactor = _set_uv(maskedV, Vtarget, Vfactor)
 
         # NOTE: V is unmasked, only maskedV is masked
         Vdist = V - Vtarget
-        self.ghost.weight *= Vfactor * np.sqrt(len(maskedV))
-        # Cancel the factor in the cost function
-        self.ghost.penalty(Vdist)
-        self.ghost.weight /= Vfactor * np.sqrt(len(maskedV))
+        self.lattice.ghost.penalty(Vdist)
         cv = Vdist / (Vfactor * np.sqrt(len(maskedV)))
         if self.verbosity > 1:
             print(f"Onsite potential target = {Vtarget}")
@@ -723,19 +777,20 @@ class HubbardEqualizer(MLWF):
     def t_res_func(
         self,
         maskedA: np.ndarray,
-        links: tuple[np.ndarray, np.ndarray],
+        links: LINK_TYPE,
         target: tuple[float, ...],
-        tfactor: float,
+        tfactor: Optional[float],
     ) -> np.ndarray:
         nnt, txTarget, tyTarget, xlinks, ylinks = self._set_t(maskedA, links, target)
         if tfactor is None:
             tfactor = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
-        ct = (abs(nnt[xlinks]) - txTarget) / (tfactor * np.sqrt(np.sum(xlinks)))
+        ct = (np.abs(nnt[xlinks]) - txTarget) / (tfactor * np.sqrt(np.sum(xlinks)))
         if tyTarget != None:
             ct = np.concatenate(
                 (
                     ct,
-                    (abs(nnt[ylinks]) - tyTarget) / (tfactor * np.sqrt(np.sum(ylinks))),
+                    (np.abs(nnt[ylinks]) - tyTarget)
+                    / (tfactor * np.sqrt(np.sum(ylinks))),
                 )
             )
         if self.verbosity > 1:
@@ -744,7 +799,9 @@ class HubbardEqualizer(MLWF):
                 print(f"Tunneling residue ct = {ct}")
         return ct
 
-    def u_res_func(self, maskedU, Utarget: float, Ufactor: float = None):
+    def u_res_func(
+        self, maskedU: np.ndarray, Utarget: TARGET_TYPE, Ufactor: Optional[float] = None
+    ):
         Utarget, Ufactor = _set_uv(maskedU, Utarget, Ufactor)
         cu = (maskedU - Utarget) / (Ufactor * np.sqrt(len(maskedU)))
         if self.verbosity > 1:

@@ -144,7 +144,7 @@ lattice_const = 1550,
 lattice_symmetry = True
 [Equalization_Parameters]
 equalize = True
-equalize_target = UvT
+equalize_item = UvT
 waist_direction = None
 U_over_t = None
 method = trf
@@ -207,6 +207,26 @@ In this section, `Nsite` is the number of trap sites.
 > If `DVR_symmetry` is `False`, the DVR Hamiltonian is solved without block-diagonalizing the reflection symmetry sectors. If `True`, it solves the DVR Hamiltonian in symmetry sectors specified by the properties `lattice_symmetry` and `band` defined later. -->
 
 #### `[Lattice_Parameters]`
+
+In DVR computation, the lattice information is used to construct the trapping potential:
+$$ V(\mathbf{r}) = \sum_i V_i(\mathbf{r} - \mathbf{r}_i).$$
+
+Therefore, `[Lattice_Parameters]` supports two types of input: 1. specifying a lattice with geometries, which provide the positions $\mathbf{r}_i$ for each of the traps, and 2. specify directly the trapping potential value tensor $V(\mathbf{R})$ at spatial positions of a grid $\mathbf{R}$. The input type is specified by the `potential_model` option.
+
+* `potential_model`:  (string) type of potential model for lattice parameters (default: `Gaussian`)
+                    Supported strings: `Gaussian`, `optical_lattice`, `custom`
+                    If `Gaussian` or `optical_lattice`, the lattice is specified by the lattice geometry parameters, otherwise it is specified by the next two parameters
+
+##### Potential specified by potential grid
+
+(In progress) If `potential_model` is `custom`, the trapping potential is specified by the following two parameters:
+
+* `custom_potential_grid`:  (`DVR_dimension`-length tuple of 1D arrays) spatial grid point positions in `x`, `y` and `z` dimension (may be fewer dimensions if `DVR_dimension` < 3) (default: None)
+* `custom_potential_value`:  (rank-3 tensor) custom trapping potential values at grid point positions (default: None)
+
+##### Potential specified by lattice geometry parameters
+
+The rest of the section explains the trapping potential specified by lattice geometry parameters.
 
 * `shape`:  (string) lattice shape.  
                     Supported strings: `square`, `Lieb`, `triangular`, `honeycomb`, `defecthoneycomb`, `kagome` and `custom` (default: `square`)
@@ -284,11 +304,11 @@ The next parameter specifies whether to use lattice reflection symmetries in the
 For the following sections about equalization process, please refer to the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318) for more details. So far the equalization program only supports the lowest band Hubbard parameters.
 
 * `equalize`:   (bool) whether equalize Hubbard parameters or not (default: `False`)
-* `equalize_target`:    (string) target Hubbard parameters to be equalized (default: `vT`)
+* `equalize_item`:    (string) determine which Hubbard parameters to be equalized (default: `vT`)
 
-##### Explain equalization target
+##### Explain equalization item
 >
-> The expression of the equalization cost function is the Eq.(16) in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_target` parameter specifies how the target values are determined for each kind of Hubbard parameters.
+> The expression of the equalization cost function is the Eq.(16) in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318), which is the squared difference from the calculated Hubbard parameters to the target values $\tilde{q}$. The `equalize_item` parameter specifies how the target values are determined for each kind of Hubbard parameters.
 >
 > 1. Lowercase `u`,`v`,`t`: the target values are changed to the average values of each kind of Hubbard parameter in each iteration of the equalization, meaning the program minimizes the sum of variances of all the Hubbard parameters  
 > 2. Uppercase `U`, `V`, `T`: the target values are fixed by their values calculated by the initial physical trap parameters. The target values cannot be set by external input except that the $U/t$ ratio can be set by `U_over_t` parameter in the input in `[Equalization_Result]` [section](#input-in-equalization_result)  
@@ -304,8 +324,18 @@ For the following sections about equalization process, please refer to the [pape
 <!-- * `no_bounds`:  (optional) do not use bounds in optimization (default: False) -->
 <!-- * `random_initial_guess`:   (optional) use random initial guess to equaliz (default: False) -->
 * `scale_factor`:   (float, optional) energy scale factor to make cost function dimensionless  
-                None means the smallest target value (see [explanation](#explain-equalization-target) above) calculated in initial guess  
+                None means the smallest target value (see [explanation](#explain-equalization-item) above) calculated in initial guess  
                 in unit of kHz (default: None)
+
+The following optional parameters are used to set the target values of Hubbard parameters. They can be set uniform or site-specific.
+
+* `U_target`:   (float or 1-D array, optional) target Hubbard on-site interaction value in unit of kHz (default: `None`)  
+                `None` means to use the maximum value of the calculated $U$'s by the initial physical trap parameters
+* `t_target`:   (tuple of two 1-D arrays, optional) target tunneling $t_x$, $t_y$ values in unit of kHz (default: `None`)
+                `None` means to use the minimum value of the calculated $t$'s by the initial physical trap parameters
+                `(t_x, None)` can be used for 1-D chain
+* `V_target`:   (float or 1-D array, optional) target on-site potential $V$ value in unit of kHz (default: `None`)  
+                `None` means to set $V$ to zero, i.e. to always shift the potential by its average value
 
 Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.013318).
 
@@ -345,7 +375,7 @@ Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abs
         Note that this only contains free parameters e.g. if `waist_direction=None` then `waist_factors` is not included.
         If `lattice_symmetry=True` then it only contains free parameters of the $(x\le 0, y\le 0)$ quadrant.
 * `U_over_t`:   (float) target Hubbard $U/t$ ratio (default: `None`)  
-                `None` means this value is calculated by the ratio of $\mathrm{avg} U / \mathrm{avg} t_x$ in initial guess
+                `None` means this value is calculated by the ratio of $\mathrm{max} U / \mathrm{min} t_x$ in initial guess
 
 ### Items output by the program
 
