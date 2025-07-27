@@ -157,7 +157,7 @@ except FileNotFoundError as ferr:
 # ====== DVR parameters ======
 N = rep.i(report, "DVR_Parameters", "N", 20)
 L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]))
-DIM = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
+dimension = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
 s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
@@ -273,7 +273,7 @@ lattice = Lattice(
 G = HubbardGraph(
     N,
     R0=L0,
-    dim=DIM,
+    dim=dimension,
     lattice=lattice,  # Lattice object
     custom_potential=custom_potential,  # Custom trapping potential
     ascatt=a_s,
