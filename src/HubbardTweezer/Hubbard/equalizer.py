@@ -202,6 +202,7 @@ class HubbardEqualizer(MLWF):
                 Ut, links, u, fix_u, fix_t, W0
             )
         else:
+            # FIXME: add lattice symmetry support
             targets = self.unfold_site_targets(links, targets, fix_u, fix_t)
             WF = None
 
@@ -425,7 +426,7 @@ class HubbardEqualizer(MLWF):
         txTarget, tyTarget = tTargets
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
-            self.sf = np.min([txTarget, tyTarget]) if tyTarget != None else txTarget
+            self.sf = np.min([txTarget, tyTarget]) if tyTarget != None else np.min(txTarget)
         if not fix_t:
             txTarget, tyTarget = None, None
 

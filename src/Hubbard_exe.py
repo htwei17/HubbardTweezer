@@ -218,7 +218,7 @@ ut = rep.f(report, "Equalization_Result", "U_over_t", None)
 # ====== Equalization ======
 eq = rep.b(report, "Equalization_Parameters", "equalize", False)
 eqt = rep.s(report, "Equalization_Parameters", "equalize_item", "vT")
-eqV0 = rep.b(report, "Equalization_Parameters", "equalize_V0", False)
+balance_V0 = rep.b(report, "Equalization_Parameters", "balance_V0", False)
 wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
 meth = rep.s(report, "Equalization_Parameters", "method", "trf")
 nb = rep.b(report, "Equalization_Parameters", "no_bounds", False)
@@ -229,8 +229,16 @@ Utarget = rep.a(report, "Equalization_Parameters", "U_target", None)
 tTarget = rep.a(report, "Equalization_Parameters", "t_target", None)
 Vtarget = rep.a(report, "Equalization_Parameters", "V_target", None)
 if any([Utarget is not None, tTarget is not None, Vtarget is not None]):
-    if tTarget is None or len(tTarget) == 1:
-        txTarget, tyTarget = tTarget, None
+    if tTarget is None:
+        txTarget, tyTarget = None, None
+    elif len(tTarget) == 1:
+        txTarget, tyTarget = tTarget[0], None
+    elif len(tTarget) == 2:
+        txTarget, tyTarget = tTarget
+    else:
+        raise ValueError(
+            "t_target must be a single value/array or a tuple of two values/arrays for tx and ty."
+        )
     target_values = (Vtarget, Utarget, txTarget, tyTarget)
 else:
     target_values = None
@@ -289,7 +297,7 @@ G = HubbardGraph(
     zero_avgV=zero_avgV,  # Shift V to zero average
     equalize=eq,
     eqitem=eqt,
-    equalize_V0=eqV0,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
+    balance_V0=balance_V0,  # Balance trap depths V0 for all traps first, useful for two-band calculation
     Ut=ut,
     target_values=target_values,  # U, t, V target values
     Nintgrl_grid=Nintgrl_grid,
@@ -365,7 +373,7 @@ fval = np.sqrt(c)
 ctot = la.norm(cvec)
 G.eqinfo["sf"] = G.sf
 # Final U/t, so is determined by average values
-G.eqinfo["Ut"] = Utarget / tTarget[0]
+G.eqinfo["Ut"] = np.max(Utarget) / np.min(tTarget[0])
 
 if eq:
     G.eqinfo.update_cost(cvec, fval, ctot)

@@ -445,7 +445,7 @@ def squeeze_idx(links: np.ndarray, hole_idx: np.ndarray) -> np.ndarray:
 
 
 def build_reflection(graph: np.ndarray, symmetry: bool = True):
-    # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattice
+    # Build correspondence map of 4-fold reflection sectors in 1D & 2D lattices
     # Entries are site labels, each row is a symmetry equiv class
     # with 4 columns sites from each other
     # Eg. : p=1, m=-1
