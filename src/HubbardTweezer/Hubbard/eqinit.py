@@ -5,16 +5,19 @@ from typing import Iterable
 from .core import symm_fold
 from .lattice import LatticeGrid
 
-dmin = 1.4 # Minimum trap center spacing in unit of wx
+dmin = 1.4  # Minimum trap center spacing in unit of wx
 # 1.4 wx is roughtly -0.75V0 barrier height
-dv = 0.02 # 2% fluctuation, small enough to avoid failed Wannierization
+dv = 0.02  # 2% fluctuation, small enough to avoid failed Wannierization
+
 
 def init_V0(Voff: np.ndarray, lattice: LatticeGrid, nobounds: bool = False):
     v01 = symm_fold(lattice.reflect, Voff)
     if nobounds:
         b1 = list((-np.inf, np.inf) for i in range(lattice.Nindep))
     else:
-        b1 = list((1 - dv, 1 + dv) for i in range(lattice.Nindep))  # 5% ~ 2.5kHz fluctuation
+        b1 = list(
+            (1 - dv, 1 + dv) for i in range(lattice.Nindep)
+        )  # 5% ~ 2.5kHz fluctuation
     return v01, b1
 
 
@@ -49,7 +52,7 @@ def init_aij(
     nobounds: bool = False,
 ):
     if nobounds:
-        s3 = (-np.inf, np.inf)
+        s3 = np.inf
     else:
         s3 = abs(np.min(lc) - dmin) / 2
     v03 = symm_fold(lattice.reflect, trap_centers).flatten()
