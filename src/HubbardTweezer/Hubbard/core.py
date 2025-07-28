@@ -78,7 +78,7 @@ class MLWF(DVR):
         ] = None,  # Custom potential function, if any
         ascatt: float = 1770,  # Scattering length, in unit of Bohr radius, default 1770
         band=1,  # Number of bands
-        equalize_V0: bool = False,  # Equalize trap depths V0 for all traps first, useful for two-band calculation
+        balance_V0: bool = False,  # Balance trap depths V0 for all traps first, useful for two-band calculation
         dim: int = 3,
         *args,
         **kwargs,
@@ -156,8 +156,8 @@ class MLWF(DVR):
         self.wxy0 = self.wxy.copy()
         self.waists = np.ones((self.lattice.N, 2))
 
-        # Balance trap depth to make sure traps aren't too uneven
-        # NOTE: this makes U more uneven.
+        # Balance trap depth first, to make sure traps won't go too uneven
+        # to have non-local WF. But this makes U to be more uneven.
         if balance_V0:
             self.balance_trap_depths()
 
@@ -240,7 +240,7 @@ class MLWF(DVR):
             # to compensate for trap unevenness
             self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N)) ** 2
             if self.verbosity:
-                print(f"Equalize: trap depths equalzlied to {self.Voff}.")
+                print(f"Balance: trap depths balanced to {self.Voff}.")
         except:
             raise LinAlgError("Homogenize: failed to solve for Voff.")
 
