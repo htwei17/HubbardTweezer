@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+
 # import h5py
 from os.path import exists
 
@@ -271,7 +272,7 @@ lattice = Lattice(
 )
 
 # ====== Equalize ======
-G = HubbardGraph(
+G = HubbardEqualizer(
     N,
     R0=L0,
     dim=dimension,
