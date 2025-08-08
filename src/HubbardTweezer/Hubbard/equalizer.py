@@ -89,14 +89,16 @@ class HubbardEqualizer(MLWF):
         self,
         N,
         lattice: Lattice,  # Lattice object containing lattice parameters
-        equalize=False,  # Homogenize trap or not
+        equalize=False,  # Equalize trap or not
         eqitem="UvT",  # Determine which item to equalize, e.g. "UvT" for U, t, V
         scale_factor=None,  # Scale factor for cost function
         Ut: float = None,  # Interaction target in unit of tx
         target_values: tuple[TARGET_TYPE, ...] = None,  # Target values for U, t, V
         eqmethod: str = None,  # Minimize algorithm method
         nobounds: bool = False,  # Whether to use bounds or not
-        waist="x",  # Waist to vary, None means no waist change
+        variable_waist: Literal[
+            "x", "y", "xy", "yx", None
+        ] = "x",  # Waist to vary, None means no waist change
         random: bool = False,  # Random initial guess
         iofile=None,  # Input/output file
         write_log: bool = False,  # Whether to write detailed log into iofile
@@ -108,10 +110,10 @@ class HubbardEqualizer(MLWF):
 
         # set equalization label in file output
         self.eq_label = eqitem
-        self.waist_dir = waist
+        self.waist_dir = variable_waist
         self.eqinfo = EqulizeInfo()
         if eqmethod is None:
-            self.eqmethod = "Nelder-Mead" if waist == None else "trf"
+            self.eqmethod = "Nelder-Mead" if variable_waist == None else "trf"
         else:
             self.eqmethod = "Nelder-Mead" if eqmethod == "NM" else eqmethod
         self.log = False if not equalize else write_log
@@ -426,7 +428,9 @@ class HubbardEqualizer(MLWF):
         txTarget, tyTarget = tTargets
         # Energy scale factor, set to be of avg initial tx
         if not isinstance(self.sf, Number):
-            self.sf = np.min([txTarget, tyTarget]) if tyTarget != None else np.min(txTarget)
+            self.sf = (
+                np.min([txTarget, tyTarget]) if tyTarget != None else np.min(txTarget)
+            )
         if not fix_t:
             txTarget, tyTarget = None, None
 

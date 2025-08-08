@@ -10,6 +10,8 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 
+from ..tools.funcs import tweezer_potential
+
 from .const import *
 
 
@@ -165,7 +167,7 @@ class DVR:
                 print(f"{axis[self.nd]}-reflection symmetry is used.")
         self.init = get_init(self.n, self.p)
 
-        if model in ["Gaussian", "optical_lattice"]:
+        if model in ["Gaussian", "optical_lattice", "custom"]:
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
             self.m: Literal = atom * AMU  # Atom mass, in unit of electron mass
@@ -243,11 +245,8 @@ class DVR:
     def Vfun(self, x, y, z):
         # Potential function
         if self.model == "Gaussian":
-            # Tweezer potential funciton, Eq. 2 in PRA
-            d0 = 1 + (z / self.zR0) ** 2 / 2
-            dxy = (x / self.wxy[0]) ** 2 / (1 + (z / self.zR[0]) ** 2)
-            dxy += (y / self.wxy[1]) ** 2 / (1 + (z / self.zR[1]) ** 2)
-            V = -1 / d0 * np.exp(-2 * dxy)
+            # Tweezer potential function, Eq. 2 in PRA
+            V = tweezer_potential(x, y, z, self.wxy, self.zR, self.zR0)
         elif self.model == "sho":
             # Harmonic potential function
             V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)

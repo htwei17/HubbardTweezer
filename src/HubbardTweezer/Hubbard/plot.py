@@ -80,11 +80,9 @@ plt.rcParams.update(params)
 
 
 class HubbardGraph(HubbardEqualizer):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        # # Resize [n] to [n, 1]
-        # self.lattice = np.resize(
-        #     np.pad(self.lattice, pad_width=(0, 1), constant_values=1), 2)
+    calculate_U: bool = True
+
+    def update_graph(self):
         self.edges = [tuple(row) for row in self.lattice.grid.links]
         self.graph = nx.DiGraph(self.edges, name="Lattice")
         self.pos = dict(
@@ -92,6 +90,13 @@ class HubbardGraph(HubbardEqualizer):
             (n, self.wf_centers[n])
             for n in self.graph.nodes()
         )
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        # # Resize [n] to [n, 1]
+        # self.lattice = np.resize(
+        #     np.pad(self.lattice, pad_width=(0, 1), constant_values=1), 2)
+        self.update_graph()
 
     def set_edges(self, label="param"):
         for link in self.graph.edges:
@@ -175,19 +180,26 @@ class HubbardGraph(HubbardEqualizer):
             )
             return
 
-    def singleband_params(self, label="param", band=1, A=None, U=None):
+    def singleband_params(self, label="param", band=1, A=None, U=None, eig_sol=None):
         if label == "param" and (A is None or U is None):
-            self.singleband_Hubbard(u=True, band=band)
+            self.singleband_Hubbard(u=self.calculate_U, band=band, eig_sol=eig_sol)
         elif label == "adjust" and A is None:
-            self.singleband_Hubbard(u=False, band=band)
+            self.singleband_Hubbard(u=False, band=band, eig_sol=eig_sol)
         elif label not in ["param", "adjust"]:
             raise ValueError("Invalid label.")
 
     def draw_graph(
-        self, label="param", band=1, nnn=False, A=None, U=None, scalebar=True
+        self,
+        label="param",
+        band=1,
+        nnn=False,
+        A=None,
+        U=None,
+        scalebar=True,
+        eig_sol=None,
     ):
         if isinstance(band, int):
-            self.singleband_params(label, band, A, U)
+            self.singleband_params(label, band, A, U, eig_sol)
             if band == 1:
                 self.color = color_scheme1
             elif band == 2:
@@ -204,8 +216,8 @@ class HubbardGraph(HubbardEqualizer):
         if label == "param" and nnn:
             self.add_nnn(limit=nnn)
         if all(abs(self.wf_centers[:, 1]) < 1e-6):
-            self.lattice.dim = 1
-            self.lattice.size = np.array([self.lattice.N, 1])
+            self.lattice.grid.dim = 1
+            self.lattice.grid.size = np.array([self.lattice.N, 1])
             self.wf_centers[:, 1] = 0
 
         self.set_edges(label)
@@ -312,7 +324,7 @@ class HubbardGraph(HubbardEqualizer):
                 font_weight=FONT_WEIGHT,
                 labels=self.node_label,
             )
-        if label in ["param", "interband"]:
+        if label in ["param", "interband"] and self.calculate_U:
             self.draw_node_overhead_labels(
                 nnn, font_size=OVERHEAD_SUZE, font_color=self.color["overhead"]
             )

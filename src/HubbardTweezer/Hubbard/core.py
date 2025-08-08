@@ -1,6 +1,6 @@
 import numpy as np
 from numpy.linalg import LinAlgError
-from typing import Iterable, Union, Optional
+from typing import Iterable, Union, Optional, Callable
 from numbers import Number
 from opt_einsum import contract
 from time import time
@@ -36,7 +36,7 @@ class MLWF(DVR):
     lattice: Lattice
 
     Nintgrl_grid: int = 257
-    custom_potential: callable = None  # Custom potential function, if any
+    custom_potential: Callable = None  # Custom potential function, if any
     # Rintgrl: np.ndarray
 
     wf_centers: np.ndarray
@@ -73,7 +73,7 @@ class MLWF(DVR):
         N: int,
         lattice: Lattice,  # Lattice object containing lattice parameters
         custom_potential: Optional[
-            Union[callable, tuple[Iterable, np.ndarray]]
+            Union[Callable, tuple[Iterable, np.ndarray]]
         ] = None,  # Custom potential function, if any
         ascatt: float = 1770,  # Scattering length, in unit of Bohr radius, default 1770
         band=1,  # Number of bands
@@ -111,7 +111,7 @@ class MLWF(DVR):
                     self.custom_potential = interp.RegularGridInterpolator(
                         custom_potential[0], custom_potential[1]
                     )
-                elif isinstance(custom_potential, callable):
+                elif isinstance(custom_potential, Callable):
                     self.custom_potential = custom_potential
                 else:
                     raise TypeError(
@@ -287,7 +287,8 @@ class MLWF(DVR):
         self, W0: list = None, band_std: str = "symmetry"
     ) -> tuple[list, list, list]:
         # Find eigenbasis of symmetry block diagonalized Hamiltonian
-        k = self.lattice.N * self.bands
+        band_site = self.lattice.N
+        k = band_site * self.bands
         if self.dvr_symm:
             p_list = self.build_sectors()
             E_sb = np.array([])
@@ -336,17 +337,10 @@ class MLWF(DVR):
         if band_std == "energy":
             E_sb = E_sb[:k]
             p_sb = p_sb[:k]
-            E = [
-                E_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
-                for b in range(self.bands)
-            ]
-            W = [
-                W_sb[b * self.lattice.N : (b + 1) * self.lattice.N]
-                for b in range(self.bands)
-            ]
+            E = [E_sb[b * band_site : (b + 1) * band_site] for b in range(self.bands)]
+            W = [W_sb[b * band_site : (b + 1) * band_site] for b in range(self.bands)]
             parity = [
-                p_sb[b * self.lattice.N : (b + 1) * self.lattice.N, :]
-                for b in range(self.bands)
+                p_sb[b * band_site : (b + 1) * band_site, :] for b in range(self.bands)
             ]
         elif band_std == "symmetry" and self.bands == 2:
             # Hand coded pz-even and pz-odd bands
@@ -360,12 +354,12 @@ class MLWF(DVR):
             count_odd = 0
             for pidx in range(len(p_sb)):
                 p = p_sb[pidx]
-                if p[2] == 1 and count_even < self.lattice.N:
+                if p[2] == 1 and count_even < band_site:
                     E_even = np.append(E_even, E_sb[pidx])
                     W_even.append(W_sb[pidx])
                     parity_even = np.append(parity_even, p[None], axis=0)
                     count_even += 1
-                elif p[2] == -1 and count_odd < self.lattice.N:
+                elif p[2] == -1 and count_odd < band_site:
                     E_odd = np.append(E_odd, E_sb[pidx])
                     W_odd.append(W_sb[pidx])
                     parity_odd = np.append(parity_odd, p[None], axis=0)
