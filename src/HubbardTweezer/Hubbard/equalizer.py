@@ -519,7 +519,7 @@ class HubbardEqualizer(MLWF):
             self.waists,
             self.waist_dir,
             self.w_dof,
-            self.l / self.w,
+            self.l / self.w if self.l is not None else 1,
             nobounds,
         )
 

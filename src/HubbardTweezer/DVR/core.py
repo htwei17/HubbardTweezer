@@ -171,7 +171,6 @@ class DVR:
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
             self.m: Literal = atom * AMU  # Atom mass, in unit of electron mass
-            self.l: Literal = laser * 1e-9  # Laser wavelength, in unit of Bohr radius
             self.kHz: Literal = 1e3  # Make in the frequency unit of kHz
             self.kHz_2p: Literal = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
             self.V0: float = (
@@ -195,13 +194,17 @@ class DVR:
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
-            # Rayleigh range, a vector of (zRx, zRy), in unit of wx
-            self.zR = np.pi * self.w * self.wxy**2 / self.l
+            self.l: Literal = None
             # Rayleigh range input by hand, in unit of wx
             if isinstance(zR, Number):
                 self.zR: np.ndarray = zR * np.ones(2) / wx
             elif isinstance(zR, Iterable):
                 self.zR: np.ndarray = np.array(zR) / wx
+            else:  # If zR not specified,
+                # Laser wavelength, in SI unit
+                self.l: Literal = laser * 1e-9
+                # Rayleigh range, a vector of (zRx, zRy), in unit of wx
+                self.zR = np.pi * self.w * self.wxy**2 / self.l
             # "Effective" Rayleigh range
             self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
 

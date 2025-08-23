@@ -63,10 +63,12 @@ class MLWF(DVR):
 
     def update_waist(self, waists):
         self.wxy = self.wxy0 * waists
-        self.zR = np.pi * self.w * self.wxy**2 / self.l
-        self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
-        self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
-        self.omega *= np.sqrt(self.avg * self.hb * self.V0 / self.m) / self.w
+        if self.l is not None:
+            # Update zR if specified by laser
+            self.zR = np.pi * self.w * self.wxy**2 / self.l
+            self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
+            self.omega = np.array([*(2 / self.wxy), 1 / self.zR0])
+            self.omega *= np.sqrt(self.avg * self.hb * self.V0 / self.m) / self.w
 
     def __init__(
         self,
@@ -164,11 +166,10 @@ class MLWF(DVR):
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
-        V = 0
 
         if self.model == "sho" and self.lattice.N == 2:
             # Two-site SHO case
-            V += super().Vfun(abs(x) - self.lattice.lc[0] / 2, y, z)
+            V = super().Vfun(abs(x) - self.lattice.lc[0] / 2, y, z)
         elif self.model == "optical_lattice":
             # Optical lattice potential in 2D
             V = (
@@ -178,8 +179,9 @@ class MLWF(DVR):
             ) / 2
         elif self.model == "custom" and self.custom_potential is not None:
             # Custom potential case
-            V += self.custom_potential(x, y, z)
+            V = self.custom_potential(x, y, z)
         else:
+            V = 0
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.lattice.N):
