@@ -111,7 +111,7 @@ class MLWF(DVR):
             if custom_potential is not None:
                 if isinstance(custom_potential, Iterable):
                     self.custom_potential = interp.RegularGridInterpolator(
-                        custom_potential[0], custom_potential[1]
+                        points=custom_potential[0], values=custom_potential[1]
                     )
                 elif isinstance(custom_potential, Callable):
                     self.custom_potential = custom_potential
@@ -615,11 +615,11 @@ def integrate(x, dx, integrand, method):
     return U
 
 
-def wannier_func(x: Iterable, WF, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
+def wannier_func(x: Iterable, WF, mlwf: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(DIM)]
     V = np.zeros((*(len(x[i]) for i in range(DIM)), p.shape[0]))
     for i in range(p.shape[0]):  # Loop over trap sites, p.shape[0] = Ntrap
-        V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
+        V[:, :, :, i] = psi(x, mlwf.n, mlwf.dx, W[i], p[i, :])[..., 0]
     return V @ WF
 
 

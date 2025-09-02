@@ -221,8 +221,8 @@ Therefore, `[Lattice_Parameters]` supports two types of input: 1. specifying a l
 
 (In progress) If `potential_model` is `custom`, the trapping potential is specified by the following two parameters:
 
-* `custom_potential_grid`:  (`DVR_dimension`-length tuple of 1D arrays) spatial grid point positions in `x`, `y` and `z` dimension (may be fewer dimensions if `DVR_dimension` < 3) (default: None)
-* `custom_potential_value`:  (rank-3 tensor) custom trapping potential values at grid point positions (default: None)
+* `custom_potential_grid`:  (`DVR_dimension`-length tuple of 1D arrays) spatial grid point positions in `x`, `y` and `z` dimension, with values in units of $w_x$ (can be fewer dimensions if `DVR_dimension` < 3) (default: None)
+* `custom_potential_value`:  (rank-`DVR_dimension` tensor) custom trapping potential values at grid point positions (default: None)
 
 ##### Potential specified by lattice geometry parameters
 

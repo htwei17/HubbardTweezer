@@ -262,6 +262,7 @@ print("x0", x0)
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 plot = rep.b(report, "Verbosity", "plot", False)
+output_wf = rep.b(report, "Verbosity", "output_wannier", False)
 savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
 # ====== Lattice parameters ======
@@ -270,7 +271,7 @@ lattice = Lattice(
     lattice_symmetry=ls,  # lattice reflection symmetry
     lattice=lsize,  # lattice size
     lc=lc,  # lattice constant in nm
-    nodes=nodes,  # custom lattice site positions
+    nodes=nodes,  # custom lattice site positions, in unit of lc
     links=links,  # custom lattice links
     isotropic=False,  # check if the lattice is isotropic
     ghost=gho,
@@ -317,7 +318,7 @@ if not eq:
     G.Voff = rep.a(report, "V_offset", "Trap_Adjustments", G.Voff)
 
 eig_sol = G.eigen_basis()
-G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
+__, __, WF = G.singleband_Hubbard(u=calculate_U, eig_sol=eig_sol)
 maskedA = G.lattice.ghost.mask_quantity(G.A)
 if calculate_U:
     maskedU = G.lattice.ghost.mask_quantity(G.U)
@@ -332,6 +333,20 @@ if G.verbosity > 1:
     print(f"V = {np.diag(G.A)}")
     print(f"t = {abs(G.lattice.nn_tunneling(G.A))}")
     print(f"U = {G.U}")
+if output_wf:
+    edge = 2
+    x = np.linspace(
+        lattice.trap_centers[0][0] - edge,
+        lattice.trap_centers[-1][0] + edge,
+        G.Nintgrl_grid,
+    )
+    y = np.linspace(
+        lattice.trap_centers[0][1] - edge,
+        lattice.trap_centers[-1][1] + edge,
+        G.Nintgrl_grid,
+    )
+    z = 0
+    wfval = wannier_func((x, y, z), WF, G, *eig_sol[1:])
 if plot:
     G.draw_graph("adjust", A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)

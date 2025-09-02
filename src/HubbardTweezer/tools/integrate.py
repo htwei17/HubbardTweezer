@@ -17,7 +17,7 @@ def romb3d(integrand: np.ndarray, dx: list[float, float, float]) -> float:
 def simps3d(integrand: np.ndarray, x: list[np.ndarray, np.ndarray, np.ndarray]) -> float:
     for i in range(DIM):
         if x[i].size > 1:
-            integrand = simps(integrand, x[i], axis=0)
+            integrand = simpson(integrand, x[i], axis=0)
         else:
             integrand = integrand[0]
     return integrand
@@ -26,7 +26,7 @@ def simps3d(integrand: np.ndarray, x: list[np.ndarray, np.ndarray, np.ndarray]) 
 def trapz3dnp(integrand: np.ndarray, x: list[np.ndarray, np.ndarray, np.ndarray]) -> float:
     for i in range(DIM):
         if x[i].size > 1:
-            integrand = np.trapz(integrand, x[i], axis=0)
+            integrand = np.trapezoid(integrand, x[i], axis=0)
         else:
             integrand = integrand[0]
     return integrand
