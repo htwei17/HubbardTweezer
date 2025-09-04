@@ -364,6 +364,7 @@ Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abs
             see `[Equalization_Log]` in [output sections](#equalization_log-optional)
 <!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
 * `verbosity`:  (optional, integer `0~3`) levels of how much information printed, `3` is the most detailed level, `0` means no printed information (default: `0`)
+* `output_lowest_wannier`:   (optional, bool) output the calculated lowest band maximally localized Wannier function values at $z=0$ plane (default: `False`)
 
 <!-- <span id="input-in-equalization_result"></span> -->
 
@@ -389,7 +390,15 @@ The Hubbard parameters for the single-band Hubbard model, unit kHz.
 * `V_i`:    (`N` x 1 array) on-site potential at site `i`
 * `U_i`:    (`N` x 1 array) on-site Hubbard interaction at site `i`
 * `U_ijkl`:   (`N` x `N` x `N` x `N` array) Hubbard interaction $U_{ijkl}$ among site `i`, `j`, `k` and `l`, calculated only if `offdiagonal_U=True`
+
+#### `[Wannier_Functions]`
+
 * `wf_centers`:    (`N` x 2 array) calculated Wannier orbital center positions
+
+If in `Verbosity` section `output_lowest_wannier = True`, the calculated Wannier functions at $z=0$ plane are stored in this section:
+
+* `x_grid`, `y_grid`, `z_grid`:    (`3` 1D arrays) 1D grid point positions in $x$, $y$ direction (at $z=0$ plane) in unit of $w_x$
+* `wf_values`:    (3D tensor) calculated maximally localized Wannier functions (MLWFs) in the lowest band, at $z=0$ plane
 
 #### output in `[Trap_Adjustment]`
 
@@ -397,7 +406,7 @@ The factors to adjust traps to equalize Hubbard parameters.
 
 * `V_offset`:   (`N` x 1 array) factor to scale individual trap depth, the same item as in the [input section](#input-in-trap_adjustment)  
                 resulting trap depth $V_\text{trap} = V_\text{offset} \times V_0$
-* `trap_centers`:   (`N` x 2 array) trap center position in unit of `waist_x` and `waist_y`
+* `trap_centers`:   (`N` x 2 array) trap center position in unit of $w_x$
 * `waist_factors`:  (`N` x 2 array) factor to scale trap waist, resulting $x$ and $y$ waist <img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/wf.png" height="20" style="vertical-align: middle;">.
 <!-- $w_{x,y} = \mathrm{waist\_factors}_{x,y} \times w_{x,y}$ -->
 
