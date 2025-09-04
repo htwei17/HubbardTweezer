@@ -162,10 +162,15 @@ s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 
 # ====== Create lattice ======
+shape = rep.s(report, "Lattice_Parameters", "shape", "square")
+ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
+lc = tuple(rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690])))
+lsize = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(int)
+nodes = None
+links = None
 model = rep.s(report, "Lattice_Parameters", "potential_model", "Gaussian")
 custom_potential = None
 if model in ["Gaussian", "optical_lattice"]:
-    shape = rep.s(report, "Lattice_Parameters", "shape", "square")
     if model == "optical_lattice" and shape != "square":
         raise ValueError(
             "optical_lattice model only supports square lattice shape, please use Gaussian model for other shapes."
@@ -173,18 +178,7 @@ if model in ["Gaussian", "optical_lattice"]:
     if shape == "custom":
         nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
         links = rep.a(report, "Lattice_Parameters", "bond_links", None)
-    else:
-        nodes = None
-        links = None
-        lsize = rep.a(
-            report, "Lattice_Parameters", "lattice_size", np.array([4])
-        ).astype(int)
-        lc = tuple(
-            rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690]))
-        )
-        ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
 elif model == "custom":
-    model = "custom"
     custom_potential_grid = rep.a(
         report, "Lattice_Parameters", "custom_potential_grid", None
     )
@@ -217,6 +211,8 @@ ut = rep.f(report, "Equalization_Result", "U_over_t", None)
 
 # ====== Equalization ======
 eq = rep.b(report, "Equalization_Parameters", "equalize", False)
+if eq and model == "custom":
+    raise ValueError("Equalization not supported for custom potential profile.")
 eqt = rep.s(report, "Equalization_Parameters", "equalize_item", "vT")
 balance_V0 = rep.b(report, "Equalization_Parameters", "balance_V0", False)
 wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
@@ -262,7 +258,7 @@ print("x0", x0)
 log = rep.b(report, "Verbosity", "write_log", False)
 verb = rep.i(report, "Verbosity", "verbosity", 0)
 plot = rep.b(report, "Verbosity", "plot", False)
-output_wf = rep.b(report, "Verbosity", "output_wannier", False)
+output_wf = rep.b(report, "Verbosity", "output_lowest_wannier", False)
 savefmt = rep.s(report, "Verbosity", "save_format", "ini")
 
 # ====== Lattice parameters ======
@@ -333,26 +329,13 @@ if G.verbosity > 1:
     print(f"V = {np.diag(G.A)}")
     print(f"t = {abs(G.lattice.nn_tunneling(G.A))}")
     print(f"U = {G.U}")
-if output_wf:
-    edge = 2
-    x = np.linspace(
-        lattice.trap_centers[0][0] - edge,
-        lattice.trap_centers[-1][0] + edge,
-        G.Nintgrl_grid,
-    )
-    y = np.linspace(
-        lattice.trap_centers[0][1] - edge,
-        lattice.trap_centers[-1][1] + edge,
-        G.Nintgrl_grid,
-    )
-    z = 0
-    wfval = wannier_func((x, y, z), WF, G, *eig_sol[1:])
 if plot:
     G.draw_graph("adjust", A=G.A, U=G.U)
     G.draw_graph(A=G.A, U=G.U)
 
-# ====== Write singleband and trap parameters ======
+# ====== Write singleband, trap and Wannier parameters ======
 write_singleband(report, G)
+write_wannier(report, G, output_wf, eig_sol[1][0], eig_sol[2][0], WF)
 # Off-diagonal elements of U
 if G.bands == 1 and calculate_U and offdiag_U:
     print("Singleband off-diagonal U calculation.")

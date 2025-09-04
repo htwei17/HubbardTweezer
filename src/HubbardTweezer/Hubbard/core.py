@@ -105,8 +105,8 @@ class MLWF(DVR):
         )  # Numerical integration grid point number
         print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
 
-        model = kwargs.get("model", "Gaussian")
-        if model == "custom":
+        super().__init__(n, *args, **kwargs)
+        if self.model == "custom":
             print("Wannier: Custom potential model is set. Ignore lattice parameters.")
             if custom_potential is not None:
                 if isinstance(custom_potential, Iterable):
@@ -120,7 +120,6 @@ class MLWF(DVR):
                         "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
                     )
 
-        super().__init__(n, *args, **kwargs)
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
 

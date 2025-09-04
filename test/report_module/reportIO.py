@@ -67,20 +67,31 @@ def s(report: ConfigObj, section: str, key=None, default="") -> str:
     return ret
 
 
+def recursion(target, dtype=float) -> np.ndarray:
+    if isinstance(target, str):
+        # If the value is a single string (i.e., a string representing an array)
+        # Try to parse the string as JSON to get a list
+        # This should work for any number of dimensions
+        readout = json.loads(target)
+        if isinstance(readout, list):
+            ret = np.array(readout).astype(dtype)
+        else:
+            # If the readout is not a list, return it as a single-element array
+            ret = dtype(readout)
+        return ret
+    elif isinstance(target, Iterable):
+        # If the value is a list of strings, convert it to an array
+        # This is from data formatted as a = 1, 2, 3, 4, 5
+        return [recursion(x, dtype=dtype) for x in target]
+    else:
+        # If the value is not an Iterable
+        raise TypeError(f"Input {target} is not an recursable Iterable.")
+
+
 def a(report: ConfigObj, section: str, key=None, default=np.array([])) -> np.ndarray:
     try:
-        if isinstance(report[section][key], str):
-            # If the value is a single string (i.e., a string representing an array)
-            # Try to parse the string as JSON to get a list
-            # This should work for any number of dimensions
-            ret = np.array(json.loads(report[section][key]))
-        elif isinstance(report[section][key], Iterable):
-            # If the value is a list of strings, convert it to a numpy array
-            # This is from data formatted as a = 1, 2, 3, 4, 5
-            ret = np.array(report[section][key]).astype(float)
-        else:
-            # If the value is not an Iterable
-            raise TypeError("Input is not an Iterable.")
+        target = report[section][key]
+        ret = recursion(target)
     except:
         # If anything goes wrong, return the default value
         ret = default
