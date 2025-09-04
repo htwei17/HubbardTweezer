@@ -106,13 +106,13 @@ class MLWF(DVR):
         self.Nintgrl_grid = kwargs.get("Nintgrl_grid", 257)
         print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
 
-        model = kwargs.get("model", "Gaussian")
-        if model == "custom":
+        super().__init__(n, *args, **kwargs)
+        if self.model == "custom":
             print("Wannier: Custom potential model is set. Ignore lattice parameters.")
             if custom_potential is not None:
                 if isinstance(custom_potential, Iterable):
                     self.custom_potential = interp.RegularGridInterpolator(
-                        custom_potential[0], custom_potential[1]
+                        points=custom_potential[0], values=custom_potential[1]
                     )
                 elif isinstance(custom_potential, Callable):
                     self.custom_potential = custom_potential
@@ -121,9 +121,7 @@ class MLWF(DVR):
                         "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
                     )
 
-        super().__init__(n, *args, **kwargs)
-        # Backup buffer zone size
-        # buffer zone = from edge trap center to DVR box edge
+        # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
 
         self.lattice = lattice
@@ -183,11 +181,8 @@ class MLWF(DVR):
             # Custom potential case
             V = self.custom_potential(x, y, z)
         else:
-<<<<<<< HEAD
             # Gaussian trap potential of tweezer array
-=======
             V = 0
->>>>>>> main
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.lattice.N):
@@ -363,22 +358,12 @@ class MLWF(DVR):
             count_odd = 0
             for pidx in range(len(p_sb)):
                 p = p_sb[pidx]
-<<<<<<< HEAD
-                if p[2] == 1 and count_even < self.lattice.N:
-                    # Even parity
-=======
                 if p[2] == 1 and count_even < band_site:
->>>>>>> main
                     E_even = np.append(E_even, E_sb[pidx])
                     W_even.append(W_sb[pidx])
                     parity_even = np.append(parity_even, p[None], axis=0)
                     count_even += 1
-<<<<<<< HEAD
-                elif p[2] == -1 and count_odd < self.lattice.N:
-                    # Odd parity
-=======
                 elif p[2] == -1 and count_odd < band_site:
->>>>>>> main
                     E_odd = np.append(E_odd, E_sb[pidx])
                     W_odd.append(W_sb[pidx])
                     parity_odd = np.append(parity_odd, p[None], axis=0)
@@ -633,11 +618,11 @@ def integrate(x, dx, integrand, method):
     return U
 
 
-def wannier_func(x: Iterable, WF, dvr: MLWF, W, p: np.ndarray) -> np.ndarray:
+def wannier_func(x: Iterable, WF, mlwf: MLWF, W, p: np.ndarray) -> np.ndarray:
     x = [np.array([x[i]]) if isinstance(x[i], Number) else x[i] for i in range(DIM)]
     V = np.zeros((*(len(x[i]) for i in range(DIM)), p.shape[0]))
     for i in range(p.shape[0]):  # Loop over trap sites, p.shape[0] = Ntrap
-        V[:, :, :, i] = psi(x, dvr.n, dvr.dx, W[i], p[i, :])[..., 0]
+        V[:, :, :, i] = psi(x, mlwf.n, mlwf.dx, W[i], p[i, :])[..., 0]
     return V @ WF
 
 

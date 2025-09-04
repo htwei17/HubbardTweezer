@@ -5,7 +5,12 @@ import numpy as np
 import numpy.linalg as la
 from scipy.optimize import OptimizeResult
 
+from ..Hubbard.core import wannier_func
 from ..tools import reportIO as rep
+
+
+EDGE = 1.2
+GRID = 101
 
 
 class EqulizeInfo(dict):
@@ -131,8 +136,34 @@ def write_singleband(report, G):
     # FIXME: If not final result, G.U might be None.
     Vi = np.real(np.diag(G.A))
     tij = abs(np.real(G.A - np.diag(Vi)))
-    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U, "wf_centers": G.wf_centers,     "wf_cost": G.wf_cost}
+    values = {"t_ij": tij, "V_i": Vi, "U_i": G.U}
     rep.create_report(report, "Singleband_Parameters", **values)
+
+
+def write_wannier(
+    report,
+    G,
+    output_wf: bool = False,
+    W: np.ndarray = None,
+    p: np.ndarray = None,
+    WF: np.ndarray = None,
+):
+    values = {"wf_centers": G.wf_centers, "wf_cost": G.wf_cost}
+    if output_wf:
+        x = np.linspace(
+            G.lattice.trap_centers[0][0] - EDGE,
+            G.lattice.trap_centers[-1][0] + EDGE,
+            GRID,
+        )
+        y = np.linspace(
+            G.lattice.trap_centers[0][1] - EDGE,
+            G.lattice.trap_centers[-1][1] + EDGE,
+            GRID,
+        )
+        z = np.array([0.0])
+        wfval = wannier_func((x, y, z), WF, G, W, p)
+        values.update({"x_grid": x, "y_grid": y, "z_grid": z, "wf_values": wfval})
+    rep.create_report(report, "Wannier_Functions", **values)
 
 
 def read_Hubbard(report: ConfigObj, band: int = 1):

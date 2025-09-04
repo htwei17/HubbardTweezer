@@ -53,8 +53,8 @@ class Lattice:
         lattice: np.ndarray = np.array([2], dtype=int),
         lc: tuple[float, float] = (1520, 1690),
         # Custom lattice site positions & lattice links
-        nodes: np.ndarray = None,
-        links: np.ndarray = None,
+        nodes: np.ndarray = None,  # custom lattice site positions, in unit of lc
+        links: np.ndarray = None,  # custom lattice links
         isotropic: bool = False,  # Check if the lattice is isotropic
         ghost: bool = False,  # Whether to use ghost atoms or not
         ghost_penalty=(0, 0),  # Ghost penalty weight & threshold

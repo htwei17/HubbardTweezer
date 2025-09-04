@@ -10,7 +10,7 @@ import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 
-from ..tools.funcs import tweezer_potential
+from ..tools.potentials import tweezer_potential
 
 from .const import *
 
@@ -170,9 +170,9 @@ class DVR:
         if model in ["Gaussian", "optical_lattice", "custom"]:
             # Experiment parameters in atomic units
             self.hb = h / (2 * np.pi)  # Reduced Planck constant
-            self.m: Literal = atom * AMU  # Atom mass, in unit of electron mass
-            self.kHz: Literal = 1e3  # Make in the frequency unit of kHz
-            self.kHz_2p: Literal = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
+            self.m: float = atom * AMU  # Atom mass, in unit of electron mass
+            self.kHz: float = 1e3  # Make in the frequency unit of kHz
+            self.kHz_2p: float = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
             self.V0: float = (
                 trap[0] * self.kHz_2p
             )  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
@@ -188,13 +188,13 @@ class DVR:
                 wx: Number = trap[1]  # In unit of nm
                 self.wxy: np.ndarray = np.ones(2)
             else:
-                wx: Literal = 1000
+                wx: int = 1000
                 self.wxy: np.ndarray = np.ones(2)
-            self.w: Literal = wx * 1e-9  # Convert micron to m
+            self.w: float = wx * 1e-9  # Convert micron to m
 
             # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
             self.mtV0 = self.m * self.V0
-            self.l: Literal = None
+            self.l: Literal[None] = None
             # Rayleigh range input by hand, in unit of wx
             if isinstance(zR, Number):
                 self.zR: np.ndarray = zR * np.ones(2) / wx
@@ -202,7 +202,7 @@ class DVR:
                 self.zR: np.ndarray = np.array(zR) / wx
             else:  # If zR not specified,
                 # Laser wavelength, in SI unit
-                self.l: Literal = laser * 1e-9
+                self.l: float = laser * 1e-9
                 # Rayleigh range, a vector of (zRx, zRy), in unit of wx
                 self.zR = np.pi * self.w * self.wxy**2 / self.l
             # "Effective" Rayleigh range
@@ -218,14 +218,14 @@ class DVR:
                 print(f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
         elif model == "sho":
             # Harmonic parameters
-            self.hb: Literal = 1.0  # Reduced Planck constant
+            self.hb: float = 1.0  # Reduced Planck constant
             self.omega = np.ones(DIM)  # Harmonic frequencies
-            self.m: Literal = 1.0
-            self.w: Literal = 1.0
+            self.m: float = 1.0
+            self.w: float = 1.0
             self.mtV0 = self.m
             self.V0 = 1.0
-            self.kHz: Literal = 1.0
-            self.kHz_2p: Literal = 1.0
+            self.kHz: float = 1.0
+            self.kHz_2p: float = 1.0
             self.hl: np.ndarray = np.sqrt(
                 self.hb / (self.m * self.omega)
             )  # Harmonic lengths
