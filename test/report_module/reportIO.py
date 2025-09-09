@@ -67,7 +67,7 @@ def s(report: ConfigObj, section: str, key=None, default="") -> str:
     return ret
 
 
-def recursion(target, dtype=float) -> np.ndarray:
+def recursion(target, dtype=float, output_arr=False) -> np.ndarray:
     if isinstance(target, str):
         # If the value is a single string (i.e., a string representing an array)
         # Try to parse the string as JSON to get a list
@@ -82,16 +82,21 @@ def recursion(target, dtype=float) -> np.ndarray:
     elif isinstance(target, Iterable):
         # If the value is a list of strings, convert it to an array
         # This is from data formatted as a = 1, 2, 3, 4, 5
-        return [recursion(x, dtype=dtype) for x in target]
+        ret = [recursion(x, dtype=dtype) for x in target]
+        if output_arr:
+            ret = np.array(ret)
+        return ret
     else:
         # If the value is not an Iterable
         raise TypeError(f"Input {target} is not an recursable Iterable.")
 
 
-def a(report: ConfigObj, section: str, key=None, default=np.array([])) -> np.ndarray:
+def a(
+    report: ConfigObj, section: str, key=None, default=np.array([]), output_arr=False
+) -> np.ndarray:
     try:
         target = report[section][key]
-        ret = recursion(target)
+        ret = recursion(target, output_arr=output_arr)
     except:
         # If anything goes wrong, return the default value
         ret = default

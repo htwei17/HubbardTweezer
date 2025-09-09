@@ -219,7 +219,7 @@ Therefore, `[Lattice_Parameters]` supports two types of input: 1. specifying a l
 
 ##### Potential specified by potential grid
 
-(In progress) If `potential_model` is `custom`, the trapping potential is specified by the following two parameters:
+If `potential_model` is `custom`, the trapping potential is specified by the following two parameters:
 
 * `custom_potential_grid`:  (`DVR_dimension`-length tuple of 1D arrays) spatial grid point positions in `x`, `y` and `z` dimension, with values in units of $w_x$ (can be fewer dimensions if `DVR_dimension` < 3) (default: None)
 * `custom_potential_value`:  (rank-`DVR_dimension` tensor) custom trapping potential values at grid point positions (default: None)
@@ -395,7 +395,7 @@ The Hubbard parameters for the single-band Hubbard model, unit kHz.
 
 * `wf_centers`:    (`N` x 2 array) calculated Wannier orbital center positions
 
-If in `Verbosity` section `output_lowest_wannier = True`, the calculated Wannier functions at $z=0$ plane are stored in this section:
+If in `[Verbosity]` section `output_lowest_wannier = True`, the calculated Wannier functions at $z=0$ plane are stored in this section:
 
 * `x_grid`, `y_grid`, `z_grid`:    (`3` 1D arrays) 1D grid point positions in $x$, $y$ direction (at $z=0$ plane) in unit of $w_x$
 * `wf_values`:    (3D tensor) calculated maximally localized Wannier functions (MLWFs) in the lowest band, at $z=0$ plane

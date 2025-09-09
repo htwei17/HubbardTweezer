@@ -156,7 +156,7 @@ except FileNotFoundError as ferr:
 
 # ====== DVR parameters ======
 N = rep.i(report, "DVR_Parameters", "N", 20)
-L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]))
+L0 = rep.a(report, "DVR_Parameters", "L0", np.array([3, 3, 7.2]), output_arr=True)
 dimension = rep.i(report, "DVR_Parameters", "DVR_dimension", 1)
 s = rep.b(report, "DVR_Parameters", "sparse", True)
 symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
@@ -164,8 +164,10 @@ symm = rep.b(report, "DVR_Parameters", "DVR_symmetry", True)
 # ====== Create lattice ======
 shape = rep.s(report, "Lattice_Parameters", "shape", "square")
 ls = rep.b(report, "Lattice_Parameters", "lattice_symmetry", True)
-lc = tuple(rep.a(report, "Lattice_Parameters", "lattice_const", np.array([1520, 1690])))
-lsize = rep.a(report, "Lattice_Parameters", "lattice_size", np.array([4])).astype(int)
+lc = tuple(rep.a(report, "Lattice_Parameters", "lattice_const", [1520, 1690]))
+lsize = rep.a(
+    report, "Lattice_Parameters", "lattice_size", np.array([4]), output_arr=True
+).astype(int)
 nodes = None
 links = None
 model = rep.s(report, "Lattice_Parameters", "potential_model", "Gaussian")
@@ -194,7 +196,7 @@ elif model == "custom":
 # ====== Physical trap parameters ======
 a_s = rep.f(report, "Trap_Parameters", "scattering_length", 1000)
 V0 = rep.f(report, "Trap_Parameters", "V0", 104.52)
-w = rep.a(report, "Trap_Parameters", "waist", np.array([1000, 1000]))
+w = rep.a(report, "Trap_Parameters", "waist", np.array([1000, 1000]), output_arr=True)
 m = rep.f(report, "Trap_Parameters", "atom_mass", 6.015122)
 zR = rep.f(report, "Trap_Parameters", "zR", None)
 l = rep.f(report, "Trap_Parameters", "laser_wavelength", 780)
@@ -219,11 +221,17 @@ wd = rep.s(report, "Equalization_Parameters", "waist_direction", None)
 meth = rep.s(report, "Equalization_Parameters", "method", "trf")
 nb = rep.b(report, "Equalization_Parameters", "no_bounds", False)
 gho = rep.b(report, "Equalization_Parameters", "ghost_sites", False)
-ghopen = rep.a(report, "Equalization_Parameters", "ghost_penalty", np.array([1, 1]))
+ghopen = rep.a(
+    report,
+    "Equalization_Parameters",
+    "ghost_penalty",
+    np.array([1, 1]),
+    output_arr=True,
+)
 r = rep.b(report, "Equalization_Parameters", "random_initial_guess", False)
-Utarget = rep.a(report, "Equalization_Parameters", "U_target", None)
+Utarget = rep.a(report, "Equalization_Parameters", "U_target", None, output_arr=True)
 tTarget = rep.a(report, "Equalization_Parameters", "t_target", None)
-Vtarget = rep.a(report, "Equalization_Parameters", "V_target", None)
+Vtarget = rep.a(report, "Equalization_Parameters", "V_target", None, output_arr=True)
 if any([Utarget is not None, tTarget is not None, Vtarget is not None]):
     if tTarget is None:
         txTarget, tyTarget = None, None
