@@ -108,14 +108,19 @@ class MLWF(DVR):
 
         super().__init__(n, *args, **kwargs)
         if self.model == "custom":
-            print("Wannier: Custom potential model is set. Ignore lattice parameters.")
             if custom_potential is not None:
                 if isinstance(custom_potential, Iterable):
                     self.custom_potential = interp.RegularGridInterpolator(
                         points=custom_potential[0], values=custom_potential[1]
                     )
+                    print(
+                        "Wannier: Custom potential interpolator is set. Ignore lattice parameters."
+                    )
                 elif isinstance(custom_potential, Callable):
                     self.custom_potential = custom_potential
+                    print(
+                        "Wannier: Custom potential function is set. Ignore lattice parameters."
+                    )
                 else:
                     raise TypeError(
                         "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
@@ -126,12 +131,12 @@ class MLWF(DVR):
 
         self.lattice = lattice
         # Set lattice constants in unit of wx
-        if self.model in ["Gaussian", "optical_lattice"]:
+        if self.model == "sho":
+            self.lattice.set_lc(np.array(self.lattice.lc), self.lattice.shape)
+        else:
             self.lattice.set_lc(
                 np.array(self.lattice.lc) * 1e-9 / self.w, self.lattice.shape
             )
-        elif self.model == "sho":
-            self.lattice.set_lc(np.array(self.lattice.lc), self.lattice.shape)
 
         self.wf_centers = self.lattice.tc0.copy()
 
@@ -166,7 +171,6 @@ class MLWF(DVR):
 
     def Vfun(self, x, y, z):
         # Get V(x, y, z) for the entire lattice
-
         if self.model == "sho" and self.lattice.N == 2:
             # Two-site SHO case
             V = super().Vfun(abs(x) - self.lattice.lc[0] / 2, y, z)
@@ -179,7 +183,18 @@ class MLWF(DVR):
             ) / 2
         elif self.model == "custom" and self.custom_potential is not None:
             # Custom potential case
-            V = self.custom_potential(x, y, z)
+            # Ensure X, Y, Z have the same shape
+            if x.shape != y.shape or x.shape != z.shape:
+                raise ValueError("X, Y, Z must have the same shape.")
+
+            # Flatten and stack into (N, 3) points
+            points = np.stack([x.flatten(), y.flatten(), z.flatten()], axis=-1)
+
+            # Interpolate
+            V_flat = self.custom_potential(points)
+
+            # Reshape back to original shape
+            V = V_flat.reshape(x.shape)
         else:
             # Gaussian trap potential of tweezer array
             V = 0
