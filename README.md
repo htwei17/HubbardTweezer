@@ -28,15 +28,11 @@ Please cite the [paper](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.1
 }
 ```
 
-## TODO
-
-1. Update site-specific Hubbard parameters target
-2. Add DVR support to DMD configs
-
 ## Features
 
 1. Solve Hubbard parameters of 2d arbitrary finite geometry, including a set of lattice shapes and custom geometries
-2. Equalize Hubbard parameters over all sites
+2. Equalize over all sites and engineer site-specific Hubbard parameters
+3. Support both built-in Gaussian and customized DMD tweezer profiles
 
 ## Dependencies
 
