@@ -209,7 +209,9 @@ In this section, `Nsite` is the number of trap sites.
 #### `[Lattice_Parameters]`
 
 In DVR computation, the lattice information is used to construct the trapping potential:
-$$ V(\mathbf{r}) = \sum_i V_i(\mathbf{r} - \mathbf{r}_i).$$
+<!-- $$ V(\mathbf{r}) = \sum_i V_i(\mathbf{r} - \mathbf{r}_i).$$ -->
+
+<img src="https://github.com/htwei17/HubbardTweezer/blob/release/doc/Vr.png" height="60">
 
 Therefore, `[Lattice_Parameters]` supports two types of input: 1. specifying a lattice with geometries, which provide the positions $\mathbf{r}_i$ for each of the traps, and 2. specify directly the trapping potential value tensor $V(\mathbf{R})$ at spatial positions of a grid $\mathbf{R}$. The input type is specified by the `potential_model` option.
 
