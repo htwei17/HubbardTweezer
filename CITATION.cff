@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use HubbardTweezer, please cite the paper in preferred-citation. For reproducibility of a specific software release, please also cite the Zenodo software DOI."
+title: "HubbardTweezer"
+type: software
+authors:
+  - family-names: "Wei"
+    given-names: "Hao-Tian"
+version: "0.5.0"
+date-released: "2023-09-20"
+doi: "10.5281/zenodo.8364496"
+url: "https://github.com/htwei17/HubbardTweezer"
+
+preferred-citation:
+  type: article
+  title: "Hubbard parameters for programmable tweezer arrays"
+  authors:
+    - family-names: "Wei"
+      given-names: "Hao-Tian"
+    - family-names: "Ibarra-García-Padilla"
+      given-names: "Eduardo"
+    - family-names: "Wall"
+      given-names: "Michael L."
+    - family-names: "Hazzard"
+      given-names: "Kaden R. A."
+  journal: "Physical Review A"
+  year: 2024
+  volume: 109
+  issue: 1
+  start: "013318"
+  doi: "10.1103/PhysRevA.109.013318"
