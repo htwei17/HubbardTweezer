@@ -18,6 +18,11 @@ if __name__ == "__main__":
         author="Hao-Tian Wei",
         author_email="htwei@rice.edu",
         url="https://github.com/htwei17/HubbardTweezer.git",
+        project_urls={
+            "Publication": "https://doi.org/10.1103/PhysRevA.109.013318",
+            "Source": "https://github.com/htwei17/HubbardTweezer",
+            "Tracker": "https://github.com/htwei17/HubbardTweezer/issues",
+        },
         install_requires=[
             "numpy",
             "scipy",
