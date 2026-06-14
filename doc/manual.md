@@ -15,7 +15,6 @@ In order to run the code, you need to install the following packages:
 * [`ortools`](https://github.com/google/or-tools)
 * `configobj`
 <!-- * `pympler` used to monitor memory usage -->
-<!-- * [`networkx`](https://github.com/networkx/networkx) which depends on `matplotlib` -->
 <!-- * `h5py` -->
 
 ## Get started on HubbardTweezer
@@ -363,7 +362,6 @@ Below 2 proposals are elaborated in the [paper](https://journals.aps.org/pra/abs
 
 - **write_log** *(bool, default False)*: append every equalization step to `[Equalization_Log]`.
             see `[Equalization_Log]` in [output sections](#equalization_log-optional)
-<!-- * `plot`:   plot Hubbard parameter graphs  (default: False) -->
 - **verbosity** *(int, default 0)*: log verbosity (`0` silences logs, `3` prints the most detail).
 - **output_lowest_wannier** *(bool, default False)*: persist the lowest-band Wannier wavefunction slice at $z=0$.
 
@@ -451,11 +449,8 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
 
 1. `DVR`: DVR spectra calculations
    * `DVR.core`: `DVR` base class and helper functions to calculate DVR spectra
-   * `DVR.const`: constants used in DVR calculations
+   * `DVR.metadata`: constants, structured DVR configuration, and metadata containers
    * `DVR.wavefunc`: wavefunction calculations
-   <!-- * `DVR.dynamics`: define `dynamics` class and `DVR_exe` function -->
-   <!-- * `DVR.output`: output storage `.h5` file interal structure definitions -->
-   <!-- * `DVR_exe.py`: execute script of DVR dynamics on command line -->
 
 2. `Hubbard`: Hubbard parameter calculations
    * `Hubbard.core` : `MLWF` class and helper functions to construct maximally localized Wannier functions (MLWFs) and Hubbard parameters
@@ -464,16 +459,14 @@ The code consists of two modules `DVR` and `Hubbard`. Their main modules are exp
    * `Hubbard.eqinit`: functions to initialize trap parameters for equalization
    * `Hubbard.io`: logger and functions to read and write Hubbard parameters in equalization
    * `Hubbard.lattice`: `Lattice` class to define lattice geometry
+   * `Hubbard.grid`: `LatticeGrid` class to construct lattice coordinates and links
    * `Hubbard.ghost`: `GhostTrap` class to add ghost traps to the lattice
-   <!-- * `Hubbard.plot`: `HubbardGraph` class to plot Hubbard parameters on lattice graphs -->
 
 3. `tools`: tools for data analysis
    * `tools.integrate`: functions to calculate 3D numerical integrals
    * `tools.point_match`: function to match and label MLWFs to the traps
    * `tools.reportIO`: functions to read and write `ini` files
+   * `tools.funcs`: small shared helper functions
+   * `tools.fix_phase`, `tools.jacobi_angles`, `tools.operator_to_full`, and `tools.simdiag`: numerical linear-algebra helpers
 
 4. `Hubbard_exe.py` : execute script to read inputs and write out Hubbard parameters for given lattice
-
-<!-- ## `Hubbard.plot`
-
-`Hubbard.plot` is the submodule to print and save Hubbard parameter graphs. -->

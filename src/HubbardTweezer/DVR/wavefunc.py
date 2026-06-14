@@ -3,7 +3,7 @@ from opt_einsum import contract
 
 # from numba import njit, guvectorize, int64, float64, complex128
 
-from .const import DIM
+from .metadata import DVRGridMetadata, DIM
 from .core import get_init
 
 
@@ -33,6 +33,20 @@ def psi(
         W = W[..., None]
     psi = 1 / np.sqrt(np.prod(deltax)) * contract("il,jm,kn,lmno", *V, W)
     return psi
+
+
+def psi_from_grid(
+    x: list[np.ndarray, np.ndarray, np.ndarray],
+    grid: DVRGridMetadata,
+    W: np.ndarray,
+) -> np.ndarray:
+    return psi(
+        x=x,
+        n=np.array(grid.n, dtype=int),
+        dx=np.array(grid.dx, dtype=float),
+        W=W,
+        p=np.array(grid.parity, dtype=int),
+    )
 
 
 def delta(p: int, x: np.ndarray, xn: np.ndarray) -> np.ndarray:

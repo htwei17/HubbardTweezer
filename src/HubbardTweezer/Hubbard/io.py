@@ -5,7 +5,7 @@ import numpy as np
 import numpy.linalg as la
 from scipy.optimize import OptimizeResult
 
-from ..Hubbard.core import wannier_func
+from .core import wannier_func
 from ..tools import reportIO as rep
 
 
@@ -110,7 +110,7 @@ class EqulizeInfo(dict):
             }
             rep.create_report(report, "Equalization_Log", **values)
 
-    def read_equalizatśon_log(self, report: ConfigObj, G, index: int = 0):
+    def read_equalization_log(self, report: ConfigObj, G, index: int = 0):
         report = rep.get_report(report)
         self["x"] = rep.a(report, "Equalization_Log", "x")
         self["cost"] = rep.a(report, "Equalization_Log", "cost_func_by_terms")
@@ -121,6 +121,13 @@ class EqulizeInfo(dict):
             self["x"][index - 1], f"{index -1 if index <= 0 else index}-th equalization"
         )
         return G
+
+    def read_equalizatśon_log(self, report: ConfigObj, G, index: int = 0):
+        # Legacy alias kept for backward compatibility.
+        return self.read_equalization_log(report, G, index=index)
+
+
+EqualizeInfo = EqulizeInfo
 
 
 def write_trap_params(report, G):

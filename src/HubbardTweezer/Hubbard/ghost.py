@@ -26,6 +26,7 @@ class GhostTrap:
 
     def __init__(self, lattice: LatticeGrid, shape, penalty=0, threshold=0, func="exp"):
         self.shape = shape
+        self.ls = lattice.symmetry
         self.weight = penalty
         self.threshold = threshold
         self.penfunc = func
@@ -102,9 +103,8 @@ class GhostTrap:
     def penalty(self, Vdist):
         # Penalty for negative V outside the mask
         # Vdist is modified in place
-
-        # If Vdist match number of masked sites, skip
         if len(Vdist) != self.Nsite:
+            # Iif Vdist not match length of mask, skip
             if self.is_masked and self.weight != 0:
                 Vdist_unmasked = Vdist[~self.mask] - self.threshold
                 # Criteria: make func value 0 at and beyond desired value,

@@ -2,7 +2,7 @@ def configuration(parent_package="", top_path=None):
     from numpy.distutils.misc_util import Configuration
 
     config = Configuration("HubbardTweezer", parent_package, top_path)
-    config.version = "dev"
+    config.version = "0.6.0_dev"
     config.add_subpackage("DVR")
     config.add_subpackage("Hubbard")
     config.add_subpackage("tools")
@@ -23,14 +23,17 @@ if __name__ == "__main__":
             "Source": "https://github.com/htwei17/HubbardTweezer",
             "Tracker": "https://github.com/htwei17/HubbardTweezer/issues",
         },
+        entry_points={
+            "console_scripts": [
+                "hubbardtweezer-hubbard=HubbardTweezer.Hubbard.cli:main",
+            ]
+        },
         install_requires=[
             "numpy",
             "scipy",
             "nlopt",
-            "matplotlib",
             "torch",
             "pymanopt",
-            "networkx",
             "configobj",
             "opt_einsum",
             "pympler",

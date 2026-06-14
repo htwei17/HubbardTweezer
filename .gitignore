@@ -2,6 +2,10 @@
 !LICENSE
 !*.cff
 !*.md
+!scripts
+!scripts/**
+!tests
+!tests/**
 .DS_Store
 
 # Folders

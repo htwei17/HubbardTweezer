@@ -7,12 +7,21 @@ import numpy.linalg as la
 import scipy.linalg as sla
 import scipy.sparse.linalg as ssla
 import scipy.sparse as sp
+import scipy.interpolate as interp
 from scipy.sparse.linalg import LinearOperator
 from opt_einsum import contract
 
 from ..tools.potentials import tweezer_potential
 
-from .const import *
+from .metadata import (
+    AMU,
+    DIM,
+    h,
+    DVRConfig,
+    DVRGridMetadata,
+    DVRMetadata,
+    DVRPhysicsMetadata,
+)
 
 
 def get_init(n: np.ndarray, p: np.ndarray) -> np.ndarray:
@@ -59,36 +68,101 @@ class DVR:
             ab_param[1] is the width of absorber in unit of wx
     """
 
+    initial_index = staticmethod(get_init)
+    kinetic_offdiag = staticmethod(_kinetic_offdiag)
+
+    @staticmethod
+    def _default_grid_size(model: str) -> int:
+        if model == "sho":
+            return 15
+        return 10
+
+    @staticmethod
+    def _infer_dim(dim, n, R0) -> int:
+        if dim is not None:
+            return max(1, min(DIM, int(dim)))
+
+        for values in (n, R0):
+            if values is None:
+                continue
+            arr = np.asarray(values).reshape(-1)
+            if arr.size > 1:
+                nonzero = int(np.count_nonzero(arr[:DIM]))
+                return max(1, min(DIM, nonzero or arr.size))
+        return DIM
+
+    @staticmethod
+    def _coerce_axis_array(values, name: str, dtype, dim: int) -> np.ndarray:
+        arr = np.asarray(values, dtype=dtype).reshape(-1)
+        if arr.size == 1 and dim > 1:
+            arr = np.repeat(arr, dim)
+        if arr.size > DIM:
+            raise ValueError(f"{name} must have at most {DIM} entries.")
+
+        full = np.zeros(DIM, dtype=dtype)
+        full[: arr.size] = arr
+        return full
+
+    @classmethod
+    def _resolve_grid(
+        cls,
+        n=None,
+        R0=None,
+        N=None,
+        dim=None,
+        model: str = "Gaussian",
+    ) -> tuple[np.ndarray, np.ndarray]:
+        if R0 is None:
+            raise TypeError("DVR grid resolution requires R0.")
+
+        resolved_dim = cls._infer_dim(dim, N if n is None else n, R0)
+        R0 = cls._coerce_axis_array(R0, "R0", float, resolved_dim)
+
+        if n is None:
+            grid_n = cls._default_grid_size(model) if N in (None, 0) else N
+            n = cls._coerce_axis_array(grid_n, "n", int, resolved_dim)
+        else:
+            scalar_n = np.asarray(n).reshape(-1).size == 1
+            n = cls._coerce_axis_array(n, "n", int, resolved_dim)
+            if scalar_n and n[0] == 0:
+                n = cls._coerce_axis_array(
+                    cls._default_grid_size(model), "n", int, resolved_dim
+                )
+
+        n[resolved_dim:] = 0
+        R0[resolved_dim:] = 0.0
+        return n, R0
+
     def update_n(self, n: np.ndarray, R0: np.ndarray):
-        # Change n with R0 fixed
+        # Change n by fixed R0
         self.n = n.copy()
-        self.init[self.nd] = get_init(self.n[self.nd], self.p[self.nd])
+        self.init[self.nd] = self.initial_index(self.n[self.nd], self.p[self.nd])
         self.R0 = R0.copy()
         self.dx = np.zeros(n.shape)
         self.nd = n != 0
         self.dx[self.nd] = self.R0[self.nd] / n[self.nd]
-        self.update_ab()
+        self.update_absorber()
 
     def update_R0(self, R0: np.ndarray, dx: np.ndarray):
-        # Update R0 with dx fixed
+        # Update R0 by fixed dx
         self.R0 = R0.copy()
         self.dx = dx.copy()
         self.nd = R0 != 0
         self.n[self.nd == 0] = 0
         self.dx[self.nd == 0] = 0
         self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
-        self.init[self.nd] = get_init(self.n[self.nd], self.p[self.nd])
-        self.update_ab()
+        self.init[self.nd] = self.initial_index(self.n[self.nd], self.p[self.nd])
+        self.update_absorber()
 
-    def update_ab(self):
+    def update_absorber(self):
         # Update absorber
         if self.verbosity:
-            print("DVR: dx={}w is set.".format(self.dx[self.nd]))
-            print("DVR: n={} is set.".format(self.n[self.nd]))
-            print("DVR: R0={}w is set.".format(self.R0[self.nd]))
+            print(f"DVR: dx={self.dx[self.nd]}w is set.")
+            print(f"DVR: n={self.n[self.nd]} is set.")
+            print(f"DVR: R0={self.R0[self.nd]}w is set.")
         if self.absorber:
             if self.verbosity:
-                print("DVR: Absorber width LI={:g}w".format(self.LI))
+                print(f"DVR: Absorber width LI={self.LI:g}w")
             # if __debug__:
             #     print(self.R0[0])
             #     print(self.dx[0])
@@ -98,20 +172,307 @@ class DVR:
             self.n[self.nd] += np.rint(self.LI / self.dx[self.nd]).astype(int)
             self.R[self.nd] = self.n[self.nd] * self.dx[self.nd]
             if self.verbosity > 1:
-                print("DVR: n is set to {} by adding absorber.".format(self.n[self.nd]))
-                print("DVR: R={}w is set.".format(self.R[self.nd]))
+                print(f"DVR: n is set to {self.n[self.nd]} by adding absorber.")
+        else:
+            self.R[self.nd] = self.R0[self.nd]
+            if self.verbosity > 1:
+                print(f"DVR: R={self.R[self.nd]}w is set.")
 
-    def update_p(self, p):
+    def update_parity(self, p):
         # Update parity
         self.p = p
-        self.init = get_init(self.n, p)
+        self.init = self.initial_index(self.n, p)
+
+    def _store_input_metadata(self, model, trap, atom, laser, zR, ab_param):
+        self.base_model = model
+        self._input_trap = trap
+        self._input_atom = atom
+        self._input_laser = laser
+        self._input_zR = zR
+        self._input_ab_param = tuple(ab_param)
+
+    def _initialize_grid_state(self, n: np.ndarray, R0: np.ndarray) -> None:
+        self.n = n.copy()
+        self.R0 = R0.copy()  # Physical region size, in unit of wx
+        self.R = R0.copy()  # Total region size, R = R0 + LI
+        self.nd = n != 0
+        self.dx = np.zeros(n.shape)
+        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]
+
+    def _configure_absorber(
+        self, absorber: bool, ab_param: tuple[float, float]
+    ) -> None:
+        self.absorber = absorber
+        if absorber:
+            self.VI, self.LI = ab_param
+        else:
+            self.VI = 0
+            self.LI = 0
+
+    def _configure_parity(self, parity) -> None:
+        self.p = np.zeros(DIM, dtype=int)
+        if self.dvr_symm:
+            if parity is None:
+                self.p[self.nd] = 1
+            else:
+                self.p[self.nd] = parity[self.nd].astype(int)
+            if self.verbosity:
+                axis = np.array(["x", "y", "z"])
+                print(f"{axis[self.nd]}-reflection symmetry is used.")
+        self.init = self.initial_index(self.n, self.p)
+
+    def _configure_experimental_units(
+        self,
+        trap: tuple[float, float | tuple[float, float]],
+        atom: float,
+        laser: float,
+        zR,
+    ) -> None:
+        self.hb = h / (2 * np.pi)  # Reduced Planck constant
+        self.m = atom * AMU  # Atom mass, in unit of electron mass
+        self.kHz = 1e3
+        self.kHz_2p = 2 * np.pi * self.kHz
+        self.V0 = trap[0] * self.kHz_2p
+
+        if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
+            wx: Number = trap[1][0]
+            self.wxy = np.ones(2)
+        elif isinstance(trap[1], Iterable):
+            wx = trap[1][0]
+            self.wxy = np.array(trap[1]) / wx
+        elif isinstance(trap[1], Number):
+            wx = trap[1]
+            self.wxy = np.ones(2)
+        else:
+            wx = 1000
+            self.wxy = np.ones(2)
+        self.w = wx * 1e-9
+
+        self.mtV0 = self.m * self.V0
+        self.l: Literal[None] = None
+        if isinstance(zR, Number):
+            self.zR = zR * np.ones(2) / wx
+        elif isinstance(zR, Iterable):
+            self.zR = np.array(zR) / wx
+        else:
+            self.l = laser * 1e-9
+            self.zR = np.pi * self.w * self.wxy**2 / self.l
+        self.zR0 = np.prod(self.zR) / la.norm(self.zR)
+
+        self.omega = np.array([*(np.sqrt(2) / self.wxy), 1 / self.zR0])
+        self.omega *= np.sqrt(2 * self.avg * self.hb * self.V0 / self.m) / self.w
+        self.hl = np.sqrt(self.hb / (self.m * self.omega))
+
+        if self.verbosity:
+            print(f"param_set: trap parameter V0={self.avg * trap[0]}kHz w={trap[1]}nm")
+
+    def _configure_sho_units(self) -> None:
+        self.hb = 1.0
+        self.omega = np.ones(DIM)
+        self.m = 1.0
+        self.w = 1.0
+        self.wxy = np.ones(2)
+        self.mtV0 = self.m
+        self.V0 = 1.0
+        self.kHz = 1.0
+        self.kHz_2p = 1.0
+        self.zR = None
+        self.zR0 = None
+        self.l = None
+        self.hl = np.sqrt(self.hb / (self.m * self.omega))
+
+        print(f"param_set: trap parameter V0={self.avg * self.V0} w0={self.w}")
+
+    def _configure_physics(
+        self,
+        model: str,
+        trap: tuple[float, float | tuple[float, float]],
+        atom: float,
+        laser: float,
+        zR,
+    ) -> None:
+        if model in ["Gaussian", "optical_lattice", "custom"]:
+            self._configure_experimental_units(trap, atom, laser, zR)
+        elif model == "sho":
+            self._configure_sho_units()
+        else:
+            raise ValueError(f"Unsupported DVR model {model}.")
+
+    def _set_custom_potential(self, custom_potential) -> None:
+        self.custom_potential = None
+        if custom_potential is None:
+            return
+
+        if isinstance(custom_potential, Iterable) and not callable(custom_potential):
+            points, values = custom_potential
+            self.custom_potential = interp.RegularGridInterpolator(
+                points=points, values=values
+            )
+            if self.verbosity:
+                print("DVR: custom potential interpolator is set.")
+        elif callable(custom_potential):
+            self.custom_potential = custom_potential
+            if self.verbosity:
+                print("DVR: custom potential function is set.")
+        else:
+            raise TypeError(
+                "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
+            )
+
+    def evaluate_custom_potential(self, x, y, z):
+        if self.custom_potential is None:
+            raise ValueError("custom potential model requires custom_potential.")
+
+        x = np.asarray(x)
+        y = np.asarray(y)
+        z = np.asarray(z)
+        if x.shape != y.shape or x.shape != z.shape:
+            raise ValueError("X, Y, Z must have the same shape.")
+
+        if isinstance(self.custom_potential, interp.RegularGridInterpolator):
+            points = np.stack([x.reshape(-1), y.reshape(-1), z.reshape(-1)], axis=-1)
+            return self.custom_potential(points).reshape(x.shape)
+        return self.custom_potential(x, y, z)
+
+    def _builtin_Vfun(self, model: str, x, y, z):
+        if model == "Gaussian":
+            return tweezer_potential(x, y, z, self.wxy, self.zR, self.zR0)
+        if model == "sho":
+            return (
+                self.m
+                / 2
+                * (
+                    self.omega[0] ** 2 * x**2
+                    + self.omega[1] ** 2 * y**2
+                    + self.omega[2] ** 2 * z**2
+                )
+            )
+        if model == "free":
+            return np.zeros(np.broadcast_shapes(np.shape(x), np.shape(y), np.shape(z)))
+        raise ValueError(f"Unsupported potential model {model}.")
+
+    def _apply_axis_masks(self) -> None:
+        self.R0 *= self.nd
+        self.R *= self.nd
+        self.dx *= self.nd
+        self.hl[np.logical_not(self.nd)] = 1
+
+        if self.absorber:
+            self.LI = self._input_ab_param[1]
+            self.VI = self._input_ab_param[0] * self.kHz_2p
+            self.VIdV0 = self.VI / self.V0
+        else:
+            self.VI = 0
+            self.LI = 0
+            self.VIdV0 = None
+
+    def update_trap(self, trap=None, atom=None, laser=None, zR=None) -> None:
+        if trap is not None:
+            self._input_trap = trap
+        if atom is not None:
+            self._input_atom = atom
+        if laser is not None:
+            self._input_laser = laser
+        if zR is not None:
+            self._input_zR = zR
+
+        self._configure_physics(
+            self.base_model,
+            self._input_trap,
+            self._input_atom,
+            self._input_laser,
+            self._input_zR,
+        )
+        self._apply_axis_masks()
+
+    @property
+    def config(self) -> DVRConfig:
+        parity = self.p if self.dvr_symm else None
+        return DVRConfig.from_inputs(
+            n=self.n,
+            R0=self.R0,
+            avg=self.avg,
+            model=self.base_model,
+            trap=self._input_trap,
+            atom=self._input_atom,
+            laser=self._input_laser,
+            zR=self._input_zR,
+            symmetry=self.dvr_symm,
+            parity=parity,
+            absorber=self.absorber,
+            ab_param=self._input_ab_param,
+            sparse=self.sparse,
+            verbosity=self.verbosity,
+        )
+
+    @property
+    def grid_metadata(self) -> DVRGridMetadata:
+        return DVRGridMetadata(
+            n=tuple(self.n.astype(int).tolist()),
+            R0=tuple(self.R0.astype(float).tolist()),
+            R=tuple(self.R.astype(float).tolist()),
+            dx=tuple(self.dx.astype(float).tolist()),
+            nd=tuple(self.nd.astype(bool).tolist()),
+            parity=tuple(self.p.astype(int).tolist()),
+            init=tuple(self.init.astype(int).tolist()),
+        )
+
+    @property
+    def physics_metadata(self) -> DVRPhysicsMetadata:
+        zR = (
+            None
+            if self.zR is None
+            else tuple(np.asarray(self.zR, dtype=float).tolist())
+        )
+        zR0 = None if self.zR0 is None else float(self.zR0)
+        VIdV0 = None if self.VIdV0 is None else float(self.VIdV0)
+        return DVRPhysicsMetadata(
+            base_model=self.base_model,
+            active_model=self.model,
+            avg=float(self.avg),
+            dvr_symmetry=bool(self.dvr_symm),
+            sparse=bool(self.sparse),
+            absorber=bool(self.absorber),
+            hbar=float(self.hb),
+            mass=float(self.m),
+            V0=float(self.V0),
+            kHz=float(self.kHz),
+            kHz_2p=float(self.kHz_2p),
+            waist_scale_m=float(self.w),
+            waist_ratio=tuple(np.asarray(self.wxy, dtype=float).tolist()),
+            rayleigh_range=zR,
+            effective_rayleigh_range=zR0,
+            omega=tuple(np.asarray(self.omega, dtype=float).tolist()),
+            harmonic_length=tuple(np.asarray(self.hl, dtype=float).tolist()),
+            absorber_strength=float(self.VI),
+            absorber_width=float(self.LI),
+            absorber_strength_scaled=VIdV0,
+        )
+
+    @property
+    def metadata(self) -> DVRMetadata:
+        return DVRMetadata(
+            config=self.config,
+            grid=self.grid_metadata,
+            physics=self.physics_metadata,
+        )
+
+    @classmethod
+    def from_metadata(cls, metadata: DVRMetadata | DVRConfig, **overrides):
+        if isinstance(metadata, DVRMetadata):
+            kwargs = metadata.config.to_init_kwargs()
+        else:
+            kwargs = metadata.to_init_kwargs()
+        kwargs.update(overrides)
+        return cls(**kwargs)
 
     def __init__(
         self,
         n: np.ndarray,
         R0: np.ndarray,
         avg: float = 1,
-        model: str = "Gaussian", # Trap potential
+        model: str = "Gaussian",
+        custom_potential=None,
         # 2nd entry in array is (wx, wy) in unit of nm
         # if given in single number w it is (w, w)
         trap: tuple[float, Union[float, tuple[float, float]]] = (104.52, 1000),
@@ -129,131 +490,26 @@ class DVR:
         *args,
         **kwargs,
     ) -> None:
-        self.n = n.copy()
-        self.R0 = R0.copy()  # Physical region size, In unit of wx
-        self.R = R0.copy()  # Total region size, R = R0 + LI
-
+        self._store_input_metadata(model, trap, atom, laser, zR, ab_param)
         self.avg = avg
-        self.model = model
-        if self.avg == 0:
-            self.model = "free"
-
-        self.absorber = absorber
+        self.model = "free" if self.avg == 0 else model
         self.dvr_symm = symmetry
-        self.nd: np.ndarray = n != 0  # Which dimension DVR grid is nonzero
         self.sparse = sparse
         self.verbosity = verbosity if verbosity >= 0 else 0
 
-        self.dx = np.zeros(n.shape)
-        self.dx[self.nd] = self.R0[self.nd] / n[self.nd]  # In unit of wx
-        if self.absorber:
-            self.VI, self.LI = ab_param
-        else:
-            self.VI = 0
-            self.LI = 0
-        self.update_ab()
-        # if __debug__:
-        #     print(self.R)
-        #     print(self.R0)
-
-        self.p = np.zeros(DIM, dtype=int)
-        if self.dvr_symm:
-            if parity is None:
-                self.p[self.nd] = 1
-            else:
-                self.p[self.nd] = parity[self.nd].astype(int)
-            if self.verbosity:
-                axis = np.array(["x", "y", "z"])
-                print(f"{axis[self.nd]}-reflection symmetry is used.")
-        self.init = get_init(self.n, self.p)
-
-        if model in ["Gaussian", "optical_lattice", "custom"]:
-            # Experiment parameters in atomic units
-            self.hb = h / (2 * np.pi)  # Reduced Planck constant
-            self.m: float = atom * AMU  # Atom mass, in unit of electron mass
-            self.kHz: float = 1e3  # Make in the frequency unit of kHz
-            self.kHz_2p: float = 2 * np.pi * 1e3  # Make in the agnular kHz frequency
-            self.V0: float = (
-                trap[0] * self.kHz_2p
-            )  # Input V0 is frequency in unit of kHz, convert to angular frequency 2 * pi * kHz
-
-            # Input in unit of nm, converted to m
-            if isinstance(trap[1], Iterable) and len(trap[1]) == 1:
-                wx: Number = trap[1][0]
-                self.wxy: np.ndarray = np.ones(2)
-            elif isinstance(trap[1], Iterable):  # Convert to np.array
-                wx: Number = trap[1][0]  # In unit of nm
-                self.wxy: np.ndarray = np.array(trap[1]) / wx  # wi in unit of wx
-            elif isinstance(trap[1], Number):  # Number convert to np.array
-                wx: Number = trap[1]  # In unit of nm
-                self.wxy: np.ndarray = np.ones(2)
-            else:
-                wx: int = 1000
-                self.wxy: np.ndarray = np.ones(2)
-            self.w: float = wx * 1e-9  # Convert micron to m
-
-            # TO GET A REASONABLE ENERGY SCALE, WE SET V0=1 AS THE ENERGY UNIT HEREAFTER
-            self.mtV0 = self.m * self.V0
-            self.l: Literal[None] = None
-            # Rayleigh range input by hand, in unit of wx
-            if isinstance(zR, Number):
-                self.zR: np.ndarray = zR * np.ones(2) / wx
-            elif isinstance(zR, Iterable):
-                self.zR: np.ndarray = np.array(zR) / wx
-            else:  # If zR not specified,
-                # Laser wavelength, in SI unit
-                self.l: float = laser * 1e-9
-                # Rayleigh range, a vector of (zRx, zRy), in unit of wx
-                self.zR = np.pi * self.w * self.wxy**2 / self.l
-            # "Effective" Rayleigh range
-            self.zR0: float = np.prod(self.zR) / la.norm(self.zR)
-
-            # Trap frequencies
-            self.omega = np.array([*(np.sqrt(2) / self.wxy), 1 / self.zR0])
-            self.omega *= np.sqrt(2 * self.avg * self.hb * self.V0 / self.m) / self.w
-            # Trap harmonic lengths
-            self.hl: np.ndarray = np.sqrt(self.hb / (self.m * self.omega))
-
-            if self.verbosity:
-                print(f"param_set: trap parameter V0={avg * trap[0]}kHz w={trap[1]}nm")
-        elif model == "sho":
-            # Harmonic parameters
-            self.hb: float = 1.0  # Reduced Planck constant
-            self.omega = np.ones(DIM)  # Harmonic frequencies
-            self.m: float = 1.0
-            self.w: float = 1.0
-            self.mtV0 = self.m
-            self.V0 = 1.0
-            self.kHz: float = 1.0
-            self.kHz_2p: float = 1.0
-            self.hl: np.ndarray = np.sqrt(
-                self.hb / (self.m * self.omega)
-            )  # Harmonic lengths
-
-            print(f"param_set: trap parameter V0={avg * self.V0} w0={self.w}")
-
-        self.R0 *= self.nd
-        self.R *= self.nd
-        self.dx *= self.nd
-        # To cancel effect of any h.l. multiplication
-        self.hl[np.logical_not(self.nd)] = 1
-
-        # Abosorbers
-        if absorber:
-            self.VI *= (
-                self.kHz_2p
-            )  # Absorption potential strength in unit of angular kHz frequency
-            self.VIdV0 = self.VI / self.V0  # Energy in unit of V0
+        self._initialize_grid_state(n, R0)
+        self._configure_absorber(absorber, ab_param)
+        self.update_absorber()
+        self._configure_parity(parity)
+        self._configure_physics(model, trap, atom, laser, zR)
+        self._set_custom_potential(custom_potential)
+        self._apply_axis_masks()
 
     def Vfun(self, x, y, z):
         # Potential function
-        if self.model == "Gaussian":
-            # Tweezer potential function, Eq. 2 in PRA
-            V = tweezer_potential(x, y, z, self.wxy, self.zR, self.zR0)
-        elif self.model == "sho":
-            # Harmonic potential function
-            V = self.m / 2 * self.omega**2 * (x**2 + y**2 + z**2)
-        return V
+        if self.model == "custom":
+            return self.evaluate_custom_potential(x, y, z)
+        return self._builtin_Vfun(self.model, x, y, z)
 
     def Vabs(self, x, y, z):
         r = np.array([x, y, z]).transpose(1, 2, 3, 0)
@@ -267,8 +523,7 @@ class DVR:
         #     print(self.R0)
         #     print(L)
         Vi: np.ndarray = np.sum(d / L, axis=3)
-        if Vi.any() != 0.0:
-            V = -1j * self.VIdV0 * Vi  # Energy in unit of V0
+        V = -1j * self.VIdV0 * Vi  # Energy in unit of V0
         return V
 
     def Vmat(self) -> tuple[np.ndarray, np.ndarray]:
@@ -300,16 +555,16 @@ class DVR:
         dx = self.dx[i] * self.w
         p = self.p[i]
 
-        init = get_init(np.array([n]), np.array([p]))[0]
+        init = self.initial_index(np.array([n]), np.array([p]))[0]
 
         # Off-diagonal part
         T0 = np.arange(init, n + 1, dtype=float)[None]
-        T = _kinetic_offdiag(T0 - T0.T) # n - n' term
+        T = self.kinetic_offdiag(T0 - T0.T)
 
         # Diagonal part
         T[np.diag_indices(n + 1 - init)] = np.pi**2 / 3
         if p != 0:
-            T += p * _kinetic_offdiag(T0 + T0.T) # n + n' term
+            T += p * self.kinetic_offdiag(T0 + T0.T)
             if p == 1:
                 T[:, 0] /= np.sqrt(2)
                 T[0, :] /= np.sqrt(2)
@@ -394,13 +649,9 @@ class DVR:
         if self.sparse:
             if self.verbosity:
                 print(
-                    "H_op: n={} dx={}w p={} {} sparse diagonalization starts. Lowest {} states are to be calculated.".format(
-                        self.n[self.nd],
-                        self.dx[self.nd],
-                        self.p[self.nd],
-                        self.model,
-                        k,
-                    )
+                    f"H_op: n={self.n[self.nd]} dx={self.dx[self.nd]}w "
+                    f"p={self.p[self.nd]} {self.model} sparse diagonalization starts. "
+                    f"Lowest {k} states are to be calculated."
                 )
 
             self.p *= self.n != 0
@@ -413,9 +664,8 @@ class DVR:
             # print(V)
             if self.verbosity > 2:
                 print(
-                    "H_op: n={} dx={}w p={} {} operator constructed.".format(
-                        self.n[self.nd], self.dx[self.nd], self.p[self.nd], self.model
-                    )
+                    f"H_op: n={self.n[self.nd]} dx={self.dx[self.nd]}w "
+                    f"p={self.p[self.nd]} {self.model} operator constructed."
                 )
 
             t0 = time()
@@ -434,12 +684,12 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize sparse non-hermitian matrix.")
-                    print("H_solver: matrix dimension = {}".format(N))
+                    print(f"H_solver: matrix dimension = {N}")
                 E, W = ssla.eigs(H, k, which="SA", v0=v0)
             else:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize sparse hermitian matrix.")
-                    print("H_solver: matrix dimension = {}".format(N))
+                    print(f"H_solver: matrix dimension = {N}")
                 E, W = ssla.eigsh(H, k, which="SA", v0=v0)
         else:
             # avg factor is used to control the time average potential strength
@@ -448,12 +698,12 @@ class DVR:
             if self.absorber:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize non-hermitian matrix.")
-                    print("H_solver: matrix dimension = {}".format(H.shape[0]))
+                    print(f"H_solver: matrix dimension = {H.shape[0]}")
                 E, W = la.eig(H)
             else:
                 if self.verbosity > 2:
                     print("H_solver: diagonalize hermitian matrix.")
-                    print("H_solver: matrix dimension = {}".format(H.shape[0]))
+                    print(f"H_solver: matrix dimension = {H.shape[0]}")
                 E, W = la.eigh(H)
             if k > 0:
                 E = E[:k]

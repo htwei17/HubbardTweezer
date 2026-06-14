@@ -6,21 +6,27 @@ from opt_einsum import contract
 from time import time
 from itertools import product
 import numpy.linalg as la
-import scipy.interpolate as interp
 
-from ..DVR import DVR
-from ..DVR.const import *
+from ..DVR.core import DVR
+from ..DVR.metadata import A0, DIM
 from ..DVR.wavefunc import psi
-from ..tools.integrate import romb3d, trapz3dnp
+from ..tools.integrate import integrate_nd
 from ..tools.point_match import nearest_match
 
-from .riemann import *
 from .lattice import Lattice
 
 
+def _localization_cost(WF: np.ndarray, R: list[np.ndarray]) -> float:
+    cost = 0.0
+    for Ri in R:
+        X = WF.conj().T @ Ri @ WF
+        Xp = X - np.diag(np.diag(X))
+        cost += np.trace(Xp @ Xp).real
+    return float(cost)
+
+
 class MLWF(DVR):
-    """Construct maximally localized Wannier functions (MLWF) for a given lattice
-    and calculate Hubbard parameters.
+    """Maximally localized Wannier function
 
     Args:
     ----------
@@ -37,7 +43,6 @@ class MLWF(DVR):
     lattice: Lattice
 
     Nintgrl_grid: int = 257
-    custom_potential: Callable = None  # Custom potential function, if any
     # Rintgrl: np.ndarray
 
     wf_centers: np.ndarray
@@ -85,15 +90,9 @@ class MLWF(DVR):
         *args,
         **kwargs,
     ) -> None:
-        self.N = N
         self.scatt_len = ascatt * A0
-        self.dim = dim
         self.bands = band
 
-        n = np.zeros(3, dtype=int)
-        n[:dim] = N
-
-        # make sure absortber is not used
         absorber = kwargs.get("absorber", False)
         if absorber:
             raise TypeError(
@@ -102,29 +101,37 @@ class MLWF(DVR):
 
         self.zero_avgV = kwargs.pop("zero_avgV", True)
 
-        # Numerical integration grid point number
-        self.Nintgrl_grid = kwargs.get("Nintgrl_grid", 257)
+        self.Nintgrl_grid = kwargs.get(
+            "Nintgrl_grid", 257
+        )  # Numerical integration grid point number
         print(f"Wannier: Number of integration grid set to {self.Nintgrl_grid}.")
 
-        super().__init__(n, *args, **kwargs)
-        if self.model == "custom":
-            if custom_potential is not None:
-                if isinstance(custom_potential, Iterable):
-                    self.custom_potential = interp.RegularGridInterpolator(
-                        points=custom_potential[0], values=custom_potential[1]
-                    )
-                    print(
-                        "Wannier: Custom potential interpolator is set. Ignore lattice parameters."
-                    )
-                elif isinstance(custom_potential, Callable):
-                    self.custom_potential = custom_potential
-                    print(
-                        "Wannier: Custom potential function is set. Ignore lattice parameters."
-                    )
-                else:
-                    raise TypeError(
-                        "Invalid custom potential type. The accepted types are callable or tuple of (grid, values)."
-                    )
+        args = list(args)
+        if "R0" in kwargs:
+            R0 = kwargs["R0"]
+        elif args:
+            R0 = args[0]
+        else:
+            raise TypeError("MLWF requires R0, matching the DVR constructor.")
+        model = kwargs.get("model", args[2] if len(args) > 2 else "Gaussian")
+
+        n, R0 = self._resolve_grid(
+            R0=R0,
+            N=N,
+            dim=dim,
+            model=model,
+        )
+        self.N = int(n[n != 0][0]) if np.any(n != 0) else 0
+        self.dim = int(np.count_nonzero(n))
+
+        if "R0" in kwargs:
+            kwargs["R0"] = R0
+        else:
+            args[0] = R0
+
+        super().__init__(n, *args, custom_potential=custom_potential, **kwargs)
+        if self.base_model == "custom" and self.custom_potential is not None:
+            print("Wannier: Custom potential is set. Ignore lattice parameters.")
 
         # Backup of distance from edge trap center to DVR grid boundaries
         self.R00 = self.R0.copy()
@@ -169,51 +176,53 @@ class MLWF(DVR):
         # Set to cancel onsite potential offset, quantities are of no use
         # They will be overwritten in HubbardEqualizer
 
-    def Vfun(self, x, y, z):
-        # Get V(x, y, z) for the entire lattice
-        if self.model == "sho" and self.lattice.N == 2:
+    def _lattice_grid_Vfun(self, x, y, z):
+        if self.base_model == "sho" and self.lattice.N == 2:
             # Two-site SHO case
-            V = super().Vfun(abs(x) - self.lattice.lc[0] / 2, y, z)
-        elif self.model == "optical_lattice":
+            V = self._builtin_Vfun(
+                "sho",
+                abs(x) - self.lattice.lc[0] / 2,
+                y,
+                z,
+            )
+        elif self.base_model == "optical_lattice":
             # Optical lattice potential in 2D
             V = (
                 np.cos(2 * np.pi * x / self.lattice.lc[0])
                 + np.cos(2 * np.pi * y / self.lattice.lc[1])
                 - 2
             ) / 2
-        elif self.model == "custom" and self.custom_potential is not None:
-            # Custom potential case
-            # Ensure X, Y, Z have the same shape
-            if x.shape != y.shape or x.shape != z.shape:
-                raise ValueError("X, Y, Z must have the same shape.")
-
-            # Flatten and stack into (N, 3) points
-            points = np.stack([x.flatten(), y.flatten(), z.flatten()], axis=-1)
-
-            # Interpolate
-            V_flat = self.custom_potential(points)
-
-            # Reshape back to original shape
-            V = V_flat.reshape(x.shape)
+        elif self.base_model == "custom" and self.custom_potential is not None:
+            V = self.evaluate_custom_potential(x, y, z)
         else:
-            # Gaussian trap potential of tweezer array
             V = 0
             # NOTE: DO NOT SET coord DIRECTLY!
             # THIS WILL DIRECTLY MODIFY self.graph!
             for i in range(self.lattice.N):
                 shift = self.lattice.trap_centers[i]
                 self.update_waist(self.waists[i])
-                V += self.Voff[i] * super().Vfun(x - shift[0], y - shift[1], z)
+                V += self.Voff[i] * self._builtin_Vfun(
+                    self.base_model,
+                    x - shift[0],
+                    y - shift[1],
+                    z,
+                )
         return V
+
+    def Vfun(self, x, y, z):
+        # Get V(x, y, z) for the entire lattice
+        if self.model == "custom" and self.custom_potential is not None:
+            return self.evaluate_custom_potential(x, y, z)
+        return self._lattice_grid_Vfun(x, y, z)
 
     def singleband_Hubbard(self, u=False, x0=None, W0=None, band=1, eig_sol=None):
         # Calculate single band tij matrix and U matrix
         band_bak = self.bands
-        if band == 1: # If only 1st band is needed, set bands to 1
+        if band == 1:
             self.bands = 1
-        if eig_sol != None:  # Unpack pre-calculated eigen solution
+        if eig_sol != None:
             E, W, p = eig_sol
-        else:  # Calculate eigen solution
+        else:
             E, W, p = self.eigen_basis(W0=W0)
         E = E[band - 1]  # Eigen energy
         W = W[band - 1]  # Eigen vector
@@ -246,13 +255,12 @@ class MLWF(DVR):
         return vij
 
     def balance_trap_depths(self):
-        # Balance trap depths at each trap center to be equal
         vij = self.trap_mat()
         # Set trap depth target to be the deepest one
         Vtarget = np.max(vij @ np.ones(self.lattice.N))
         try:
-            # Balance trap depth by adjusting trap offset
-            # to compensate for trap unevenness
+            # Balance trap depth
+            # Powered to compensate for trap unevenness
             self.Voff = la.solve(vij, Vtarget * np.ones(self.lattice.N)) ** 2
             if self.verbosity:
                 print(f"Balance: trap depths balanced to {self.Voff}.")
@@ -264,7 +272,7 @@ class MLWF(DVR):
         # Add a symmetry sector to the list of eigensolutions
         p = self.p.copy()
         p[: len(sector)] = sector
-        self.update_p(p)
+        self.update_parity(p)
 
         Em, Wm = self.H_solver(k, v0)
         E = np.append(E, Em)
@@ -406,7 +414,6 @@ class MLWF(DVR):
         return R
 
     def Xmat_1d(self, W, parity: np.ndarray, i: int):
-        # Calculate X_ij = <i|x|j> for single-body eigenbasis |i>
         Rx = np.zeros((self.lattice.N, self.lattice.N))
         # Permute the dimension to contract to the 1st
         idx = np.roll(np.arange(DIM, dtype=int), -i)
@@ -468,12 +475,14 @@ class MLWF(DVR):
                 wf_centers = np.array([X[order], np.zeros_like(X)]).T
             else:
                 # In high dimension, X, Y, Z don't commute
+                from .riemann import riemann_minimize
+
                 solution = riemann_minimize(R, x0, self.verbosity)
                 WF = site_sort(self, solution, R)
                 wf_centers = np.array(
                     [np.diag(WF.conj().T @ R[i] @ WF) for i in range(self.lattice.dim)]
                 ).T
-            cost = cost_func(WF, R).item()  # Convert to float
+            cost = _localization_cost(WF, R)
         else:
             WF = np.ones((1, 1))
             wf_centers = np.zeros((1, 2))
@@ -577,7 +586,7 @@ def singleband_interaction(
     method: str = "trapz",
     onsite=True,
 ) -> np.ndarray:
-    # Density-density interactions between single band i and j
+    # Interactions between single band i and j
     t0 = time()
     u = (
         4 * np.pi * mlwf.hb * mlwf.scatt_len / (mlwf.m * mlwf.kHz_2p * mlwf.w**DIM)
@@ -597,7 +606,7 @@ def singleband_interaction(
     Vj = Vi if WFi is WFj else wannier_func(x, WFj, mlwf, Wj, pj)
     if onsite:
         integrand = abs(Vi) ** 2 * abs(Vj) ** 2
-        Uint = integrate(x, dx, integrand, method)
+        Uint = integrate_nd(x, dx, integrand, method)
         if mlwf.model == "sho":
             print(
                 f"Test with analytic calculation on {i + 1}-th site",
@@ -620,17 +629,9 @@ def singleband_interaction(
                             * Vj[:, :, :, k]
                             * Vi[:, :, :, l]
                         )
-                        Uint[i, j, k, l] = integrate(x, dx, integrand, method)
+                        Uint[i, j, k, l] = integrate_nd(x, dx, integrand, method)
         mlwf.Nintgrl_grid = 257  # Reset
     return u * Uint
-
-
-def integrate(x, dx, integrand, method):
-    if method == "romb":  # Not recommanded as is not converging well
-        U = romb3d(integrand, dx)
-    else:
-        U = trapz3dnp(integrand, x)
-    return U
 
 
 def wannier_func(x: Iterable, WF, mlwf: MLWF, W, p: np.ndarray) -> np.ndarray:
