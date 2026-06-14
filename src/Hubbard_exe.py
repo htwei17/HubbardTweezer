@@ -147,7 +147,7 @@ if model in ["Gaussian", "optical_lattice"]:
         )
     if shape == "custom":
         nodes = rep.a(report, "Lattice_Parameters", "site_locations", None)
-        links = rep.a(report, "Lattice_Parameters", "bond_links", None)
+        links = rep.a(report, "Lattice_Parameters", "bond_links", None).astype(int)
 elif model == "custom":
     custom_potential_grid = rep.a(
         report, "Lattice_Parameters", "custom_potential_grid", None

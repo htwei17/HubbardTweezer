@@ -114,7 +114,7 @@ class Lattice:
         elif self.grid.dim == 1:
             nnt = np.diag(A, k=1)
         else:
-            nnt = A[self.lattice.ghost.links[:, 0], self.lattice.ghost.links[:, 1]]
+            nnt = A[self.ghost.links[:, 0], self.ghost.links[:, 1]]
         return nnt
 
     def symm_unfold(self, target: Iterable, info, graph=False):
