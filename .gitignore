@@ -17,5 +17,6 @@ cluster
 !doc
 
 # Files
+AGENTS.md
 *.pdf
 *.ini

@@ -150,7 +150,14 @@ class DVR:
         self.nd = R0 != 0
         self.n[self.nd == 0] = 0
         self.dx[self.nd == 0] = 0
-        self.n[self.nd] = (self.R0[self.nd] / self.dx[self.nd]).astype(int)
+        grid_ratio = self.R0[self.nd] / self.dx[self.nd]
+        nearest_grid_ratio = np.rint(grid_ratio)
+        grid_ratio = np.where(
+            np.isclose(grid_ratio, nearest_grid_ratio, rtol=1e-12, atol=1e-12),
+            nearest_grid_ratio,
+            np.floor(grid_ratio),
+        )
+        self.n[self.nd] = grid_ratio.astype(int)
         self.init[self.nd] = self.initial_index(self.n[self.nd], self.p[self.nd])
         self.update_absorber()
 
@@ -669,15 +676,29 @@ class DVR:
                 )
 
             t0 = time()
+            no = np.asarray(no, dtype=int)
+            N = int(np.prod(no, dtype=np.int64))
+            op_dtype = np.result_type(V.dtype, *(Ti.dtype for Ti in T))
 
             def applyH(psi) -> np.ndarray:
-                return self.H_op(T, V, no, psi)
+                out = np.asarray(self.H_op(T, V, no, psi), dtype=op_dtype)
+                if out.shape != (N,):
+                    raise ValueError(
+                        f"H_op returned shape {out.shape}, expected {(N,)}."
+                    )
+                return out
 
-            N = np.prod(no)
-            H = LinearOperator((N, N), matvec=applyH)
+            H = LinearOperator((N, N), matvec=applyH, dtype=op_dtype)
 
             if v0 is not None:  # Flatten v0
-                v0 = v0.reshape(-1)
+                v0 = np.asarray(v0, dtype=op_dtype).reshape(-1)
+                if v0.size != N:
+                    if self.verbosity:
+                        print(
+                            f"H_solver: ignoring initial vector with length {v0.size}; "
+                            f"expected {N}."
+                        )
+                    v0 = None
 
             if k <= 0:
                 k = 10

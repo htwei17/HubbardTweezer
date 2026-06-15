@@ -28,9 +28,10 @@ if __name__ == "__main__":
                 "hubbardtweezer-hubbard=HubbardTweezer.Hubbard.cli:main",
             ]
         },
+        python_requires=">=3.10",
         install_requires=[
-            "numpy",
-            "scipy",
+            "numpy>=2.0",
+            "scipy>=1.13",
             "nlopt",
             "torch",
             "pymanopt",
